@@ -1,7 +1,7 @@
 """Sandbox PoC: run a repo copy in throwaway containers.
 usage: python poc/sandbox_poc.py <repo_dir> <label> [apply-shell-command]
 The apply command is written by a person here; the product builds it in verify/apply.py."""
-import json, pathlib, re, subprocess, sys, time, uuid
+import json, os, pathlib, re, subprocess, sys, time, uuid
 
 repo = pathlib.Path(sys.argv[1]).resolve()
 label = sys.argv[2]
@@ -37,11 +37,12 @@ try:
     ok = run("copy", "cp -a /src/. /work/ && rm -rf /work/.git", "none")
     if apply_cmd:
         ok = run("apply", apply_cmd, "bridge") and ok
-    ok = run("install", "npm ci --ignore-scripts --no-audit --no-fund", "bridge", 420) and ok
-    run("prisma_generate", "npx prisma generate", "bridge", 180)
+    ok = run("install", os.environ.get("INSTALL_CMD", "npm ci") + " --ignore-scripts --no-audit --no-fund", "bridge", 420) and ok
+    if os.environ.get("SETUP_CMD"):
+        run("setup", os.environ["SETUP_CMD"], "bridge", 180)
     run("no_network_check", "node -e \"fetch('https://registry.npmjs.org').then(()=>process.exit(0),()=>process.exit(7))\"", "none", 60)
-    run("build", "npm run build", "none", 300)
-    run("test", "npm test", "none", 300)
+    run("build", "npm run build --if-present", "none", 300)
+    run("test", "npm test --if-present", "none", 300)
     lock = subprocess.run(["docker", "run", "--rm", "--network", "none", "-v", f"{vol}:/work", IMAGE, "cat", "/work/package-lock.json"], capture_output=True, text=True).stdout
     (out / f"{label}.lock.json").write_text(lock)
     manifest = subprocess.run(["docker", "run", "--rm", "--network", "none", "-v", f"{vol}:/work", IMAGE, "cat", "/work/package.json"], capture_output=True, text=True).stdout

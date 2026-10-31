@@ -38,6 +38,7 @@
 | 도구 샌드박스 | `tests/test_tools.py` | 레포 밖 경로 접근, `..` 경로, 심볼릭 링크 탈출 |
 | 조치 제안 검증 | `tests/test_apply.py` | 패키지명 불일치, `fixed_in` 미만 버전, 셸 메타문자가 든 `to_version` |
 | 검증 판정 | `tests/test_verdict.py` | 기준선 대비 회귀, 비교 불가, `mitigation_only`의 verdict 규칙 |
+| 도달성 변이 | `poc/mutation_test.py` 이식 | 주석, 문자열 오탐과 사용 추가, 제거, 테스트 이동 판정 |
 | 컨테이너 격리 | `tests/test_sandbox.py` | 원본 레포 불변, 타임아웃 동작, 네트워크 차단 단계에서 외부 호출 실패 |
 | 골든 일치율 | `triage eval` | CVSS 정렬/규칙/에이전트의 버킷 일치율 회귀, NOW 누락 |
 
@@ -110,3 +111,4 @@ for t in final_triage where final_bucket == NOW:
 | 2026-10-31 | P0 | 데모 레포 realworld 확정, 커밋 고정, 보완 3건 반영 | 정적 스캔으로 A·B·C 후보 확인, 컨테이너 검증 미실행 | T4 Setup, T5 실측 |
 | 2026-10-31 | P0 | 차별화 보강 3건 반영: 실측 비교, 하향 안전장치, 서비스 영향 조회 | 문서 일관성 확인 | T4 Setup, T5 실측 |
 | 2026-10-31 | P0 | 규칙·샌드박스 PoC 실측 (`docs/poc-results.md`) | 대비 사례 확인, LLM·golden 미측정 | T4 Setup |
+| 2026-10-31 | P0 | 시나리오 1·2 실측: NOW 30패키지 검증, 변이 36건 (`docs/poc-results.md`) | verified 20/30, 실제 테스트 확인 2건 | 키 확보, 라벨링 |

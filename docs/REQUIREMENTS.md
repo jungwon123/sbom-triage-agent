@@ -124,7 +124,7 @@
 | F4-1 | EPSS 점수·백분위 일괄 조회 | P0 |
 | F4-2 | CISA KEV 피드 다운로드 후 CVE 매칭 | P0 |
 | F4-3 | 수정 버전과 semver 점프 크기 (patch / minor / major / 없음) | P0 |
-| F4-4 | 소스 코드에서 해당 패키지 import 위치 검색 (`import`, `require`, 동적 import). 각 위치를 `runtime` / `test`로 구분 (`e2e/`, `test/`, `tests/`, `*.spec.*`, `*.test.*`는 `test`) | P0 |
+| F4-4 | 소스 코드에서 해당 패키지 import 위치 검색 (`import`, `require`, 동적 import). 각 위치를 `runtime` / `test`로 구분 (`e2e/`, `test/`, `tests/`, `*.spec.*`, `*.test.*`는 `test`). 주석과 문자열 안의 언급은 제외 | P0 |
 | F4-5 | 어드바이저리에서 취약 함수/심볼명 추출 (예: 특정 유틸 함수) | P1 |
 | F4-6 | 메이저 업그레이드 시 changelog/릴리스 노트에서 breaking change 요약 | P1 |
 | F4-7 | 모든 외부 응답은 디스크 캐시 (데모 중 네트워크 장애 대비) | P0 |
@@ -200,7 +200,7 @@ bucket
 | F7-5 | 분석 진행 상태 스트리밍 (단계별 로그) | P1 |
 | F7-6 | 조치 승인 버튼 → 명령어 복사 / PR 초안 다운로드 | P1 |
 | F7-9 | 서비스 영향 화면: CVE를 고르면 영향받는 서비스와 버킷, 서비스 중요도를 표시 | P1 |
-| F7-7 | 상세 패널에 검증 단계별 결과와 판정 표시. 테스트가 없거나, 취약 패키지 사용 코드를 테스트가 실행하지 않을 수 있으면 그 한계를 명시 | P0 |
+| F7-7 | 상세 패널에 검증 단계별 결과, 판정, 검증 강도 표시. 테스트가 없거나, 취약 패키지 사용 코드를 테스트가 실행하지 않을 수 있으면 그 한계를 명시 | P0 |
 | F7-8 | 상단에 서비스 맥락(중요도·외부 노출) 표시. 점수에는 반영하지 않음 | P0 |
 
 ### F8. 검증 샌드박스
@@ -216,7 +216,11 @@ bucket
 | F8-8 | 레지스트리만 허용하는 egress 프록시 | P2 |
 | F8-9 | 검증 결과·로그를 `out/<run_id>/verify/<finding_id>/`에 저장, 리플레이 모드에서 재생 가능 | P0 |
 | F8-10 | 조치 전 install/build/test를 run당 1회 실행해 **기준선**을 만들고 조치 후 결과와 비교 | P0 |
-| F8-12 | NOW 항목을 패키지@버전 단위로 묶어 가장 높은 `fixed_in`으로 1회 검증하고, 결과를 묶인 Finding 전부에 연결 | P0 |
+| F8-12 | NOW 항목을 패키지@버전 단위로 묶어 해당 패키지의 가장 높은 `fixed_in`으로 1회 검증하고, 결과를 묶인 Finding 전부에 연결. 최소 수정 버전은 PoC에서 30개 중 10개에 새 취약점을 만들었다 | P0 |
+| F8-13 | 조치 적용 시 lockfile에서 기존 버전 항목을 제거하고, 조치 후 설치는 `npm install --ignore-scripts`로 수행. 조치 전 기준선은 `npm ci` 유지 | P0 |
+| F8-14 | `apply` 성공을 판정 근거로 쓰지 않는다. 대상 취약점 해소는 재스캔으로만 판정 | P0 |
+| F8-15 | 판정과 별도로 검증 강도(`tests_run`: 실행된 테스트 수)를 기록. 테스트가 없으면 0 | P0 |
+| F8-16 | DB가 필요한 레포를 위한 컨테이너 내부 서비스(예: Mongo) | P2 |
 | F8-11 | 컨테이너에서 실행하는 명령은 `kind`·`package`·`to_version`으로 코드가 조립. LLM이 쓴 문자열은 실행하지 않음 | P0 |
 
 **판정 규칙**
@@ -322,6 +326,7 @@ class Verification(BaseModel):
     new_findings: list[str]              # 새로 생긴 취약점 id
     new_now_findings: list[str]          # 그중 NOW급
     regressions: list[str]               # 기준선 통과 → 조치 후 실패한 빌드 단계·테스트 이름
+    tests_run: int                       # 실제 실행된 테스트 수, 검증 강도
     verdict: Literal["verified", "failed", "inconclusive"]   # F8 판정 규칙
 ```
 
@@ -336,7 +341,7 @@ class Verification(BaseModel):
 | 오판 기록 | 틀린 항목과 그에 따른 규칙 수정을 `docs/evaluation.md`에 기록 | 발표에서 1건 이상 공개 |
 | 노이즈 감소율 | (전체 − NOW) / 전체 | 수치 자체를 발표에 사용 |
 | 근거 정확성 | 근거에 인용된 수치가 실제 데이터와 일치하는지 자동 검증 | 100% (불일치 시 테스트 실패) |
-| 조치안 유효성 | 샌드박스 검증 `verdict` | 데모 NOW 항목 전부 산출, `verified` 비율은 실측값 사용 |
+| 조치안 유효성 | 샌드박스 검증 `verdict`와 `tests_run` | 데모 NOW 항목 전부 산출. `verified` 비율과 테스트 확인 건수를 나눠 보고 |
 
 ## 10. 데모 시나리오 (발표 3분)
 

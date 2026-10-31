@@ -81,6 +81,8 @@
 | D26 | 하향 안전장치(F6-9)와 NOW 누락 지표 | 채택 | ±1만으로는 KEV 항목도 하향 가능했음 |
 | D27 | 여러 레포 영향 조회를 P1로 승격 | 채택 | 롯데이노베이트 관점과 SBOM 축적 이유를 보여줌 |
 | D28 | 회귀 판정은 테스트 이름 단위로 수행 | 채택 | 데모 레포 기준선에서 테스트 7건이 이미 실패 (`docs/poc-results.md`) |
+| D29 | 기본 조치 버전은 가장 높은 수정 버전 | 채택 | 최소 수정 버전은 30개 중 10개에서 새 취약점 발생 |
+| D30 | 판정과 검증 강도(`tests_run`)를 분리 표시 | 채택 | verified 20개 중 실제 테스트 확인은 2개 |
 | D21 | 서비스 맥락(`service_criticality`, `internet_facing`)을 입력받되 근거·표시 전용 | 채택 (T1 반영) | 서비스 관점 영향도 보강, 점수 결정성과 D13 유지 |
 
 ---
@@ -311,8 +313,9 @@ for t in final_triage where final_bucket == NOW:
   - 재스캔(OSV 조회)은 컨테이너 밖 호스트에서 새 lockfile을 읽어 수행
 - `--ignore-scripts` 때문에 네이티브 모듈 빌드가 필요한 레포는 build가 실패할 수 있다 → 데모 레포 선정 시 확인 (10장 Q1)
 - 조치 적용 방식:
-  - `upgrade_direct`: `npm install <pkg>@<ver> --package-lock-only --ignore-scripts` 후 `npm ci`
-  - `override_transitive`: `package.json`에 `overrides` 추가 후 `npm install --package-lock-only` → `npm ci`
+  - `upgrade_direct`: `npm install <pkg>@<ver> --package-lock-only --ignore-scripts`
+  - `override_transitive`: `package.json`에 `overrides` 추가
+  - 공통: lockfile에서 기존 버전 항목 제거 → `npm install --package-lock-only` → `npm install --ignore-scripts`. `npm ci`는 조치 후 실패할 수 있다 (`docs/poc-results.md`)
 - 데모 환경에 Docker가 없을 가능성 대비: 검증 결과는 사전 실행분을 `out/`에 저장하고 리플레이 모드에서 재생 (N1)
 
 ### 6.7 LLM / 에이전트
