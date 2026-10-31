@@ -42,6 +42,7 @@ sbom-triage/
 ├─ fixtures/
 │  ├─ demo-repo/         # 데모 대상 레포 체크아웃 (git 제외)
 │  ├─ demo-repo.ref      # 데모 레포 URL과 고정 커밋
+│  ├─ eval-repos.ref     # 평가용 공개 레포 URL과 고정 커밋
 │  ├─ golden.yaml        # 사람이 라벨링한 정답 버킷
 │  └─ cache/             # 외부 API 응답 스냅샷 (리플레이용)
 └─ out/<run_id>/         # sbom.cdx.json, findings.json, triage.json, agent_log.jsonl, events.jsonl, verify/
@@ -50,7 +51,7 @@ sbom-triage/
 ## 4. 절대 규칙
 
 1. **스키마가 먼저다.** `models.py`가 백엔드·프론트·에이전트 출력의 단일 진실 원천. 필드를 바꾸면 `web/lib/types.ts`도 같은 커밋에서 바꾼다. `types.ts`는 JSON Schema에서 생성한다.
-2. **규칙과 LLM의 경계를 지킨다.** 점수 계산은 `score.py`의 순수 함수로만. LLM 출력 타입은 점수 필드가 없는 `AgentVerdict`이고 `Triage`는 코드가 조립한다. LLM은 `rule_bucket`을 **±1단계까지만** 조정하며 조정 시 `override_reason` 필수.
+2. **규칙과 LLM의 경계를 지킨다.** 점수 계산은 `score.py`의 순수 함수로만. LLM 출력 타입은 점수 필드가 없는 `AgentVerdict`이고 `Triage`는 코드가 조립한다. LLM은 `rule_bucket`을 **±1단계까지만** 조정하며 조정 시 `override_reason` 필수. KEV 하향 금지 등 안전장치(F6-9)는 코드가 강제한다.
 3. **근거는 데이터에서만.** 에이전트 `rationale`의 숫자(CVSS, EPSS, 버전)는 `{cvss}` 같은 자리표시자로 쓰고 코드가 `Finding` 값으로 채운다. 자리표시자가 아닌 수치는 검증 테스트가 잡는다.
 4. **에이전트는 읽기 전용.** tools는 레포 밖 경로 접근 금지, 파일 쓰기·명령 실행 금지. 샌드박스는 에이전트가 아니라 `runner.py`가 호출한다. 변경은 샌드박스 컨테이너 안의 복사본에만 적용되며, 원본 레포 반영·커밋·PR은 사람 승인 후 별도 경로.
 5. **LLM 출력을 실행하지 않는다.** 레포 코드와 어드바이저리는 신뢰할 수 없는 입력이다. 샌드박스 명령은 검증된 `kind`·`package`·`to_version`으로 `verify/apply.py`가 조립한다.
@@ -84,7 +85,8 @@ uv run pytest -q
 | Finding | 취약점 1건 × 패키지@버전 (경로가 여러 개여도 1건) |
 | reachability | `used_symbol` / `imported_only` / `unused` / `unknown` |
 | bump | 수정 버전까지의 semver 점프: `patch` / `minor` / `major` / `none` |
-| golden set | 데모 레포에서 사람이 직접 매긴 정답 버킷 10~15건 |
+| golden set | 사람이 직접 매긴 정답 버킷. 데모 레포 10~15건 + 평가 레포 각 5건 |
+| NOW 누락 | golden이 NOW인데 최종 버킷이 MONITOR인 건. 목표 0건 |
 | 기준선 | 조치 전 install/build/test 결과. 조치 후 결과와 비교해 회귀를 판정 |
 | 서비스 맥락 | `service_criticality`·`internet_facing`. 근거·표시 전용이며 점수에 넣지 않는다 |
 | verdict | 검증 판정: `verified` / `failed` / `inconclusive` (REQUIREMENTS F8) |

@@ -21,8 +21,8 @@
 |---|---|---|---|---|
 | P0 Setup | 레포 뼈대, `.env`, 데모 레포 확정 | REQUIREMENTS | 디렉터리 구조, `models.py` | `uv run pytest -q` 통과(빈 테스트), 데모 레포에서 Syft 실행 성공 |
 | P1 Pipeline | ① SBOM ② 스캔 ③ 보강 | 데모 레포 | `findings.json` | `scan.py`가 SBOM만 입력으로 동작 · 모든 Finding이 스키마 검증 통과 · EPSS/KEV/bump 채워진 비율 출력 · 캐시만으로 재실행 성공 |
-| P2 Rules | ④ 규칙 점수 + golden 라벨링 | findings | `triage.json`(rule만), `golden.yaml` | `score.py` 단위 테스트 통과 · `triage eval`로 규칙만의 일치율 측정됨 |
-| P3 Agent | ⑤ 도달성·근거·조치안 | triage(rule) | `triage.json`(final), `agent_log.jsonl` | 스키마 100% 통과 · ±1 제약 위반 0 · 근거 수치 검증 통과 · 일치율 ≥ 규칙 단독 |
+| P2 Rules | ④ 규칙 점수 + golden 라벨링 | findings | `triage.json`(rule만), `golden.yaml` | `score.py` 단위 테스트 통과 · `triage eval`로 CVSS 정렬과 규칙 단독의 일치율, NOW 누락 측정됨 |
+| P3 Agent | ⑤ 도달성·근거·조치안 | triage(rule) | `triage.json`(final), `agent_log.jsonl` | 스키마 100% 통과 · ±1 제약 위반 0 · 근거 수치 검증 통과 · 일치율 ≥ 규칙 단독 · NOW 누락 0건 또는 원인 기록 · 안전장치 위반 0 |
 | P3.5 Verify | ⑥ 샌드박스 검증 | triage(final) | `verify/<finding_id>/`, `Verification` | 데모 레포 NOW 항목 전부 `verdict` 산출 · 컨테이너가 원본 레포를 변경하지 않음(테스트로 확인) · 시간 상한 초과 시 `inconclusive`로 종료 |
 | P4 Dashboard | ⑦ P0 화면 | triage.json | `web/` | `tsc --noEmit` 통과 · 데모 시나리오 1~4 화면 수동 확인 |
 | P5 Demo | 리플레이 모드, 리허설 | 전체 | 발표 자료 | 네트워크와 Docker를 끈 상태에서 시나리오 전체 3분 내 완주 2회 |
@@ -33,13 +33,13 @@
 |---|---|---|
 | 스키마 검증 | `tests/test_models.py` | 필드 누락·타입 오류 |
 | 점수 결정성 | `tests/test_score.py` | 같은 입력 → 같은 점수, 경계값(60/30) |
-| 버킷 조정 제약 | `tests/test_agent_contract.py` | NOW↔MONITOR 직행, `override_reason` 누락 |
+| 버킷 조정 제약 | `tests/test_agent_contract.py` | NOW↔MONITOR 직행, `override_reason` 누락, KEV 하향, `needs_review` 대상의 자동 하향 |
 | 근거 사실성 | `tests/test_agent_contract.py` | rationale 속 숫자가 Finding 값과 불일치 |
 | 도구 샌드박스 | `tests/test_tools.py` | 레포 밖 경로 접근, `..` 경로, 심볼릭 링크 탈출 |
 | 조치 제안 검증 | `tests/test_apply.py` | 패키지명 불일치, `fixed_in` 미만 버전, 셸 메타문자가 든 `to_version` |
 | 검증 판정 | `tests/test_verdict.py` | 기준선 대비 회귀, 비교 불가, `mitigation_only`의 verdict 규칙 |
 | 컨테이너 격리 | `tests/test_sandbox.py` | 원본 레포 불변, 타임아웃 동작, 네트워크 차단 단계에서 외부 호출 실패 |
-| 골든 일치율 | `triage eval` | 규칙/에이전트 각각의 버킷 일치율 회귀 |
+| 골든 일치율 | `triage eval` | CVSS 정렬/규칙/에이전트의 버킷 일치율 회귀, NOW 누락 |
 
 에이전트 출력은 사람이 "괜찮아 보인다"로 통과시키지 않는다. 위 테스트가 통과해야 통과다.
 
@@ -53,7 +53,7 @@ for finding in candidates(rule_bucket in {NOW, NEXT}):
     output = AgentVerdict JSON  ──► Pydantic 검증
         ├─ 실패 → 오류 메시지 붙여 1회 재시도
         └─ 재실패 → rule 결과 그대로 + reachability="unknown"
-    contract check (±1, override_reason, 수치 일치, 조치 제안 검증)
+    contract check (±1, override_reason, 수치 일치, 조치 제안 검증, 하향 안전장치)
         └─ 위반 → rule 결과로 fallback + agent_log에 기록
     triage = merge(rule_result, verdict)           # Triage는 코드가 조립
 ```
@@ -82,13 +82,13 @@ for t in final_triage where final_bucket == NOW:
 | 체크포인트 | 이때까지 안 됐으면 |
 |---|---|
 | D1 13:00 — P1 게이트 | Syft 포기, lockfile 파싱만 사용 |
-| D1 19:00 — P2 게이트 | golden set을 10건으로 축소 |
+| D1 19:00 — P2 게이트 | golden set을 데모 레포 10건으로 축소, 평가 레포는 라벨링 없이 분포만 보고 |
 | D2 12:00 — P3 게이트 | 도달성 판정을 import 검색 결과로 대체, 에이전트는 근거·조치안만 |
 | D2 14:00 — P3.5 게이트 | F8-5 재시도를 1회로 축소, 검증은 install + rescan만 |
 | D2 16:00 — P4 게이트 | 상세 패널 단순화, 토글(F7-4)만은 유지 |
 | D2 18:00 | 기능 동결. 이후는 리플레이·리허설만 |
 
-컷 순서: F7-5 → F6-6 → F4-6 → F4-5 → F1-3. **P0 요구사항은 자르지 않는다.** 단, 위 P3.5 체크포인트의 축소는 시간 초과 시의 예외로 허용한다.
+컷 순서: F7-5 → F6-6 → F4-6 → F7-9 → F1-6 → F4-5 → F1-3. **P0 요구사항은 자르지 않는다.** 단, 위 P3.5 체크포인트의 축소는 시간 초과 시의 예외로 허용한다.
 
 ## 6. 세션 시작 / 종료 체크리스트
 
@@ -108,3 +108,4 @@ for t in final_triage where final_bucket == NOW:
 | 2026-10-31 | P0 | 요구사항·하네스 초안 작성 | — | 데모 레포 확정, 열린 질문 정리 |
 | 2026-10-31 | P0 | 샌드박스 결정 반영, 설계 변경 4건·과제 대조 보완 3건 반영, REQUIREMENTS v0.2 | 문서 일관성 확인 | 데모 레포 확정(T3) |
 | 2026-10-31 | P0 | 데모 레포 realworld 확정, 커밋 고정, 보완 3건 반영 | 정적 스캔으로 A·B·C 후보 확인, 컨테이너 검증 미실행 | T4 Setup, T5 실측 |
+| 2026-10-31 | P0 | 차별화 보강 3건 반영: 실측 비교, 하향 안전장치, 서비스 영향 조회 | 문서 일관성 확인 | T4 Setup, T5 실측 |

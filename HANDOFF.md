@@ -77,6 +77,9 @@
 | D22 | 데모 레포 = `gothinkster/node-express-realworld-example-app`, 커밋 고정 | 확정 | Prisma mock 단위 테스트, A·B·C 후보 존재. 라이선스 없음 → 코드 미커밋 |
 | D23 | import 위치를 runtime/test로 구분, 테스트 전용 import는 미사용 처리 | 채택 | axios가 e2e에서만 import되어 NOW로 오탐되던 문제 |
 | D24 | NOW 검증은 패키지@버전 단위로 묶어 수행 | 채택 | 한 패키지의 취약점별 수정 버전이 달라 Finding 단위 검증은 낭비 |
+| D25 | 차별점은 실측으로 제시: CVSS 정렬, 규칙, 규칙 + 에이전트 비교, 평가 레포 2개 추가, 오판 공개 | 채택 | 설계 주장은 다른 팀도 쉽게 작성 가능 |
+| D26 | 하향 안전장치(F6-9)와 NOW 누락 지표 | 채택 | ±1만으로는 KEV 항목도 하향 가능했음 |
+| D27 | 여러 레포 영향 조회를 P1로 승격 | 채택 | 롯데이노베이트 관점과 SBOM 축적 이유를 보여줌 |
 | D21 | 서비스 맥락(`service_criticality`, `internet_facing`)을 입력받되 근거·표시 전용 | 채택 (T1 반영) | 서비스 관점 영향도 보강, 점수 결정성과 D13 유지 |
 
 ---
