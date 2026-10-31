@@ -2,7 +2,7 @@
 
 > 롯데 AX 해커톤 · 롯데이노베이트 [인프라] SW 공급망 스캐닝 AI 에이전트
 > 형태: 작동 프로토타입 + 발표 · 기간 1~2일 · 1인 개발
-> 상태: v0.1 (초안, 같이 다듬는 중)
+> 상태: v0.2 (검증 샌드박스 반영, 같이 다듬는 중)
 
 ---
 
@@ -40,18 +40,19 @@
   1. 사용자가 레포(또는 `package-lock.json`)를 입력한다.
   2. 시스템이 SBOM을 만들고 취약점을 찾는다.
   3. 에이전트가 각 취약점에 맥락을 붙여 3개 버킷으로 분류하고 근거를 쓴다.
-  4. 사용자는 "이번 주" 항목의 조치 명령어/PR 초안을 확인하고 **승인**한다.
+  4. "이번 주" 항목의 조치안은 격리 컨테이너에서 설치·테스트·재스캔으로 검증된다.
+  5. 사용자는 검증 결과와 조치 명령어를 확인하고 **승인**한다.
 
 ## 5. 시스템 구조
 
 ```
-[입력: 레포 경로 / lockfile]
+[입력: 레포 경로 / lockfile + 서비스 맥락]
    │
    ▼
 ① SBOM 생성 ── Syft → CycloneDX JSON   (fallback: lockfile 직접 파싱)
    │
    ▼
-② 취약점 스캔 ── OSV API (querybatch)   (대안: Grype)
+② 취약점 스캔 ── SBOM 컴포넌트를 입력으로 OSV API (querybatch)   (대안: Grype)
    │
    ▼
 ③ 컨텍스트 보강 (결정론적)
@@ -69,13 +70,20 @@
    ├─ 도달 가능성 판정 (취약 심볼이 실제로 호출되는가)
    ├─ 버킷 조정 (규칙 점수 ±1단계까지만)
    ├─ 근거 설명 생성
-   └─ 조치안 생성 (명령어 / overrides / 완화책 / PR 초안)
+   └─ 조치안 제안 (kind / to_version / 완화책) ─ 실행 명령은 코드가 조립
    │
    ▼
-⑥ 대시보드 (Next.js) ── 버킷 뷰, 상세 근거, 승인 버튼
+⑥ 검증 샌드박스 (NOW만) ── 일회용 컨테이너에서 적용 → 설치 → 빌드·테스트 → 재스캔
+   │
+   ▼
+⑦ 대시보드 (Next.js) ── 버킷 뷰, 상세 근거, 검증 결과, 승인 버튼
 ```
 
+①~⑥의 호출 순서는 오케스트레이터(`triage/runner.py`)가 맡는다. CLI와 FastAPI는 이 오케스트레이터만 호출한다. **샌드박스를 호출하는 것은 에이전트가 아니라 오케스트레이터다.**
+
 **설계 원칙: 하이브리드.** 숫자로 판단 가능한 것(심각도·악용 신호·조치 비용)은 규칙이, 맥락 해석이 필요한 것(도달 가능성·설명·조치안)은 에이전트가 맡는다. 에이전트는 규칙 점수를 **최대 ±1 버킷**만 움직일 수 있고, 움직이면 반드시 이유를 남긴다. → "LLM이 마음대로 정한 거 아니냐"는 질문에 대한 답.
+
+**설계 원칙: LLM 출력은 실행하지 않는다.** 레포 코드와 어드바이저리는 신뢰할 수 없는 입력이므로 프롬프트 인젝션을 전제한다. LLM의 제안은 코드가 검증한 뒤 구조화된 값으로만 사용하고, 셸 명령 문자열을 그대로 실행하지 않는다.
 
 ## 6. 기능 요구사항
 
@@ -88,19 +96,22 @@
 | F1-2 | `package-lock.json` 파일 업로드 | P1 |
 | F1-3 | GitHub 공개 레포 URL 입력 → clone | P1 |
 | F1-4 | pnpm / yarn lockfile | P2 |
+| F1-5 | 레포별 서비스 맥락 입력: `service_criticality`(high/medium/low), `internet_facing`(bool). 없으면 `None`으로 두고 "미입력" 표시 | P0 |
+| F1-6 | 여러 레포를 묶어 CVE별 영향 서비스 조회 | P2 |
 
 ### F2. SBOM 생성
 | ID | 요구사항 | 우선순위 |
 |---|---|---|
 | F2-1 | Syft로 CycloneDX JSON 생성 후 저장 (`out/<run_id>/sbom.cdx.json`) | P0 |
 | F2-2 | Syft 실패 시 lockfile 직접 파싱으로 동일 구조 생성 | P0 |
+| F2-5 | SBOM이 스캔의 단일 입력. fallback도 같은 CycloneDX 구조를 생성하고, lockfile 메타데이터는 컴포넌트 purl 기준으로 덧붙임 | P0 |
 | F2-3 | 컴포넌트마다 `scope(dev/prod)`, `direct(bool)`, `introduced_by(경로)` 보존 | P0 |
 | F2-4 | SBOM 다운로드 버튼 | P1 |
 
 ### F3. 취약점 스캔
 | ID | 요구사항 | 우선순위 |
 |---|---|---|
-| F3-1 | OSV `querybatch`로 패키지@버전별 취약점 조회 | P0 |
+| F3-1 | `sbom.cdx.json`의 컴포넌트로 OSV `querybatch`를 조회 | P0 |
 | F3-2 | 결과를 `Finding` 스키마로 정규화 (아래 8장) | P0 |
 | F3-3 | 같은 CVE가 여러 경로로 들어온 경우 하나로 묶고 경로 목록 유지 | P0 |
 | F3-4 | Grype 결과와 교차 확인 | P2 |
@@ -128,12 +139,16 @@
 
 ```
 risk (0~100)
-  severity   = CVSS / 10                          × 30
-  exploit    = 1.0 if KEV else EPSS 백분위         × 35
-  exposure   = scope_w × path_w × reach_w          × 35
+  severity   = CVSS / 10                          × 25
+  exploit    = 1.0 if KEV else EPSS 백분위         × 25
+  exposure   = scope_w × path_w × reach_w          × 50
       scope_w : prod 1.0 / dev 0.2
       path_w  : direct 1.0 / transitive 0.7
       reach_w : 심볼 사용 1.0 / import만 0.6 / 미사용 0.2 / 미판정 0.6
+
+④ 단계의 reach_w 판정 (에이전트 판정 전)
+  direct     : import_sites 있으면 import만, 없으면 미사용
+  transitive : 미판정 (직접 import되지 않으므로 미사용으로 단정하지 않는다)
 
 effort
   low    : patch·minor 업그레이드로 해결
@@ -146,16 +161,19 @@ bucket
   MONITOR  : risk < 30
 ```
 
+> 가중치 근거: severity + exploit 합이 60 미만이어야 exposure가 낮은 항목이 규칙만으로 NOW가 되지 않는다. 30/35/35에서는 CVSS 9.8·EPSS 백분위 0.9인 dev 미사용 패키지가 62.3점으로 NOW가 되어, ±1 제약 때문에 MONITOR까지 내릴 수 없었다.
+
 ### F6. 에이전트
 | ID | 요구사항 | 우선순위 |
 |---|---|---|
 | F6-1 | NOW·NEXT 후보에 대해 도달 가능성 판정 (`used_symbol / imported_only / unused / unknown`) | P0 |
 | F6-2 | 버킷 조정은 ±1단계까지, 조정 시 `override_reason` 필수 | P0 |
-| F6-3 | 항목별 근거 3줄 이내 (한국어), 인용한 데이터 필드 명시 | P0 |
-| F6-4 | 조치안: 실행 명령어 / `overrides` 스니펫 / 임시 완화책 중 해당되는 것 | P0 |
+| F6-3 | 항목별 근거 3줄 이내 (한국어). 수치는 `{cvss}` 같은 자리표시자로 쓰고 코드가 `Finding` 값으로 채운다 | P0 |
+| F6-4 | 조치안: `kind`·`to_version`·임시 완화책을 제안. 명령어와 `overrides` 스니펫은 코드가 조립 | P0 |
 | F6-5 | 출력은 JSON 스키마 강제 (Pydantic 검증 실패 시 1회 재시도, 이후 규칙 결과로 fallback) | P0 |
-| F6-6 | PR 초안 (제목·본문·변경 diff) 생성 — **생성만, 푸시는 하지 않음** | P1 |
+| F6-6 | PR 초안 (제목·본문·변경 diff) 생성 — **생성만, 푸시는 하지 않음** | P2 |
 | F6-7 | 전체 요약 (경영진용 3문장) | P1 |
+| F6-8 | 조치 제안 검증: 패키지명이 Finding과 일치, `to_version`이 유효한 semver이고 `fixed_in` 이상. 위반 시 샌드박스로 보내지 않고 규칙 결과로 fallback | P0 |
 
 **에이전트 도구 (tools)**
 
@@ -167,7 +185,7 @@ bucket
 | `get_advisory` | vuln_id | 어드바이저리 본문 요약·영향 함수 | 캐시 우선 |
 | `get_changelog` | package, from, to | breaking change 요약 | P1 |
 
-**Human-in-the-loop 지점:** 에이전트는 판단과 초안까지만. 업그레이드 실행, 커밋, PR 생성은 대시보드에서 사람이 승인해야 한다.
+**Human-in-the-loop 지점:** 에이전트는 판단과 제안까지만. 샌드박스 검증은 오케스트레이터가 복사본에 대해 수행하고, 원본 레포 반영·커밋·PR 생성은 대시보드에서 사람이 승인해야 한다.
 
 ### F7. 대시보드
 | ID | 요구사항 | 우선순위 |
@@ -178,6 +196,31 @@ bucket
 | F7-4 | "CVSS 순 정렬 vs 에이전트 순 정렬" 토글 (발표 핵심 장면) | P0 |
 | F7-5 | 분석 진행 상태 스트리밍 (단계별 로그) | P1 |
 | F7-6 | 조치 승인 버튼 → 명령어 복사 / PR 초안 다운로드 | P1 |
+| F7-7 | 상세 패널에 검증 단계별 결과와 판정 표시. 테스트 스크립트가 없으면 "테스트 없음"을 명시 | P0 |
+| F7-8 | 상단에 서비스 맥락(중요도·외부 노출) 표시. 점수에는 반영하지 않음 | P0 |
+
+### F8. 검증 샌드박스
+| ID | 요구사항 | 우선순위 |
+|---|---|---|
+| F8-1 | **NOW 버킷 항목**의 조치안을 일회용 Docker 컨테이너에서 검증 (NEXT·MONITOR는 검증하지 않음) | P0 |
+| F8-2 | 원본 레포는 읽기 전용 마운트, 컨테이너 안 작업 디렉터리로 **복사** 후 변경 | P0 |
+| F8-3 | 검증 단계: 조치 적용 → 의존성 설치 → `build` 스크립트(있으면) → `test` 스크립트(있으면) → 새 lockfile에서 SBOM을 다시 생성해 OSV 재스캔 | P0 |
+| F8-4 | 판정: 대상 취약점 해소 여부 + **새로 생긴 취약점 중 NOW급 존재 여부** + 기준선 대비 빌드/테스트 회귀 여부 | P0 |
+| F8-5 | 실패 시 실패 로그를 에이전트에 전달하여 **대안 조치안 재생성 (최대 2회)** → 과제 문구 "조치안 개선"에 대응 | P0 |
+| F8-6 | 리소스 제한: CPU·메모리·PID 수·실행 시간(예: 5분) 상한 | P0 |
+| F8-7 | 네트워크 제한: 설치 단계만 네트워크 허용 + `--ignore-scripts`, 빌드·테스트 단계는 `--network none` | P0 |
+| F8-8 | 레지스트리만 허용하는 egress 프록시 | P2 |
+| F8-9 | 검증 결과·로그를 `out/<run_id>/verify/<finding_id>/`에 저장, 리플레이 모드에서 재생 가능 | P0 |
+| F8-10 | 조치 전 install/build/test를 run당 1회 실행해 **기준선**을 만들고 조치 후 결과와 비교 | P0 |
+| F8-11 | 컨테이너에서 실행하는 명령은 `kind`·`package`·`to_version`으로 코드가 조립. LLM이 쓴 문자열은 실행하지 않음 | P0 |
+
+**판정 규칙**
+
+| verdict | 조건 |
+|---|---|
+| `failed` | 대상 취약점 미해소, 또는 새 NOW급 취약점 발생, 또는 기준선에서 통과한 단계가 조치 후 실패(회귀) |
+| `inconclusive` | `failed`가 아니면서 시간 초과, `mitigation_only`(적용할 업그레이드 없음), 또는 기준선에서 이미 실패해 비교 불가한 단계가 있음 |
+| `verified` | 위 둘에 해당하지 않음. 스크립트가 없어 `skipped`인 단계는 허용하되 대시보드에 표시 |
 
 ## 7. 비기능 요구사항
 
@@ -189,10 +232,17 @@ bucket
 | N4 | **비용:** LLM 호출은 후보 항목 수만큼 + 요약 1회. 항목당 토큰 상한 설정 |
 | N5 | **보안:** 레포 코드는 로컬에서만 읽음. 외부 전송은 CVE ID·패키지명·버전과 에이전트 컨텍스트로 한정. API 키는 `.env` |
 | N6 | **설명 가능성:** 모든 버킷 결정에 규칙 점수 분해 + (있다면) 에이전트 조정 사유가 함께 표시 |
+| N7 | **리플레이 2층:** 외부 HTTP는 응답 캐시로, LLM·Docker를 포함한 실행 과정은 `out/<run_id>/events.jsonl` 재생으로 네트워크·Docker 없이 재현. SSE도 같은 이벤트 로그를 읽는다 |
+| N8 | **격리:** 샌드박스 작업이 원본 레포를 변경하지 않으며, 컨테이너에 API 키·`.env`를 전달하지 않는다 |
 
 ## 8. 핵심 데이터 스키마
 
 ```python
+class ServiceContext(BaseModel):         # 근거·표시 전용, 점수 입력 아님
+    service_name: str
+    service_criticality: Literal["high", "medium", "low"] | None
+    internet_facing: bool | None
+
 class Finding(BaseModel):
     id: str                      # "<vuln_id>@<package>@<version>"
     vuln_id: str                 # GHSA-… / CVE-…
@@ -219,9 +269,57 @@ class Triage(BaseModel):
     reachability: Literal["used_symbol", "imported_only", "unused", "unknown"]
     final_bucket: Literal["NOW", "NEXT", "MONITOR"]
     override_reason: str | None   # rule_bucket != final_bucket 이면 필수
-    rationale: list[str]          # ≤ 3줄
+    rationale: list[str]          # ≤ 3줄, 자리표시자를 채운 최종 문장
     remediation: Remediation
+    verification: Verification | None   # NOW 항목만 채워짐
+
+class RemediationProposal(BaseModel):    # LLM이 제안할 수 있는 범위
+    kind: Literal["upgrade_direct", "override_transitive", "mitigation_only"]
+    to_version: str | None               # mitigation_only면 None
+    mitigation: str | None               # 수정 버전이 없을 때의 임시 완화책
+    breaking_risk: Literal["low", "medium", "high"]
+    notes: str | None
+
+class AgentVerdict(BaseModel):           # LLM 출력. 점수 필드가 없다
+    reachability: Literal["used_symbol", "imported_only", "unused", "unknown"]
+    proposed_bucket: Literal["NOW", "NEXT", "MONITOR"]
+    override_reason: str | None
+    rationale: list[str]                 # `{cvss}` 같은 자리표시자 사용
+    remediation: RemediationProposal
+
+class Remediation(BaseModel):            # 검증을 통과한 제안을 코드가 완성한 결과
+    kind: Literal["upgrade_direct", "override_transitive", "mitigation_only"]
+    package: str
+    from_version: str
+    to_version: str | None
+    commands: list[str]                  # 코드가 조립. 표시·샌드박스 실행용
+    package_json_patch: dict | None      # overrides 스니펫, 코드가 조립
+    mitigation: str | None
+    breaking_risk: Literal["low", "medium", "high"]
+    notes: str | None
+
+class VerifyStep(BaseModel):
+    name: Literal["apply", "install", "build", "test", "rescan"]
+    status: Literal["passed", "failed", "skipped"]
+    duration_ms: int
+    log_tail: str                        # 마지막 N줄만
+
+class VerificationBaseline(BaseModel):   # run당 1회, 조치 전 상태
+    steps: list[VerifyStep]
+
+class Verification(BaseModel):
+    finding_id: str
+    attempt: int                         # 1부터, 최대 3 (최초 + 재시도 2)
+    remediation_applied: Remediation
+    steps: list[VerifyStep]
+    target_resolved: bool                # 대상 취약점 해소
+    new_findings: list[str]              # 새로 생긴 취약점 id
+    new_now_findings: list[str]          # 그중 NOW급
+    regressions: list[str]               # 기준선 통과 → 조치 후 실패한 단계명
+    verdict: Literal["verified", "failed", "inconclusive"]   # F8 판정 규칙
 ```
+
+`Triage`는 LLM이 직접 만들지 않는다. 오케스트레이터가 `score.py` 결과와 검증된 `AgentVerdict`를 합쳐 생성한다.
 
 ## 9. 평가 방법
 
@@ -230,7 +328,7 @@ class Triage(BaseModel):
 | 우선순위 일치도 | 데모 레포 취약점 10~15개를 직접 라벨링한 golden set과 버킷 일치율 | ≥ 80% |
 | 노이즈 감소율 | (전체 − NOW) / 전체 | 수치 자체를 발표에 사용 |
 | 근거 정확성 | 근거에 인용된 수치가 실제 데이터와 일치하는지 자동 검증 | 100% (불일치 시 테스트 실패) |
-| 조치안 유효성 | 제안 명령어 실행 후 재스캔 시 해당 취약점 해소 여부 | 데모 NOW 항목 100% |
+| 조치안 유효성 | 샌드박스 검증 `verdict` | 데모 NOW 항목 전부 산출, `verified` 비율은 실측값 사용 |
 
 ## 10. 데모 시나리오 (발표 3분)
 
@@ -239,7 +337,7 @@ class Triage(BaseModel):
 3. **대비 장면 (60초):** CVSS 순 ↔ 에이전트 순 토글.
    - A: CVSS 높음, 그러나 devDependency + 미사용 → MONITOR
    - B: CVSS 중간, 그러나 EPSS 상위 + prod + 취약 함수 실제 호출 → NOW
-4. **조치 (30초):** B의 조치 명령어 실행 → 재스캔 → 사라짐.
+4. **검증 (30초):** B 항목 상세 패널에서 샌드박스 검증 결과 표시 — 설치·빌드·테스트 결과, 대상 취약점 해소, 신규 NOW 0건 → **승인 대기**. 가능하면 실패 → 재시도 → 성공 사례 1건도 보여준다 ("조치안 개선").
 5. **확장 (30초):** CI 연동, 타 언어, 계열사 전체 자산 스캔.
 
 > ⚠️ 리스크: CISA KEV에는 npm 라이브러리가 거의 등재돼 있지 않다. "KEV 등재" 장면은 실데이터로 못 만들 가능성이 높으므로 대비 장면 B는 **EPSS + 도달성** 위주로 구성하고, KEV는 점수 규칙에만 존재하게 한다. 데모 레포 의존성은 Day 0에 실제 스캔해서 A·B 사례가 나오는 조합으로 확정한다.
@@ -251,6 +349,19 @@ class Triage(BaseModel):
 - 라이선스 컴플라이언스
 - 사내 자산 인벤토리 연동
 - 실시간 모니터링 / 웹훅
+- 서비스 맥락의 점수 반영 (이번에는 근거·표시 전용)
+- 에이전트의 인프라 직접 관리 (아래 L3~L4)
+- 온프레미스 실제 구축 (지원서·발표에서 설계로만 제시)
+
+**자율성 단계 (발표·지원서용)**
+
+| 단계 | 에이전트가 하는 일 | 이번 해커톤 |
+|---|---|---|
+| L0 | 우선순위·조치안 추천 | ✓ |
+| L1 | 샌드박스에서 조치안 검증 | ✓ |
+| L2 | 검증된 조치안으로 PR 생성 | 일부 (P2) |
+| L3 | 정책 범위 내 자동 병합 (예: patch 버전 + 테스트 통과) | 로드맵 |
+| L4 | 컨테이너 이미지·인프라 단 조치 | 로드맵 |
 
 ## 12. 일정 (1~2일, 1인)
 
@@ -260,8 +371,9 @@ class Triage(BaseModel):
 | D1 오전 | ①②③ 파이프라인 (CLI) | `python -m triage scan <repo>` → findings.json |
 | D1 오후 | ④ 규칙 점수 + golden set 라벨링 + FastAPI | 규칙만으로 golden set 일치율 측정 가능 |
 | D2 오전 | ⑤ 에이전트 (도달성·근거·조치안) | 스키마 검증 통과, 일치율 규칙 대비 개선 |
-| D2 오후 전반 | ⑥ 대시보드 P0 | 데모 시나리오 1~4 화면 동작 |
-| D2 오후 후반 | 리플레이 모드, 리허설 2회 | 네트워크 끊고도 시연 가능 |
+| D2 14:00까지 | ⑥ 검증 샌드박스 | 데모 NOW 항목 전부 `verdict` 산출, 원본 레포 불변 |
+| D2 16:00까지 | ⑦ 대시보드 P0 | 데모 시나리오 1~4 화면 동작 |
+| D2 18:00 이후 | 기능 동결, 리플레이 모드, 리허설 2회 | 네트워크 끊고도 시연 가능 |
 
 **잘라낼 순서 (시간 부족 시):** F7-5 → F6-6 → F4-6 → F4-5 → F1-3. P0는 자르지 않는다.
 

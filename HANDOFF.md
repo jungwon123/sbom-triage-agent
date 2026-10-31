@@ -10,8 +10,8 @@
 
 1. **이 문서 전체를 먼저 읽는다.** 이전 대화에서 내린 결정, 아직 문서에 반영되지 않은 결정, 막힌 작업이 모두 여기 있다.
 2. 그다음 `CLAUDE.md`(규칙) → `HARNESS.md`(진행 방식) → `docs/REQUIREMENTS.md`(요구사항) 순으로 읽는다.
-3. **주의:** `REQUIREMENTS.md`·`HARNESS.md`·`CLAUDE.md`는 "검증 샌드박스" 결정 **이전**에 작성되었다. 이 문서 5장의 변경사항을 반영하는 것이 첫 작업이다(9장 T1).
-4. 문서 간 충돌 시 우선순위: **이 HANDOFF의 5장(최신 결정) > REQUIREMENTS > CLAUDE > HARNESS**. 5장을 반영한 뒤에는 원래 우선순위(REQUIREMENTS > CLAUDE > HARNESS)로 돌아간다.
+3. 5장의 변경사항은 T1에서 `REQUIREMENTS.md`(v0.2)·`HARNESS.md`·`CLAUDE.md`에 반영되었다.
+4. 문서 간 충돌 시 우선순위: REQUIREMENTS > CLAUDE > HARNESS. 이 HANDOFF는 배경과 결정 이력이다.
 
 ---
 
@@ -62,11 +62,19 @@
 | D6 | **에이전트는 규칙 버킷을 ±1단계까지만 조정**, 조정 시 `override_reason` 필수, 위반 시 규칙 결과로 fallback | 확정 | "AI가 임의로 정했다" 반론 차단 |
 | D7 | 3단계 버킷: **NOW / NEXT / MONITOR** | 확정 | |
 | D8 | **CISA KEV는 점수 규칙에만 두고 데모 대비 장면은 EPSS + 도달성 중심** | 확정 | KEV에 npm 라이브러리가 거의 없음 (6.4 참고) |
-| D9 | **검증 샌드박스 도입 (A안)**: 에이전트 조치안을 일회용 컨테이너에서 적용 → 설치·빌드·테스트 → 재스캔하여 검증 | **채택 (문서 미반영)** | 사용자가 인프라 단 확장을 제안 → 범위를 "검증용 샌드박스"로 좁혀 채택. 아키텍처 다이어그램에 반영됨 |
-| D10 | **온프레미스 배포 (B안)**: 구현하지 않고 지원서 "구축방안"과 발표에서 **설계로만** 제시 | 채택 (문서 미반영) | 사내망 구동, 취약점 DB 미러링, 사내 LLM 대체 가능 |
+| D9 | **검증 샌드박스 도입 (A안)**: 에이전트 조치안을 일회용 컨테이너에서 적용 → 설치·빌드·테스트 → 재스캔하여 검증 | 채택 (T1 반영) | 사용자가 인프라 단 확장을 제안 → 범위를 "검증용 샌드박스"로 좁혀 채택. 아키텍처 다이어그램에 반영됨 |
+| D10 | **온프레미스 배포 (B안)**: 구현하지 않고 지원서 "구축방안"과 발표에서 **설계로만** 제시 | 채택 (T1 반영) | 사내망 구동, 취약점 DB 미러링, 사내 LLM 대체 가능 |
 | D11 | **에이전트의 인프라 직접 관리 (C안)**: 하지 않음. 자율성 로드맵 L3~L4로만 언급 | 확정 | 신뢰 설계("판단은 AI, 실행은 사람 승인")와 충돌, 범위 폭발 |
 | D12 | 아키텍처 다이어그램은 **Archify**(github.com/tt-a1i/archify)로 렌더링 | 진행 중 | 소스 JSON 작성 완료, 렌더링 미완 (8장) |
-| D13 | 점수 가중치 severity 30 / exploit 35 / exposure 35 | **초안 (미확정)** | exposure 비중 상향 검토 중. golden set으로 튜닝 |
+| D13 | 점수 가중치 severity 25 / exploit 25 / exposure 50 | 채택 (golden set으로 튜닝) | severity + exploit 합이 60 미만이라 exposure가 낮으면 규칙만으로 NOW가 되지 않음. 기존 30/35/35에서는 dev 미사용 패키지가 NOW가 될 수 있었음 |
+| D14 | 샌드박스 호출 주체는 에이전트가 아니라 오케스트레이터(`runner.py`) | 채택 (T1 반영) | 에이전트 읽기 전용 규칙 유지 |
+| D15 | LLM 출력은 `AgentVerdict`로 제한, 샌드박스 명령은 `apply.py`가 조립 | 채택 (T1 반영) | 프롬프트 인젝션이 명령 실행으로 이어지는 경로 차단, 점수 필드를 타입에서 제거 |
+| D16 | 조치 전 기준선을 run당 1회 측정하고 회귀만 실패로 판정 | 채택 (T1 반영) | 원래 깨져 있던 테스트를 조치 실패로 오판하지 않기 위함 |
+| D17 | 리플레이 2층: 응답 캐시 + `events.jsonl` | 채택 (T1 반영) | 응답 캐시는 LLM·Docker 단계를 재현하지 못함 |
+| D18 | `rationale` 수치는 자리표시자로 쓰고 코드가 채움 | 채택 (T1 반영) | 근거 수치를 구조적으로 데이터와 일치시킴 |
+| D19 | F8-5(조치안 재생성)를 P0로 승격, 컷 대상에서 제외 | 채택 (T1 반영) | 과제 문구 "조치안 개선"에 직접 대응 |
+| D20 | SBOM을 스캔의 단일 입력으로 사용, 재스캔도 SBOM 재생성 후 수행 | 채택 (T1 반영) | 과제 문구 "SBOM과 스캔 결과의 연결" |
+| D21 | 서비스 맥락(`service_criticality`, `internet_facing`)을 입력받되 근거·표시 전용 | 채택 (T1 반영) | 서비스 관점 영향도 보강, 점수 결정성과 D13 유지 |
 
 ---
 
@@ -127,7 +135,9 @@ npm 레포의 취약점을 CVSS 목록이 아니라 **NOW / NEXT / MONITOR**로 
 
 ---
 
-## 5. ⚠️ 문서에 아직 반영되지 않은 변경사항 (T1에서 반영)
+## 5. 샌드박스 도입 변경사항 (T1 반영 완료)
+
+> ✅ 2026-10-31 반영 완료. 아래는 당시 기록이며, 최종 스키마·판정 규칙은 `docs/REQUIREMENTS.md` F8·8장이 기준이다. 특히 5.2의 `Remediation.commands`는 LLM이 아니라 코드가 채우고, `Verification`에는 `regressions`가 추가되었다(D15, D16).
 
 ### 5.1 REQUIREMENTS.md에 추가할 기능 그룹 F8 — 검증 샌드박스
 
@@ -309,7 +319,7 @@ for t in final_triage where final_bucket == NOW:
 ### 6.8 점수 규칙 (초안, REQUIREMENTS F5 그대로)
 
 ```
-risk (0~100) = severity×30 + exploit×35 + exposure×35
+risk (0~100) = severity×25 + exploit×25 + exposure×50
   severity = CVSS/10
   exploit  = 1.0 if KEV else EPSS 백분위 (없으면 상수, 근거에 명시)
   exposure = scope_w × path_w × reach_w
@@ -320,7 +330,7 @@ effort: low(patch·minor) / medium(major 또는 overrides) / high(수정 버전 
 bucket: NOW risk≥60 / NEXT 30≤risk<60 또는 (risk≥60 & effort=high) / MONITOR risk<30
 ```
 
-- 주의: 규칙 단계(④)에서는 아직 에이전트의 도달성 판정이 없으므로 `reach_w`는 import 검색 결과 기반 (`import_sites` 있으면 imported_only, 없으면 unused). 에이전트가 used_symbol/unknown으로 바꾸면 **점수를 재계산하지 않고** 버킷 ±1 조정과 사유로 반영한다 (D6 일관성 유지).
+- 주의: 규칙 단계(④)에서는 아직 에이전트의 도달성 판정이 없으므로 `reach_w`는 import 검색 결과 기반 (direct는 `import_sites` 있으면 imported_only, 없으면 unused / transitive는 unknown). 에이전트가 used_symbol/unknown으로 바꾸면 **점수를 재계산하지 않고** 버킷 ±1 조정과 사유로 반영한다 (D6 일관성 유지).
 - 가중치는 `config/scoring.yaml`로 분리 (F5-4)하고 golden set 일치율로 튜닝 (D13).
 
 ---
@@ -356,6 +366,7 @@ bucket: NOW risk≥60 / NEXT 30≤risk<60 또는 (risk≥60 & effort=high) / MON
 ## 8. 아키텍처 다이어그램 (Archify) — 렌더링 미완
 
 - 도구: **Archify** — https://github.com/tt-a1i/archify (Agent Skill, v3.2.0, Apache-2.0)
+- 렌더러는 외부 코드이므로 사용자가 검토·설치한 뒤 실행한다.
 - 소스: `docs/architecture/archify.candidate.json` (`diagram_type: architecture`, `locale: ko`, `quality_profile: showcase`)
 - 출력 경로: `docs/architecture/sbom-triage-architecture.html` (`meta.output`에 설정됨, 레포 루트 기준 상대경로)
 - **막힌 이유:** claude.ai 작업 환경의 보안 정책이 외부에서 받은 Archify 렌더러 실행을 차단함. 스키마 검증·렌더링을 한 번도 통과하지 않았다.
@@ -380,8 +391,8 @@ bucket: NOW risk≥60 / NEXT 30≤risk<60 또는 (risk≥60 & effort=high) / MON
    - `region` 경계의 `pad: 20`이 상단 외부 노드(공개 취약점 DB, LLM API)와 겹치지 않는지 확인
    - **노드·관계·라벨의 의미는 바꾸지 말고 좌표·크기만** 조정
 4. 다이어그램 구성 (수정 시 의미 보존 기준):
-   - 메인 경로(emphasis): 담당자 → 대시보드 → FastAPI → SBOM·스캔·보강 → 규칙 점수 엔진 → 트리아지 에이전트 → 검증 샌드박스
-   - 보조: 파이프라인→응답 캐시→(미스 시, dashed)공개 취약점 DB / 에이전트→LLM API(security, "근거 데이터만 전송") / 파이프라인→대상 레포("lockfile · import 검색") / 에이전트→대상 레포(security, "읽기 전용 tool") / FastAPI→실행 결과 저장소
+   - 메인 경로(emphasis): 담당자 → 대시보드 → 오케스트레이터 → SBOM·스캔·보강 → 규칙 점수 엔진 → 트리아지 에이전트 / 오케스트레이터 → 검증 샌드박스 (에이전트가 샌드박스를 직접 호출하지 않음)
+   - 보조: 파이프라인→응답 캐시→(미스 시, dashed)공개 취약점 DB / 에이전트→LLM API(security, "근거 데이터만 전송") / 파이프라인→대상 레포("lockfile · import 검색") / 에이전트→대상 레포(security, "읽기 전용 tool") / 에이전트→응답 캐시 / 샌드박스→대상 레포("읽기 전용 마운트") / 샌드박스→npm 레지스트리("install 단계만") / 재스캔→응답 캐시 / FastAPI→실행 결과 저장소
    - 경계: region "온프레미스 사내망"(외부 3개 제외 전부), security-group "격리 컨테이너 · egress 제한"(샌드박스)
    - 카드 4장: ① 파이프라인(결정론) / ② 판단(하이브리드) / ③ 조치·검증 / 보안 경계
 

@@ -8,19 +8,20 @@
     "quality_profile": "showcase"
   },
   "components": [
+    { "id": "npm", "type": "external", "label": "npm 레지스트리", "sublabel": "install 단계만 허용", "pos": [1600, 40], "size": [140, 64] },
     { "id": "feeds", "type": "external", "label": "공개 취약점 DB", "sublabel": "OSV · EPSS · CISA KEV", "pos": [820, 40], "size": [140, 64] },
     { "id": "llm", "type": "external", "label": "LLM API", "sublabel": "Claude tool use", "pos": [1340, 40], "size": [140, 64] },
     { "id": "cache", "type": "database", "label": "응답 캐시", "sublabel": "DEMO_MODE=replay", "pos": [820, 180], "size": [140, 64] },
 
     { "id": "user", "type": "external", "label": "보안·개발 담당자", "sublabel": "검토 후 승인", "pos": [40, 330], "size": [140, 64] },
     { "id": "web", "type": "frontend", "label": "Next.js 대시보드", "sublabel": "NOW · NEXT · MONITOR", "pos": [300, 330], "size": [140, 64] },
-    { "id": "api", "type": "backend", "label": "FastAPI", "sublabel": "실행 오케스트레이션", "pos": [560, 330], "size": [140, 64] },
+    { "id": "api", "type": "backend", "label": "FastAPI + 오케스트레이터", "sublabel": "단계 호출 · SSE", "pos": [560, 330], "size": [140, 64] },
     { "id": "pipeline", "type": "backend", "label": "SBOM·스캔·보강", "sublabel": "Syft · OSV · semver", "pos": [820, 330], "size": [140, 64] },
     { "id": "score", "type": "backend", "label": "규칙 점수 엔진", "sublabel": "risk · effort → 1차 버킷", "pos": [1080, 330], "size": [140, 64] },
     { "id": "agent", "type": "backend", "label": "트리아지 에이전트", "sublabel": "도달성 · 근거 · 조치안", "pos": [1340, 330], "size": [140, 64], "tag": "±1 버킷 제약" },
     { "id": "sandbox", "type": "security", "label": "검증 샌드박스", "sublabel": "npm ci · test · 재스캔", "pos": [1600, 330], "size": [140, 64] },
 
-    { "id": "out", "type": "database", "label": "실행 결과 저장소", "sublabel": "triage.json · agent_log", "pos": [560, 520], "size": [140, 64] },
+    { "id": "out", "type": "database", "label": "실행 결과 저장소", "sublabel": "triage.json · events.jsonl", "pos": [560, 520], "size": [140, 64] },
     { "id": "repo", "type": "database", "label": "대상 레포", "sublabel": "계열사 서비스 코드", "pos": [1080, 520], "size": [140, 64], "tag": "읽기 전용" }
   ],
   "boundaries": [
@@ -33,19 +34,23 @@
     { "id": "api-pipeline", "from": "api", "to": "pipeline", "label": "레포 경로", "variant": "emphasis" },
     { "id": "pipeline-score", "from": "pipeline", "to": "score", "label": "Finding[]", "variant": "emphasis" },
     { "id": "score-agent", "from": "score", "to": "agent", "label": "NOW·NEXT 후보", "variant": "emphasis" },
-    { "id": "agent-sandbox", "from": "agent", "to": "sandbox", "label": "조치안 검증", "variant": "emphasis" },
+    { "id": "api-sandbox", "from": "api", "to": "sandbox", "label": "NOW 조치안 검증", "variant": "emphasis" },
 
     { "id": "pipeline-cache", "from": "pipeline", "to": "cache", "label": "보강 데이터 조회" },
     { "id": "cache-feeds", "from": "cache", "to": "feeds", "label": "미스 시 HTTPS", "variant": "dashed" },
     { "id": "agent-llm", "from": "agent", "to": "llm", "label": "근거 데이터만 전송", "variant": "security" },
     { "id": "pipeline-repo", "from": "pipeline", "to": "repo", "label": "lockfile · import 검색" },
     { "id": "agent-repo", "from": "agent", "to": "repo", "label": "읽기 전용 tool", "variant": "security" },
+    { "id": "agent-cache", "from": "agent", "to": "cache", "label": "어드바이저리 조회" },
+    { "id": "sandbox-repo", "from": "sandbox", "to": "repo", "label": "읽기 전용 마운트", "variant": "security" },
+    { "id": "sandbox-npm", "from": "sandbox", "to": "npm", "label": "스크립트 차단 설치", "variant": "security" },
+    { "id": "sandbox-cache", "from": "sandbox", "to": "cache", "label": "호스트에서 재스캔" },
     { "id": "api-out", "from": "api", "to": "out", "label": "run 결과 저장·조회" }
   ],
   "cards": [
     { "dot": "cyan", "title": "① 파이프라인 (결정론)", "items": ["Syft로 CycloneDX SBOM 생성", "OSV 매칭 후 EPSS · KEV · semver 보강", "외부 응답은 캐시 경유, 오프라인 재생 가능"] },
     { "dot": "violet", "title": "② 판단 (하이브리드)", "items": ["규칙이 risk · effort 점수와 1차 버킷 계산", "에이전트는 NOW · NEXT 후보만 도달성 판정", "버킷 조정은 ±1단계, 조정 사유 필수"] },
-    { "dot": "emerald", "title": "③ 조치 · 검증", "items": ["조치안을 일회용 컨테이너에서 설치 · 테스트 · 재스캔", "검증 통과한 조치안만 승인 대기로 표시", "반영(PR)은 담당자 승인 후에만"] },
+    { "dot": "emerald", "title": "③ 조치 · 검증", "items": ["실행 명령은 코드가 조립, LLM 문자열 실행 금지", "일회용 컨테이너에서 설치 · 테스트 · 재스캔, 기준선과 비교", "검증 통과한 조치안만 승인 대기, 반영은 담당자 승인 후에만"] },
     { "dot": "rose", "title": "보안 경계", "items": ["에이전트 tool은 레포 읽기 전용", "LLM에는 근거 데이터만 전송 (사내 LLM으로 대체 가능)", "샌드박스 외부 통신은 npm 레지스트리로 제한"] }
   ]
 }
