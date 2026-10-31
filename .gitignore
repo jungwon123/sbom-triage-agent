@@ -23,4 +23,7 @@ node_modules/
 .archify/
 .DS_Store
 
+# Demo target has no license: pinned in fixtures/demo-repo.ref, never vendored
+fixtures/demo-repo/
+
 # fixtures/cache/ is committed on purpose: replay reproducibility (HANDOFF Q7)

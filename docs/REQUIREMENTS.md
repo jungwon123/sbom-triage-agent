@@ -122,7 +122,7 @@
 | F4-1 | EPSS 점수·백분위 일괄 조회 | P0 |
 | F4-2 | CISA KEV 피드 다운로드 후 CVE 매칭 | P0 |
 | F4-3 | 수정 버전과 semver 점프 크기 (patch / minor / major / 없음) | P0 |
-| F4-4 | 소스 코드에서 해당 패키지 import 위치 검색 (`import`, `require`, 동적 import) | P0 |
+| F4-4 | 소스 코드에서 해당 패키지 import 위치 검색 (`import`, `require`, 동적 import). 각 위치를 `runtime` / `test`로 구분 (`e2e/`, `test/`, `tests/`, `*.spec.*`, `*.test.*`는 `test`) | P0 |
 | F4-5 | 어드바이저리에서 취약 함수/심볼명 추출 (예: 특정 유틸 함수) | P1 |
 | F4-6 | 메이저 업그레이드 시 changelog/릴리스 노트에서 breaking change 요약 | P1 |
 | F4-7 | 모든 외부 응답은 디스크 캐시 (데모 중 네트워크 장애 대비) | P0 |
@@ -147,7 +147,7 @@ risk (0~100)
       reach_w : 심볼 사용 1.0 / import만 0.6 / 미사용 0.2 / 미판정 0.6
 
 ④ 단계의 reach_w 판정 (에이전트 판정 전)
-  direct     : import_sites 있으면 import만, 없으면 미사용
+  direct     : runtime import_sites 있으면 import만, 없거나 test뿐이면 미사용
   transitive : 미판정 (직접 import되지 않으므로 미사용으로 단정하지 않는다)
 
 effort
@@ -212,6 +212,7 @@ bucket
 | F8-8 | 레지스트리만 허용하는 egress 프록시 | P2 |
 | F8-9 | 검증 결과·로그를 `out/<run_id>/verify/<finding_id>/`에 저장, 리플레이 모드에서 재생 가능 | P0 |
 | F8-10 | 조치 전 install/build/test를 run당 1회 실행해 **기준선**을 만들고 조치 후 결과와 비교 | P0 |
+| F8-12 | NOW 항목을 패키지@버전 단위로 묶어 가장 높은 `fixed_in`으로 1회 검증하고, 결과를 묶인 Finding 전부에 연결 | P0 |
 | F8-11 | 컨테이너에서 실행하는 명령은 `kind`·`package`·`to_version`으로 코드가 조립. LLM이 쓴 문자열은 실행하지 않음 | P0 |
 
 **판정 규칙**
@@ -337,6 +338,8 @@ class Verification(BaseModel):
 3. **대비 장면 (60초):** CVSS 순 ↔ 에이전트 순 토글.
    - A: CVSS 높음, 그러나 devDependency + 미사용 → MONITOR
    - B: CVSS 중간, 그러나 EPSS 상위 + prod + 취약 함수 실제 호출 → NOW
+   - C: EPSS 상위 + `dependencies` 등록, 그러나 실제 import는 테스트뿐 → 하향
+   - 데모 레포 후보 사례(사전 조사, CVSS는 등급 근사): A `nx@17.2.6`, B `body-parser@1.20.2`, C `axios@1.6.2`. B는 HIGH 등급이라 위 조건과 일부 다르며, T5에서 실측 재확인
 4. **검증 (30초):** B 항목 상세 패널에서 샌드박스 검증 결과 표시 — 설치·빌드·테스트 결과, 대상 취약점 해소, 신규 NOW 0건 → **승인 대기**. 가능하면 실패 → 재시도 → 성공 사례 1건도 보여준다 ("조치안 개선").
 5. **확장 (30초):** CI 연동, 타 언어, 계열사 전체 자산 스캔.
 
@@ -382,4 +385,5 @@ class Verification(BaseModel):
 - [ ] 해커톤 심사 기준 (기술 완성도 vs 사업성 vs 롯데이노베이트 실적용성) 비중
 - [ ] 롯데이노베이트가 실제 쓰는 스캐너/포맷이 있는지 (SPDX vs CycloneDX)
 - [ ] 사용할 LLM / API 키 제공 여부, 사내망 제약
-- [ ] 데모 레포: 본인 프로젝트 vs 의도적으로 오래된 의존성을 가진 공개 레포
+- [x] 데모 레포: `gothinkster/node-express-realworld-example-app` 확정 (`fixtures/demo-repo.ref`에 커밋 고정, 라이선스가 없어 코드는 커밋하지 않음)
+- [ ] 데모 레포의 `--ignore-scripts` 설치 후 `prisma generate`가 필요한지, `--network none`에서 build/test가 통과하는지 (T5에서 확인)

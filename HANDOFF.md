@@ -74,6 +74,9 @@
 | D18 | `rationale` 수치는 자리표시자로 쓰고 코드가 채움 | 채택 (T1 반영) | 근거 수치를 구조적으로 데이터와 일치시킴 |
 | D19 | F8-5(조치안 재생성)를 P0로 승격, 컷 대상에서 제외 | 채택 (T1 반영) | 과제 문구 "조치안 개선"에 직접 대응 |
 | D20 | SBOM을 스캔의 단일 입력으로 사용, 재스캔도 SBOM 재생성 후 수행 | 채택 (T1 반영) | 과제 문구 "SBOM과 스캔 결과의 연결" |
+| D22 | 데모 레포 = `gothinkster/node-express-realworld-example-app`, 커밋 고정 | 확정 | Prisma mock 단위 테스트, A·B·C 후보 존재. 라이선스 없음 → 코드 미커밋 |
+| D23 | import 위치를 runtime/test로 구분, 테스트 전용 import는 미사용 처리 | 채택 | axios가 e2e에서만 import되어 NOW로 오탐되던 문제 |
+| D24 | NOW 검증은 패키지@버전 단위로 묶어 수행 | 채택 | 한 패키지의 취약점별 수정 버전이 달라 Finding 단위 검증은 낭비 |
 | D21 | 서비스 맥락(`service_criticality`, `internet_facing`)을 입력받되 근거·표시 전용 | 채택 (T1 반영) | 서비스 관점 영향도 보강, 점수 결정성과 D13 유지 |
 
 ---
@@ -289,7 +292,7 @@ for t in final_triage where final_bucket == NOW:
 
 ### 6.5 도달성 (reachability)
 
-- 1차: ripgrep 등으로 `import ... from 'pkg'`, `require('pkg')`, `import('pkg')`, 서브패스(`pkg/sub`) 검색 → `import_sites`
+- 1차: Python 파일 순회로 `import ... from 'pkg'`, `require('pkg')`, `import('pkg')`, 서브패스(`pkg/sub`) 검색 → `import_sites`
 - 2차 (에이전트): 어드바이저리 본문에서 취약 함수명 추출(F4-5, P1) → `search_usages(package, symbol)`로 호출 여부 확인
 - 간접 의존성은 우리 코드가 직접 import하지 않으므로, **그 패키지를 끌어온 direct 의존성의 사용 여부**를 기준으로 판단하고 `unknown`을 적극 사용 (모르면 unknown — 과대 확신 금지)
 - `node_modules` 내부는 검색 대상에서 제외
@@ -419,7 +422,7 @@ bucket: NOW risk≥60 / NEXT 30≤risk<60 또는 (risk≥60 & effort=high) / MON
 
 | # | 질문 | 영향 | 기본값 (응답 없을 때) |
 |---|---|---|---|
-| Q1 | 데모 레포: 본인 Next.js 프로젝트 vs 오래된 의존성을 가진 공개 레포 | T5, 데모 전체, 지원서 수치 | 공개 레포 후보를 2~3개 제안하고 스캔 결과로 고르게 함 |
+| Q1 | ~~데모 레포~~ | 해결 | D22 |
 | Q2 | 점수 가중치 (exposure 비중 상향 여부) | ④ 결과 | 초안 유지 후 golden set으로 튜닝 |
 | Q3 | 해커톤 심사 기준 비중 (기술 완성도 / 사업성 / 실적용성) | 발표·지원서 비중 | 실적용성 강조 |
 | Q4 | 롯데이노베이트가 실제 쓰는 SBOM 포맷 (SPDX vs CycloneDX) | ① 출력 포맷 | CycloneDX, SPDX는 확장 계획 |

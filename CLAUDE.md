@@ -30,7 +30,7 @@ sbom-triage/
 │  └─ triage/
 │     ├─ sbom.py         # ① Syft 실행 + lockfile fallback
 │     ├─ scan.py         # ② SBOM 컴포넌트 → OSV querybatch → Finding
-│     ├─ enrich/         # ③ epss.py, kev.py, semver.py, usages.py
+│     ├─ enrich/         # ③ epss.py, kev.py, semver.py, usages.py(Python 파일 순회)
 │     ├─ score.py        # ④ 규칙 점수 (순수 함수)
 │     ├─ agent/          # ⑤ llm.py(어댑터), tools.py, prompts.py, run.py
 │     ├─ verify/         # ⑥ sandbox.py(Docker), apply.py(명령 조립), run.py(판정)
@@ -40,7 +40,8 @@ sbom-triage/
 │     └─ api.py          # FastAPI
 ├─ web/                  # ⑦ Next.js 대시보드
 ├─ fixtures/
-│  ├─ demo-repo/         # 데모용 대상 레포 (또는 서브모듈)
+│  ├─ demo-repo/         # 데모 대상 레포 체크아웃 (git 제외)
+│  ├─ demo-repo.ref      # 데모 레포 URL과 고정 커밋
 │  ├─ golden.yaml        # 사람이 라벨링한 정답 버킷
 │  └─ cache/             # 외부 API 응답 스냅샷 (리플레이용)
 └─ out/<run_id>/         # sbom.cdx.json, findings.json, triage.json, agent_log.jsonl, events.jsonl, verify/
