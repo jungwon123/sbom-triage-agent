@@ -1,0 +1,87 @@
+# HARNESS.md — 작업 진행 방식
+
+> CLAUDE.md가 "무엇·규칙"이라면, 이 파일은 "어떤 순서로, 무엇을 확인하고 다음으로 넘어가는가"다.
+> AI 에이전트(Claude Code 등)와 사람 모두 이 순서를 따른다.
+
+## 1. 작업 루프 (모든 태스크 공통)
+
+```
+1. READ    : CLAUDE.md 절대 규칙 + 해당 Phase의 입력·게이트 확인
+2. PLAN    : 바꿀 파일과 완료 기준을 3줄 이내로 적는다
+3. BUILD   : 한 번에 파이프라인 한 단계만 수정
+4. VERIFY  : 해당 Phase의 게이트 명령을 실제로 실행
+5. RECORD  : 아래 7장 진행 로그에 한 줄 기록 (무엇 / 게이트 결과 / 다음)
+```
+
+게이트가 실패하면 다음 Phase로 가지 않는다. 같은 게이트에서 2번 연속 실패하면 범위를 줄이는 쪽으로 사람에게 확인한다.
+
+## 2. Phase 구성
+
+| Phase | 내용 | 입력 | 산출물 | 게이트 (통과 조건) |
+|---|---|---|---|---|
+| P0 Setup | 레포 뼈대, `.env`, 데모 레포 확정 | REQUIREMENTS | 디렉터리 구조, `models.py` | `uv run pytest -q` 통과(빈 테스트), 데모 레포에서 Syft 실행 성공 |
+| P1 Pipeline | ① SBOM ② 스캔 ③ 보강 | 데모 레포 | `findings.json` | 모든 Finding이 스키마 검증 통과 · EPSS/KEV/bump 채워진 비율 출력 · 캐시만으로 재실행 성공 |
+| P2 Rules | ④ 규칙 점수 + golden 라벨링 | findings | `triage.json`(rule만), `golden.yaml` | `score.py` 단위 테스트 통과 · `triage eval`로 규칙만의 일치율 측정됨 |
+| P3 Agent | ⑤ 도달성·근거·조치안 | triage(rule) | `triage.json`(final), `agent_log.jsonl` | 스키마 100% 통과 · ±1 제약 위반 0 · 근거 수치 검증 통과 · 일치율 ≥ 규칙 단독 |
+| P4 Dashboard | ⑥ P0 화면 | triage.json | `web/` | `tsc --noEmit` 통과 · 데모 시나리오 1~4 화면 수동 확인 |
+| P5 Demo | 리플레이 모드, 리허설 | 전체 | 발표 자료 | 네트워크 끈 상태에서 시나리오 전체 3분 내 완주 2회 |
+
+## 3. 검증 장치 (Guardrails as tests)
+
+| 검증 | 위치 | 잡아내는 것 |
+|---|---|---|
+| 스키마 검증 | `tests/test_models.py` | 필드 누락·타입 오류 |
+| 점수 결정성 | `tests/test_score.py` | 같은 입력 → 같은 점수, 경계값(60/30) |
+| 버킷 조정 제약 | `tests/test_agent_contract.py` | NOW↔MONITOR 직행, `override_reason` 누락 |
+| 근거 사실성 | `tests/test_agent_contract.py` | rationale 속 숫자가 Finding 값과 불일치 |
+| 도구 샌드박스 | `tests/test_tools.py` | 레포 밖 경로 접근, `..` 경로 |
+| 골든 일치율 | `triage eval` | 규칙/에이전트 각각의 버킷 일치율 회귀 |
+
+에이전트 출력은 사람이 "괜찮아 보인다"로 통과시키지 않는다. 위 테스트가 통과해야 통과다.
+
+## 4. 에이전트 실행 설계 (P3 상세)
+
+```
+for finding in candidates(rule_bucket in {NOW, NEXT}):
+    context = get_finding(finding)                 # 결정론적 데이터
+    loop (최대 6 tool calls):
+        search_usages / read_file / get_advisory   # 필요할 때만
+    output = Triage JSON  ──► Pydantic 검증
+        ├─ 실패 → 오류 메시지 붙여 1회 재시도
+        └─ 재실패 → rule 결과 그대로 + reachability="unknown"
+    contract check (±1, override_reason, 수치 일치)
+        └─ 위반 → rule 결과로 fallback + agent_log에 기록
+```
+
+- MONITOR 후보는 에이전트를 호출하지 않는다 (비용·시간). 단, `reachability=unknown`으로 표시.
+- 시스템 프롬프트에는 점수 규칙 요약과 ±1 제약을 넣고, "모르면 unknown"을 명시한다.
+- 모든 tool call과 응답은 `agent_log.jsonl`에 남겨 발표 때 "에이전트가 어떻게 판단했는지" 보여줄 수 있게 한다.
+
+## 5. 시간 박스 & 컷 규칙
+
+| 체크포인트 | 이때까지 안 됐으면 |
+|---|---|
+| D1 13:00 — P1 게이트 | Syft 포기, lockfile 파싱만 사용 |
+| D1 19:00 — P2 게이트 | golden set을 10건으로 축소 |
+| D2 12:00 — P3 게이트 | 도달성 판정을 import 검색 결과로 대체, 에이전트는 근거·조치안만 |
+| D2 16:00 — P4 게이트 | 상세 패널 단순화, 토글(F7-4)만은 유지 |
+| D2 18:00 | 기능 동결. 이후는 리플레이·리허설만 |
+
+컷 순서: F7-5 → F6-6 → F4-6 → F4-5 → F1-3. **P0 요구사항은 자르지 않는다.**
+
+## 6. 세션 시작 / 종료 체크리스트
+
+**시작할 때**
+- [ ] 7장 진행 로그의 마지막 줄 확인 → 현재 Phase와 다음 할 일
+- [ ] `uv run pytest -q` 현재 상태 확인
+
+**끝낼 때**
+- [ ] 게이트 명령 실행 결과를 로그에 기록
+- [ ] 스키마를 바꿨다면 `web/lib/types.ts` 동기화 확인
+- [ ] 미해결 이슈는 REQUIREMENTS 13장 "열린 질문"에 추가
+
+## 7. 진행 로그
+
+| 시각 | Phase | 한 일 | 게이트 | 다음 |
+|---|---|---|---|---|
+| 2026-10-31 | P0 | 요구사항·하네스 초안 작성 | — | 데모 레포 확정, 열린 질문 정리 |

@@ -1,0 +1,26 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Run outputs
+out/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Node
+node_modules/
+.next/
+*.tsbuildinfo
+
+# Local tooling
+.claude/
+.omc/
+.archify/
+.DS_Store
+
+# fixtures/cache/ is committed on purpose: replay reproducibility (HANDOFF Q7)
