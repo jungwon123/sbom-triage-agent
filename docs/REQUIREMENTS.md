@@ -200,7 +200,7 @@ bucket
 | F7-5 | 분석 진행 상태 스트리밍 (단계별 로그) | P1 |
 | F7-6 | 조치 승인 버튼 → 명령어 복사 / PR 초안 다운로드 | P1 |
 | F7-9 | 서비스 영향 화면: CVE를 고르면 영향받는 서비스와 버킷, 서비스 중요도를 표시 | P1 |
-| F7-7 | 상세 패널에 검증 단계별 결과와 판정 표시. 테스트 스크립트가 없으면 "테스트 없음"을 명시 | P0 |
+| F7-7 | 상세 패널에 검증 단계별 결과와 판정 표시. 테스트가 없거나, 취약 패키지 사용 코드를 테스트가 실행하지 않을 수 있으면 그 한계를 명시 | P0 |
 | F7-8 | 상단에 서비스 맥락(중요도·외부 노출) 표시. 점수에는 반영하지 않음 | P0 |
 
 ### F8. 검증 샌드박스
@@ -209,7 +209,7 @@ bucket
 | F8-1 | **NOW 버킷 항목**의 조치안을 일회용 Docker 컨테이너에서 검증 (NEXT·MONITOR는 검증하지 않음) | P0 |
 | F8-2 | 원본 레포는 읽기 전용 마운트, 컨테이너 안 작업 디렉터리로 **복사** 후 변경 | P0 |
 | F8-3 | 검증 단계: 조치 적용 → 의존성 설치 → `build` 스크립트(있으면) → `test` 스크립트(있으면) → 새 lockfile에서 SBOM을 다시 생성해 OSV 재스캔 | P0 |
-| F8-4 | 판정: 대상 취약점 해소 여부 + **새로 생긴 취약점 중 NOW급 존재 여부** + 기준선 대비 빌드/테스트 회귀 여부 | P0 |
+| F8-4 | 판정: 대상 취약점 해소 여부 + **새로 생긴 취약점 중 NOW급 존재 여부** + 기준선 대비 빌드 회귀 + 새로 실패한 테스트 이름 | P0 |
 | F8-5 | 실패 시 실패 로그를 에이전트에 전달하여 **대안 조치안 재생성 (최대 2회)** → 과제 문구 "조치안 개선"에 대응 | P0 |
 | F8-6 | 리소스 제한: CPU·메모리·PID 수·실행 시간(예: 5분) 상한 | P0 |
 | F8-7 | 네트워크 제한: 설치 단계만 네트워크 허용 + `--ignore-scripts`, 빌드·테스트 단계는 `--network none` | P0 |
@@ -223,8 +223,8 @@ bucket
 
 | verdict | 조건 |
 |---|---|
-| `failed` | 대상 취약점 미해소, 또는 새 NOW급 취약점 발생, 또는 기준선에서 통과한 단계가 조치 후 실패(회귀) |
-| `inconclusive` | `failed`가 아니면서 시간 초과, `mitigation_only`(적용할 업그레이드 없음), 또는 기준선에서 이미 실패해 비교 불가한 단계가 있음 |
+| `failed` | 대상 취약점 미해소, 또는 새 NOW급 취약점 발생, 또는 기준선에서 통과한 빌드나 테스트가 조치 후 실패(회귀) |
+| `inconclusive` | `failed`가 아니면서 시간 초과, `mitigation_only`(적용할 업그레이드 없음), 또는 테스트 이름을 추출하지 못해 비교할 수 없음 |
 | `verified` | 위 둘에 해당하지 않음. 스크립트가 없어 `skipped`인 단계는 허용하되 대시보드에 표시 |
 
 ## 7. 비기능 요구사항
@@ -321,7 +321,7 @@ class Verification(BaseModel):
     target_resolved: bool                # 대상 취약점 해소
     new_findings: list[str]              # 새로 생긴 취약점 id
     new_now_findings: list[str]          # 그중 NOW급
-    regressions: list[str]               # 기준선 통과 → 조치 후 실패한 단계명
+    regressions: list[str]               # 기준선 통과 → 조치 후 실패한 빌드 단계·테스트 이름
     verdict: Literal["verified", "failed", "inconclusive"]   # F8 판정 규칙
 ```
 
@@ -394,4 +394,5 @@ class Verification(BaseModel):
 - [ ] 사용할 LLM / API 키 제공 여부, 사내망 제약
 - [ ] REQUIREMENTS 3장 기존 도구 비교표를 공식 문서로 재검증
 - [x] 데모 레포: `gothinkster/node-express-realworld-example-app` 확정 (`fixtures/demo-repo.ref`에 커밋 고정, 라이선스가 없어 코드는 커밋하지 않음)
-- [ ] 데모 레포의 `--ignore-scripts` 설치 후 `prisma generate`가 필요한지, `--network none`에서 build/test가 통과하는지 (T5에서 확인)
+- [x] 데모 레포는 `--ignore-scripts` 설치 후 `prisma generate`가 필요하고, `--network none`에서 build는 통과, test는 기존 실패 7건 (`docs/poc-results.md`)
+- [ ] 레포별 준비 명령(`prisma generate`)을 어떤 설정 형식으로 받을지 (LLM이 아닌 사람이 작성)

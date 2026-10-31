@@ -109,3 +109,4 @@ for t in final_triage where final_bucket == NOW:
 | 2026-10-31 | P0 | 샌드박스 결정 반영, 설계 변경 4건·과제 대조 보완 3건 반영, REQUIREMENTS v0.2 | 문서 일관성 확인 | 데모 레포 확정(T3) |
 | 2026-10-31 | P0 | 데모 레포 realworld 확정, 커밋 고정, 보완 3건 반영 | 정적 스캔으로 A·B·C 후보 확인, 컨테이너 검증 미실행 | T4 Setup, T5 실측 |
 | 2026-10-31 | P0 | 차별화 보강 3건 반영: 실측 비교, 하향 안전장치, 서비스 영향 조회 | 문서 일관성 확인 | T4 Setup, T5 실측 |
+| 2026-10-31 | P0 | 규칙·샌드박스 PoC 실측 (`docs/poc-results.md`) | 대비 사례 확인, LLM·golden 미측정 | T4 Setup |
