@@ -136,4 +136,5 @@ def main():
             print(r["repo"], r["pkg"], r["variant"], r["new"], r["verdict"], r["reason"], r.get("seconds"), flush=True)
 
 
-main()
+if __name__ == "__main__":
+    main()

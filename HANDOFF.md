@@ -38,7 +38,7 @@
 |---|---|
 | 산출물 | **작동 프로토타입 + 발표** |
 | 기간·인원 | **1~2일, 1인** |
-| 스택 | **Python(파이프라인·에이전트·API) + Next.js(대시보드)** |
+| 스택 | **Python(파이프라인·에이전트·API) + React(대시보드, D31)** |
 | 하네스 | 사용자가 설계한 **CLAUDE.md + HARNESS.md 구조** 적용 |
 | 대상 생태계 | npm 하나로 한정 |
 
@@ -56,7 +56,7 @@
 |---|---|---|---|
 | D1 | 롯데이노베이트 SBOM 과제 선택 | 확정 | 1.2 |
 | D2 | 산출물 = 작동 프로토타입 + 발표, 1~2일, 1인 | 확정 | 사용자 답변 |
-| D3 | 스택 = Python + Next.js | 확정 | 사용자 답변 |
+| D3 | 스택 = Python + Next.js (대시보드는 D31로 변경) | 확정 | 사용자 답변 |
 | D4 | 하네스 = CLAUDE.md + HARNESS.md | 확정 | 사용자 답변 |
 | D5 | **하이브리드 판단 구조**: 수치 판단(심각도·악용 신호·조치 비용)은 규칙, 맥락 해석(도달성·근거·조치안)은 에이전트 | 확정 | 신뢰성 논리의 핵심 |
 | D6 | **에이전트는 규칙 버킷을 ±1단계까지만 조정**, 조정 시 `override_reason` 필수, 위반 시 규칙 결과로 fallback | 확정 | "AI가 임의로 정했다" 반론 차단 |
@@ -83,6 +83,9 @@
 | D28 | 회귀 판정은 테스트 이름 단위로 수행 | 채택 | 데모 레포 기준선에서 테스트 7건이 이미 실패 (`docs/poc-results.md`) |
 | D29 | 기본 조치 버전은 가장 높은 수정 버전 | 채택 | 최소 수정 버전은 30개 중 10개에서 새 취약점 발생 |
 | D30 | 판정과 검증 강도(`tests_run`)를 분리 표시 | 채택 | verified 20개 중 실제 테스트 확인은 2개 |
+| D31 | 대시보드를 Next.js에서 Vite + React로 변경, FastAPI가 정적 서빙 | 채택 | SSR·서버 기능이 불필요, 사내망에 Node 서버를 두지 않음 |
+| D32 | 프로토타입 저장소는 파일 유지(DB 없음). 운영 설계는 PostgreSQL, 대규모 대응은 작업 큐와 워커 분리 | 채택 | 단일 사용자 시연에 DB 불필요. 병목은 DB가 아니라 샌드박스와 LLM 호출 |
+| D33 | 운영 큐는 PostgreSQL `SKIP LOCKED` + lease + fencing, 샌드박스는 서버당 동시 실행 제한(측정 환경 4개), 확장은 서버 추가 | 채택 (설계) | 운영 PoC: 동시 4개에서 처리량 최고, 큐 유실 0 (`docs/poc-results.md`) |
 | D21 | 서비스 맥락(`service_criticality`, `internet_facing`)을 입력받되 근거·표시 전용 | 채택 (T1 반영) | 서비스 관점 영향도 보강, 점수 결정성과 D13 유지 |
 
 ---
@@ -115,7 +118,7 @@ npm 레포의 취약점을 CVSS 목록이 아니라 **NOW / NEXT / MONITOR**로 
 ### 4.2 전체 흐름 (샌드박스 반영 최신본)
 
 ```
-[담당자] ─검토·조치 승인─▶ [Next.js 대시보드] ─분석 요청·SSE─▶ [FastAPI 오케스트레이터] ──▶ [실행 결과 저장소 out/<run_id>]
+[담당자] ─검토·조치 승인─▶ [React 대시보드] ─분석 요청·SSE─▶ [FastAPI 오케스트레이터] ──▶ [실행 결과 저장소 out/<run_id>]
                                                               │
                                                               ▼ 레포 경로
                           ┌──── [응답 캐시] ◀── 보강 데이터 조회 ── [① SBOM ② 스캔 ③ 보강] ── lockfile·import 검색 ──▶ [대상 레포]
@@ -418,7 +421,7 @@ bucket: NOW risk≥60 / NEXT 30≤risk<60 또는 (risk≥60 & effort=high) / MON
 | **T1** | 5장 변경사항을 REQUIREMENTS / CLAUDE / HARNESS에 반영, REQUIREMENTS 버전 v0.2로 | 세 문서에 샌드박스(F8, P3.5, verify 디렉터리, Verification 스키마)가 일관되게 존재. 이 HANDOFF 5장 상단에 "반영 완료" 표기 |
 | **T2** | Archify로 다이어그램 렌더링 (8장) | `finalize` 통과, HTML 생성. 사용자에게 링크 전달 |
 | **T3** | 10장 열린 질문 중 **Q1(데모 레포)** 사용자에게 확인 | 데모 레포 확정 |
-| **T4** | P0 Setup: `backend/` uv 프로젝트, `models.py`(5.2 포함), `web/` Next.js, `tests/` 뼈대, `.env.example`, Syft·Docker 설치 확인 | HARNESS P0 게이트 통과 |
+| **T4** | P0 Setup: `backend/` uv 프로젝트, `models.py`(5.2 포함), `web/` Vite + React, `tests/` 뼈대, `.env.example`, Syft·Docker 설치 확인 | HARNESS P0 게이트 통과 |
 | **T5** | 데모 레포 사전 스캔 → **대비 사례 A·B 존재 확인** (A: CVSS 높음 + dev/미사용 → MONITOR, B: CVSS 중간 + EPSS 상위 + prod + 실제 호출 → NOW) | 없으면 레포 교체 또는 의존성 버전 조정 후 재확인 |
 | **T6~** | HARNESS Phase P1 → P2 → P3 → P3.5 → P4 → P5 순서로 진행 | 각 Phase 게이트 |
 | 병행 | 지원서 7.1 수정, 7.2 작성 (사용자 요청 시) | 각 3,000자 이하 |

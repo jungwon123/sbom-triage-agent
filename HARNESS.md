@@ -112,3 +112,5 @@ for t in final_triage where final_bucket == NOW:
 | 2026-10-31 | P0 | 차별화 보강 3건 반영: 실측 비교, 하향 안전장치, 서비스 영향 조회 | 문서 일관성 확인 | T4 Setup, T5 실측 |
 | 2026-10-31 | P0 | 규칙·샌드박스 PoC 실측 (`docs/poc-results.md`) | 대비 사례 확인, LLM·golden 미측정 | T4 Setup |
 | 2026-10-31 | P0 | 시나리오 1·2 실측: NOW 30패키지 검증, 변이 36건 (`docs/poc-results.md`) | verified 20/30, 실제 테스트 확인 2건 | 키 확보, 라벨링 |
+| 2026-11-01 | P0 | 대시보드 React(Vite) 전환, 저장소 결정(D31, D32), 아키텍처 재생성 | finalize 통과 | 키 확보, 라벨링 |
+| 2026-11-01 | P0 | 운영 PoC 2종 측정, 키워드와 학습 자료 문서 추가, D33 (`docs/poc-results.md`) | 동시 4개에서 처리량 최고, 큐 유실 0, LLM 병목 미측정 | 키 확보, 라벨링 |
