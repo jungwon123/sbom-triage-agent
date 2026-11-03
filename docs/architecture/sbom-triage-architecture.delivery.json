@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "f7a8c559-c5c4-4516-8e9c-86c383dd1959",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "/Users/jwon/Downloads/sbom-triage/docs/architecture/archify.candidate.json",
+  "output": "/Users/jwon/Downloads/sbom-triage/docs/architecture/sbom-triage-architecture.html",
+  "specification": {
+    "sha256": "416b87ba8433a62fd9aa52d4a4a60367e3b918ef3b0b24e5ae4f87616089e9a3",
+    "bytes": 5473
+  },
+  "artifact": {
+    "sha256": "cd49bc597b9de7a6efb95ca36c5a2b56da0abe87ca470f2aaa3a9a6601af43fe",
+    "bytes": 866464
+  }
+}

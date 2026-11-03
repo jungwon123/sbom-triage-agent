@@ -17,7 +17,8 @@ npm 레포의 취약점을 CVSS 목록이 아니라 **NOW / NEXT / MONITOR** 3�
 | LLM | Anthropic API (tool use), 모델명은 `.env`의 `LLM_MODEL` |
 | 외부 데이터 | Syft, OSV API, FIRST EPSS API, CISA KEV JSON |
 | 검증 샌드박스 | Docker (일회용 컨테이너) |
-| 대시보드 | Next.js (App Router) + TypeScript + Tailwind |
+| 대시보드 | React (Vite) + TypeScript + Tailwind. 빌드 결과물을 FastAPI가 정적 서빙 (운영에 Node 서버 없음) |
+| 저장소 | 프로토타입은 파일(`out/<run_id>/`). DB 없음, 운영 설계는 PostgreSQL (HANDOFF D32) |
 | 테스트 | pytest (백엔드), 타입체크 `tsc --noEmit` (프론트) |
 
 ## 3. 디렉터리
@@ -38,7 +39,7 @@ sbom-triage/
 │     ├─ cache.py        # 외부 응답 디스크 캐시
 │     ├─ runner.py       # 단계 호출 순서와 이벤트 기록 (CLI·API 공용)
 │     └─ api.py          # FastAPI
-├─ web/                  # ⑦ Next.js 대시보드
+├─ web/                  # ⑦ React(Vite) 대시보드
 ├─ fixtures/
 │  ├─ demo-repo/         # 데모 대상 레포 체크아웃 (git 제외)
 │  ├─ demo-repo.ref      # 데모 레포 URL과 고정 커밋
@@ -63,7 +64,7 @@ sbom-triage/
 
 - Python: 타입힌트 필수, I/O 함수와 순수 함수 분리, 모듈 하나가 파이프라인 한 단계.
 - 에러: 외부 데이터 누락은 예외가 아니라 `None` + 로그. 파이프라인은 한 항목 실패로 멈추지 않는다.
-- 프론트: 서버 컴포넌트에서 `out/` 또는 API 읽기, 클라이언트 컴포넌트는 토글·상세 패널만. 버킷 색은 NOW=red, NEXT=amber, MONITOR=slate 고정.
+- 프론트: 데이터는 전부 FastAPI API로 읽고 `out/`을 직접 읽지 않는다. 실행 선택은 `?run=<id>` 쿼리. 버킷 색은 NOW=red, NEXT=amber, MONITOR=slate 고정.
 - 커밋: `feat(score): …`, `fix(agent): …` — 단계 이름을 scope로.
 
 ## 6. 자주 쓰는 명령

@@ -8,21 +8,21 @@
     "quality_profile": "showcase"
   },
   "components": [
-    { "id": "npm", "type": "external", "label": "npm 레지스트리", "sublabel": "install 단계만 허용", "pos": [1600, 40], "size": [140, 64] },
-    { "id": "feeds", "type": "external", "label": "공개 취약점 DB", "sublabel": "OSV · EPSS · CISA KEV", "pos": [820, 40], "size": [140, 64] },
-    { "id": "llm", "type": "external", "label": "LLM API", "sublabel": "Claude tool use", "pos": [1340, 40], "size": [140, 64] },
-    { "id": "cache", "type": "database", "label": "응답 캐시", "sublabel": "DEMO_MODE=replay", "pos": [820, 180], "size": [140, 64] },
+    { "id": "npm", "type": "external", "label": "npm 레지스트리", "sublabel": "install 단계만 허용", "pos": [1570, 40], "size": [140, 64] },
+    { "id": "feeds", "type": "external", "label": "공개 취약점 DB", "sublabel": "OSV · EPSS · CISA KEV", "pos": [810, 40], "size": [140, 64] },
+    { "id": "llm", "type": "external", "label": "LLM API", "sublabel": "Claude tool use", "pos": [1315, 40], "size": [140, 64] },
+    { "id": "cache", "type": "database", "label": "응답 캐시", "sublabel": "DEMO_MODE=replay", "pos": [810, 180], "size": [140, 64] },
 
     { "id": "user", "type": "external", "label": "보안·개발 담당자", "sublabel": "검토 후 승인", "pos": [40, 330], "size": [140, 64] },
-    { "id": "web", "type": "frontend", "label": "Next.js 대시보드", "sublabel": "NOW · NEXT · MONITOR", "pos": [300, 330], "size": [140, 64] },
-    { "id": "api", "type": "backend", "label": "FastAPI + 오케스트레이터", "sublabel": "단계 호출 · SSE", "pos": [560, 330], "size": [140, 64] },
-    { "id": "pipeline", "type": "backend", "label": "SBOM·스캔·보강", "sublabel": "Syft · OSV · semver", "pos": [820, 330], "size": [140, 64] },
-    { "id": "score", "type": "backend", "label": "규칙 점수 엔진", "sublabel": "risk · effort → 1차 버킷", "pos": [1080, 330], "size": [140, 64] },
-    { "id": "agent", "type": "backend", "label": "트리아지 에이전트", "sublabel": "도달성 · 근거 · 조치안", "pos": [1340, 330], "size": [140, 64], "tag": "±1 버킷 제약" },
-    { "id": "sandbox", "type": "security", "label": "검증 샌드박스", "sublabel": "npm ci · test · 재스캔", "pos": [1600, 330], "size": [140, 64] },
+    { "id": "web", "type": "frontend", "label": "React 대시보드", "sublabel": "NOW · NEXT · MONITOR", "pos": [290, 330], "size": [140, 64] },
+    { "id": "api", "type": "backend", "label": "FastAPI + 오케스트레이터", "sublabel": "단계 호출 · SSE", "pos": [530, 330], "size": [170, 64] },
+    { "id": "pipeline", "type": "backend", "label": "SBOM·스캔·보강", "sublabel": "Syft · OSV · semver", "pos": [810, 330], "size": [140, 64] },
+    { "id": "score", "type": "backend", "label": "규칙 점수 엔진", "sublabel": "risk · effort → 1차 버킷", "pos": [1060, 330], "size": [140, 64] },
+    { "id": "agent", "type": "backend", "label": "트리아지 에이전트", "sublabel": "도달성 · 근거 · 조치안", "pos": [1315, 330], "size": [140, 64], "tag": "±1 버킷 제약" },
+    { "id": "sandbox", "type": "security", "label": "검증 샌드박스", "sublabel": "설치 · test · 재스캔", "pos": [1570, 330], "size": [140, 64] },
 
-    { "id": "out", "type": "database", "label": "실행 결과 저장소", "sublabel": "triage.json · events.jsonl", "pos": [560, 520], "size": [140, 64] },
-    { "id": "repo", "type": "database", "label": "대상 레포", "sublabel": "계열사 서비스 코드", "pos": [1080, 520], "size": [140, 64], "tag": "읽기 전용" }
+    { "id": "out", "type": "database", "label": "실행 결과 저장소", "sublabel": "triage.json · events.jsonl", "pos": [545, 520], "size": [140, 64] },
+    { "id": "repo", "type": "database", "label": "대상 레포", "sublabel": "계열사 서비스 코드", "pos": [1060, 520], "size": [140, 64], "tag": "읽기 전용" }
   ],
   "boundaries": [
     { "kind": "region", "label": "온프레미스 사내망", "wraps": ["web", "api", "pipeline", "score", "agent", "sandbox", "cache", "out", "repo"], "pad": 20 },
@@ -48,7 +48,7 @@
     { "id": "api-out", "from": "api", "to": "out", "label": "run 결과 저장·조회" }
   ],
   "cards": [
-    { "dot": "cyan", "title": "① 파이프라인 (결정론)", "items": ["Syft로 CycloneDX SBOM 생성", "OSV 매칭 후 EPSS · KEV · semver 보강", "외부 응답은 캐시 경유, 오프라인 재생 가능"] },
+    { "dot": "cyan", "title": "① 파이프라인 (결정론)", "items": ["Syft로 CycloneDX SBOM 생성", "OSV 매칭 후 EPSS · KEV · semver 보강", "외부 응답은 캐시 경유, 오프라인 재생 가능", "실행 결과는 파일 저장, 운영 전환 시 PostgreSQL"] },
     { "dot": "violet", "title": "② 판단 (하이브리드)", "items": ["규칙이 risk · effort 점수와 1차 버킷 계산", "에이전트는 NOW · NEXT 후보만 도달성 판정", "버킷 조정은 ±1단계, 조정 사유 필수"] },
     { "dot": "emerald", "title": "③ 조치 · 검증", "items": ["실행 명령은 코드가 조립, LLM 문자열 실행 금지", "일회용 컨테이너에서 설치 · 테스트 · 재스캔, 기준선과 비교", "검증 통과한 조치안만 승인 대기, 반영은 담당자 승인 후에만"] },
     { "dot": "rose", "title": "보안 경계", "items": ["에이전트 tool은 레포 읽기 전용", "LLM에는 근거 데이터만 전송 (사내 LLM으로 대체 가능)", "샌드박스 외부 통신은 npm 레지스트리로 제한"] }

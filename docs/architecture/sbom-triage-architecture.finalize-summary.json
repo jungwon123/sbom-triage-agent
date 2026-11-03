@@ -1,0 +1,196 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "/Users/jwon/Downloads/sbom-triage/docs/architecture/archify.candidate.json",
+    "sha256": "416b87ba8433a62fd9aa52d4a4a60367e3b918ef3b0b24e5ae4f87616089e9a3",
+    "bytes": 5473
+  },
+  "artifact": {
+    "path": "/Users/jwon/Downloads/sbom-triage/docs/architecture/sbom-triage-architecture.html",
+    "sha256": "cd49bc597b9de7a6efb95ca36c5a2b56da0abe87ca470f2aaa3a9a6601af43fe",
+    "bytes": 866464
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/Users/jwon/Downloads/sbom-triage/docs/architecture/sbom-triage-architecture.finalize.json",
+    "summaryReceipt": "/Users/jwon/Downloads/sbom-triage/docs/architecture/sbom-triage-architecture.finalize-summary.json",
+    "browserCheckReceipt": "/Users/jwon/Downloads/sbom-triage/docs/architecture/sbom-triage-architecture.browser-check.json"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 2350,
+  "browserCheck": {
+    "requested": true,
+    "ran": true
+  },
+  "visualReviewRecommendation": {
+    "action": "inspect-route-readability",
+    "signals": {
+      "resolvedCrossovers": 4,
+      "routesOverSuggestedBends": 1
+    },
+    "reason": "Automated gates passed, but crossings or detours still need perceptual review before claiming visual quality.",
+    "affectedRoutes": {
+      "crossings": [
+        {
+          "left": {
+            "id": "api-sandbox",
+            "from": "api",
+            "to": "sandbox",
+            "label": "NOW 조치안 검증",
+            "collectionIndex": 5,
+            "artifactIndex": 6
+          },
+          "right": {
+            "id": "pipeline-repo",
+            "from": "pipeline",
+            "to": "repo",
+            "label": "lockfile · import 검색",
+            "collectionIndex": 9,
+            "artifactIndex": 10
+          },
+          "point": [
+            880,
+            422
+          ]
+        },
+        {
+          "left": {
+            "id": "api-sandbox",
+            "from": "api",
+            "to": "sandbox",
+            "label": "NOW 조치안 검증",
+            "collectionIndex": 5,
+            "artifactIndex": 6
+          },
+          "right": {
+            "id": "agent-repo",
+            "from": "agent",
+            "to": "repo",
+            "label": "읽기 전용 tool",
+            "collectionIndex": 10,
+            "artifactIndex": 11
+          },
+          "point": [
+            1385,
+            422
+          ]
+        },
+        {
+          "left": {
+            "id": "agent-llm",
+            "from": "agent",
+            "to": "llm",
+            "label": "근거 데이터만 전송",
+            "collectionIndex": 8,
+            "artifactIndex": 9
+          },
+          "right": {
+            "id": "sandbox-cache",
+            "from": "sandbox",
+            "to": "cache",
+            "label": "호스트에서 재스캔",
+            "collectionIndex": 14,
+            "artifactIndex": 15
+          },
+          "point": [
+            1392,
+            306
+          ]
+        },
+        {
+          "left": {
+            "id": "agent-cache",
+            "from": "agent",
+            "to": "cache",
+            "label": "어드바이저리 조회",
+            "collectionIndex": 11,
+            "artifactIndex": 12
+          },
+          "right": {
+            "id": "sandbox-cache",
+            "from": "sandbox",
+            "to": "cache",
+            "label": "호스트에서 재스캔",
+            "collectionIndex": 14,
+            "artifactIndex": 15
+          },
+          "point": [
+            1378,
+            306
+          ],
+          "sharedNode": "cache"
+        }
+      ],
+      "detours": [
+        {
+          "relationship": {
+            "id": "api-sandbox",
+            "from": "api",
+            "to": "sandbox",
+            "label": "NOW 조치안 검증",
+            "collectionIndex": 5,
+            "artifactIndex": 6
+          },
+          "bends": 4,
+          "stretch": 1.12,
+          "directCorridorBlockers": [
+            {
+              "id": "pipeline",
+              "label": "SBOM·스캔·보강",
+              "box": [
+                810,
+                330,
+                140,
+                64
+              ]
+            },
+            {
+              "id": "score",
+              "label": "규칙 점수 엔진",
+              "box": [
+                1060,
+                330,
+                140,
+                64
+              ]
+            },
+            {
+              "id": "agent",
+              "label": "트리아지 에이전트",
+              "box": [
+                1315,
+                330,
+                140,
+                64
+              ]
+            }
+          ]
+        }
+      ],
+      "truncated": false
+    },
+    "hints": [
+      "api → sandbox crosses pipeline → repo: move the node of whichever is a branch, return, or second entrance to the other side of the main path, so that relationship runs through an empty corridor.",
+      "api → sandbox crosses agent → repo: move the node of whichever is a branch, return, or second entrance to the other side of the main path, so that relationship runs through an empty corridor.",
+      "agent → llm crosses sandbox → cache: move the node of whichever is a branch, return, or second entrance to the other side of the main path, so that relationship runs through an empty corridor.",
+      "agent → cache and sandbox → cache cross next to cache: move node agent or sandbox so the two reach cache from different sides (for example one level with it, one directly above or below it)."
+    ],
+    "repair": "Trace these relationships at the desktop viewport. For Architecture, use references/architecture-layout-repair.md: reflow a blocked main path or tangled connected scene, and repair an isolated defect locally only when the surrounding composition is accepted. Preserve all semantic content and user-fixed geometry. Rerun finalize once after the edit."
+  }
+}
