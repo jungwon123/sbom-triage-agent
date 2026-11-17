@@ -1,56 +1,391 @@
 {
-  "schema_version": 1,
-  "diagram_type": "architecture",
-  "meta": {
-    "title": "SBOM 트리아지 에이전트 아키텍처",
-    "locale": "ko",
-    "output": "docs/architecture/sbom-triage-architecture.html",
-    "quality_profile": "showcase"
+ "schema_version": 1,
+ "diagram_type": "architecture",
+ "meta": {
+  "title": "SBOM 트리아지 에이전트 아키텍처 (구현 기준)",
+  "locale": "ko",
+  "output": "docs/architecture/sbom-triage-architecture.html",
+  "quality_profile": "showcase"
+ },
+ "components": [
+  {
+   "id": "npm",
+   "type": "external",
+   "label": "npm 레지스트리",
+   "sublabel": "install 단계만 허용",
+   "pos": [
+    1450,
+    40
+   ],
+   "size": [
+    140,
+    64
+   ]
   },
-  "components": [
-    { "id": "npm", "type": "external", "label": "npm 레지스트리", "sublabel": "install 단계만 허용", "pos": [1570, 40], "size": [140, 64] },
-    { "id": "feeds", "type": "external", "label": "공개 취약점 DB", "sublabel": "OSV · EPSS · CISA KEV", "pos": [810, 40], "size": [140, 64] },
-    { "id": "llm", "type": "external", "label": "LLM API", "sublabel": "Claude tool use", "pos": [1315, 40], "size": [140, 64] },
-    { "id": "cache", "type": "database", "label": "응답 캐시", "sublabel": "DEMO_MODE=replay", "pos": [810, 180], "size": [140, 64] },
-
-    { "id": "user", "type": "external", "label": "보안·개발 담당자", "sublabel": "검토 후 승인", "pos": [40, 330], "size": [140, 64] },
-    { "id": "web", "type": "frontend", "label": "React 대시보드", "sublabel": "NOW · NEXT · MONITOR", "pos": [290, 330], "size": [140, 64] },
-    { "id": "api", "type": "backend", "label": "FastAPI + 오케스트레이터", "sublabel": "단계 호출 · SSE", "pos": [530, 330], "size": [170, 64] },
-    { "id": "pipeline", "type": "backend", "label": "SBOM·스캔·보강", "sublabel": "Syft · OSV · semver", "pos": [810, 330], "size": [140, 64] },
-    { "id": "score", "type": "backend", "label": "규칙 점수 엔진", "sublabel": "risk · effort → 1차 버킷", "pos": [1060, 330], "size": [140, 64] },
-    { "id": "agent", "type": "backend", "label": "트리아지 에이전트", "sublabel": "도달성 · 근거 · 조치안", "pos": [1315, 330], "size": [140, 64], "tag": "±1 버킷 제약" },
-    { "id": "sandbox", "type": "security", "label": "검증 샌드박스", "sublabel": "설치 · test · 재스캔", "pos": [1570, 330], "size": [140, 64] },
-
-    { "id": "out", "type": "database", "label": "실행 결과 저장소", "sublabel": "triage.json · events.jsonl", "pos": [545, 520], "size": [140, 64] },
-    { "id": "repo", "type": "database", "label": "대상 레포", "sublabel": "계열사 서비스 코드", "pos": [1060, 520], "size": [140, 64], "tag": "읽기 전용" }
-  ],
-  "boundaries": [
-    { "kind": "region", "label": "온프레미스 사내망", "wraps": ["web", "api", "pipeline", "score", "agent", "sandbox", "cache", "out", "repo"], "pad": 20 },
-    { "kind": "security-group", "label": "격리 컨테이너 · egress 제한", "wraps": ["sandbox"] }
-  ],
-  "connections": [
-    { "id": "user-web", "from": "user", "to": "web", "label": "검토·조치 승인", "variant": "emphasis" },
-    { "id": "web-api", "from": "web", "to": "api", "label": "분석 요청·SSE", "variant": "emphasis" },
-    { "id": "api-pipeline", "from": "api", "to": "pipeline", "label": "레포 경로", "variant": "emphasis" },
-    { "id": "pipeline-score", "from": "pipeline", "to": "score", "label": "Finding[]", "variant": "emphasis" },
-    { "id": "score-agent", "from": "score", "to": "agent", "label": "NOW·NEXT 후보", "variant": "emphasis" },
-    { "id": "api-sandbox", "from": "api", "to": "sandbox", "label": "NOW 조치안 검증", "variant": "emphasis" },
-
-    { "id": "pipeline-cache", "from": "pipeline", "to": "cache", "label": "보강 데이터 조회" },
-    { "id": "cache-feeds", "from": "cache", "to": "feeds", "label": "미스 시 HTTPS", "variant": "dashed" },
-    { "id": "agent-llm", "from": "agent", "to": "llm", "label": "근거 데이터만 전송", "variant": "security" },
-    { "id": "pipeline-repo", "from": "pipeline", "to": "repo", "label": "lockfile · import 검색" },
-    { "id": "agent-repo", "from": "agent", "to": "repo", "label": "읽기 전용 tool", "variant": "security" },
-    { "id": "agent-cache", "from": "agent", "to": "cache", "label": "어드바이저리 조회" },
-    { "id": "sandbox-repo", "from": "sandbox", "to": "repo", "label": "읽기 전용 마운트", "variant": "security" },
-    { "id": "sandbox-npm", "from": "sandbox", "to": "npm", "label": "스크립트 차단 설치", "variant": "security" },
-    { "id": "sandbox-cache", "from": "sandbox", "to": "cache", "label": "호스트에서 재스캔" },
-    { "id": "api-out", "from": "api", "to": "out", "label": "run 결과 저장·조회" }
-  ],
-  "cards": [
-    { "dot": "cyan", "title": "① 파이프라인 (결정론)", "items": ["Syft로 CycloneDX SBOM 생성", "OSV 매칭 후 EPSS · KEV · semver 보강", "외부 응답은 캐시 경유, 오프라인 재생 가능", "실행 결과는 파일 저장, 운영 전환 시 PostgreSQL"] },
-    { "dot": "violet", "title": "② 판단 (하이브리드)", "items": ["규칙이 risk · effort 점수와 1차 버킷 계산", "에이전트는 NOW · NEXT 후보만 도달성 판정", "버킷 조정은 ±1단계, 조정 사유 필수"] },
-    { "dot": "emerald", "title": "③ 조치 · 검증", "items": ["실행 명령은 코드가 조립, LLM 문자열 실행 금지", "일회용 컨테이너에서 설치 · 테스트 · 재스캔, 기준선과 비교", "검증 통과한 조치안만 승인 대기, 반영은 담당자 승인 후에만"] },
-    { "dot": "rose", "title": "보안 경계", "items": ["에이전트 tool은 레포 읽기 전용", "LLM에는 근거 데이터만 전송 (사내 LLM으로 대체 가능)", "샌드박스 외부 통신은 npm 레지스트리로 제한"] }
-  ]
+  {
+   "id": "feeds",
+   "type": "external",
+   "label": "공개 취약점 DB",
+   "sublabel": "OSV · EPSS · CISA KEV",
+   "pos": [
+    750,
+    40
+   ],
+   "size": [
+    140,
+    64
+   ]
+  },
+  {
+   "id": "llm",
+   "type": "external",
+   "label": "LLM API",
+   "sublabel": "Fable 5.2 · OpenAI 교체 가능",
+   "pos": [
+    1215,
+    40
+   ],
+   "size": [
+    140,
+    64
+   ]
+  },
+  {
+   "id": "cache",
+   "type": "database",
+   "label": "응답 캐시",
+   "sublabel": "fixtures/cache · replay",
+   "pos": [
+    750,
+    180
+   ],
+   "size": [
+    140,
+    64
+   ]
+  },
+  {
+   "id": "user",
+   "type": "external",
+   "label": "보안·개발 담당자",
+   "sublabel": "검토 후 승인",
+   "pos": [
+    40,
+    330
+   ],
+   "size": [
+    140,
+    64
+   ]
+  },
+  {
+   "id": "web",
+   "type": "frontend",
+   "label": "React 대시보드",
+   "sublabel": "분포 띠 · 근거 · 검증 결과",
+   "pos": [
+    270,
+    330
+   ],
+   "size": [
+    140,
+    64
+   ]
+  },
+  {
+   "id": "api",
+   "type": "backend",
+   "label": "FastAPI + 오케스트레이터",
+   "sublabel": "runner.py · 이벤트 기록",
+   "pos": [
+    490,
+    330
+   ],
+   "size": [
+    170,
+    64
+   ]
+  },
+  {
+   "id": "pipeline",
+   "type": "backend",
+   "label": "SBOM·스캔·보강",
+   "sublabel": "npm · Maven · SBOM 파일",
+   "pos": [
+    750,
+    330
+   ],
+   "size": [
+    140,
+    64
+   ]
+  },
+  {
+   "id": "score",
+   "type": "backend",
+   "label": "규칙 점수 엔진",
+   "sublabel": "25 / 25 / 50 → 1차 버킷",
+   "pos": [
+    980,
+    330
+   ],
+   "size": [
+    140,
+    64
+   ]
+  },
+  {
+   "id": "agent",
+   "type": "backend",
+   "label": "트리아지 에이전트",
+   "sublabel": "계약 검사 · 규칙 대체",
+   "pos": [
+    1215,
+    330
+   ],
+   "size": [
+    140,
+    64
+   ],
+   "tag": "±1 버킷 제약"
+  },
+  {
+   "id": "sandbox",
+   "type": "security",
+   "label": "검증 샌드박스",
+   "sublabel": "설치 · 빌드 · 테스트 · 재스캔",
+   "pos": [
+    1450,
+    330
+   ],
+   "size": [
+    140,
+    64
+   ]
+  },
+  {
+   "id": "out",
+   "type": "database",
+   "label": "실행 결과 저장소",
+   "sublabel": "out/<run> 파일",
+   "pos": [
+    505,
+    520
+   ],
+   "size": [
+    140,
+    64
+   ]
+  },
+  {
+   "id": "repo",
+   "type": "database",
+   "label": "대상 레포 · SBOM",
+   "sublabel": "계열사 서비스 코드",
+   "pos": [
+    980,
+    520
+   ],
+   "size": [
+    140,
+    64
+   ],
+   "tag": "읽기 전용"
+  },
+  {
+   "id": "local",
+   "type": "backend",
+   "label": "사내 LLM",
+   "sublabel": "코드 판독 전용 (선택)",
+   "pos": [
+    1215,
+    520
+   ],
+   "size": [
+    140,
+    64
+   ],
+   "tag": "2단계 모드"
+  }
+ ],
+ "boundaries": [
+  {
+   "kind": "region",
+   "label": "온프레미스 사내망",
+   "wraps": [
+    "web",
+    "api",
+    "pipeline",
+    "score",
+    "agent",
+    "sandbox",
+    "cache",
+    "out",
+    "repo",
+    "local"
+   ],
+   "pad": 20
+  },
+  {
+   "kind": "security-group",
+   "label": "격리 컨테이너 · egress 제한",
+   "wraps": [
+    "sandbox"
+   ]
+  }
+ ],
+ "connections": [
+  {
+   "id": "user-web",
+   "from": "user",
+   "to": "web",
+   "label": "검토·조치 승인",
+   "variant": "emphasis"
+  },
+  {
+   "id": "web-api",
+   "from": "web",
+   "to": "api",
+   "label": "실행 결과 조회",
+   "variant": "emphasis"
+  },
+  {
+   "id": "api-pipeline",
+   "from": "api",
+   "to": "pipeline",
+   "label": "레포 경로 · SBOM",
+   "variant": "emphasis"
+  },
+  {
+   "id": "pipeline-score",
+   "from": "pipeline",
+   "to": "score",
+   "label": "Finding[]",
+   "variant": "emphasis"
+  },
+  {
+   "id": "score-agent",
+   "from": "score",
+   "to": "agent",
+   "label": "NOW·NEXT 후보",
+   "variant": "emphasis"
+  },
+  {
+   "id": "api-sandbox",
+   "from": "api",
+   "to": "sandbox",
+   "label": "NOW 조치안 검증",
+   "variant": "emphasis"
+  },
+  {
+   "id": "pipeline-cache",
+   "from": "pipeline",
+   "to": "cache",
+   "label": "보강 데이터 조회"
+  },
+  {
+   "id": "cache-feeds",
+   "from": "cache",
+   "to": "feeds",
+   "label": "미스 시 HTTPS",
+   "variant": "dashed"
+  },
+  {
+   "id": "agent-llm",
+   "from": "agent",
+   "to": "llm",
+   "label": "코드 없이 사실 값만",
+   "variant": "security"
+  },
+  {
+   "id": "pipeline-repo",
+   "from": "pipeline",
+   "to": "repo",
+   "label": "lockfile · import 검색"
+  },
+  {
+   "id": "agent-repo",
+   "from": "agent",
+   "to": "repo",
+   "label": "읽기 전용 도구 4종",
+   "variant": "security"
+  },
+  {
+   "id": "agent-cache",
+   "from": "agent",
+   "to": "cache",
+   "label": "어드바이저리 조회"
+  },
+  {
+   "id": "sandbox-repo",
+   "from": "sandbox",
+   "to": "repo",
+   "label": "읽기 전용 마운트",
+   "variant": "security"
+  },
+  {
+   "id": "sandbox-npm",
+   "from": "sandbox",
+   "to": "npm",
+   "label": "스크립트 차단 설치",
+   "variant": "security"
+  },
+  {
+   "id": "sandbox-cache",
+   "from": "sandbox",
+   "to": "cache",
+   "label": "호스트에서 재스캔"
+  },
+  {
+   "id": "api-out",
+   "from": "api",
+   "to": "out",
+   "label": "run 결과 저장·조회"
+  },
+  {
+   "id": "agent-local",
+   "from": "agent",
+   "to": "local",
+   "label": "코드 사용 여부 판정",
+   "variant": "security"
+  }
+ ],
+ "cards": [
+  {
+   "dot": "cyan",
+   "title": "① 파이프라인 (결정론)",
+   "items": [
+    "Syft 또는 lockfile로 CycloneDX SBOM 생성, SBOM 파일도 직접 입력",
+    "OSV 매칭 후 EPSS · KEV · 수정 버전 · import 위치 보강",
+    "외부 응답은 전부 캐시 경유, 네트워크 없이 재생 가능"
+   ]
+  },
+  {
+   "dot": "violet",
+   "title": "② 판단 (규칙 + AI)",
+   "items": [
+    "규칙이 위험 점수와 1차 등급을 계산",
+    "2단계 모드: 사내 LLM만 코드를 읽고, 외부 LLM은 사실 값만 받아 근거를 작성",
+    "등급 조정은 한 단계까지, KEV 하향 금지, 위반 시 규칙 결과 사용"
+   ]
+  },
+  {
+   "dot": "emerald",
+   "title": "③ 조치 · 검증",
+   "items": [
+    "실행 명령은 코드가 조립, AI가 쓴 문자열은 실행하지 않음",
+    "일회용 컨테이너에서 기준선과 비교해 판정",
+    "원본 반영은 담당자 승인 후에만"
+   ]
+  },
+  {
+   "dot": "amber",
+   "title": "저장소 (현재와 운영 설계)",
+   "items": [
+    "프로토타입은 실행별 파일 저장, DB 없음",
+    "운영은 PostgreSQL 하나로 결과 저장과 작업 큐를 처리",
+    "분석 전용 DB(ClickHouse 등)는 현재 규모에서 불필요"
+   ]
+  }
+ ]
 }

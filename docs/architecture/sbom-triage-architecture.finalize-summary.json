@@ -7,13 +7,13 @@
   "quality": "showcase",
   "specification": {
     "path": "/Users/jwon/Downloads/sbom-triage/docs/architecture/archify.candidate.json",
-    "sha256": "416b87ba8433a62fd9aa52d4a4a60367e3b918ef3b0b24e5ae4f87616089e9a3",
-    "bytes": 5473
+    "sha256": "6ce42a3391b4b27244a0a898d39542910250d026179b8c947a1f2dfc60694d18",
+    "bytes": 6982
   },
   "artifact": {
     "path": "/Users/jwon/Downloads/sbom-triage/docs/architecture/sbom-triage-architecture.html",
-    "sha256": "cd49bc597b9de7a6efb95ca36c5a2b56da0abe87ca470f2aaa3a9a6601af43fe",
-    "bytes": 866464
+    "sha256": "e3b6ba5b2b76aba9ddc9b054e1731202add99f257d046f7eecfce6849e660308",
+    "bytes": 869430
   },
   "gates": {
     "validate": "pass",
@@ -32,8 +32,18 @@
     "summaryReceipt": "/Users/jwon/Downloads/sbom-triage/docs/architecture/sbom-triage-architecture.finalize-summary.json",
     "browserCheckReceipt": "/Users/jwon/Downloads/sbom-triage/docs/architecture/sbom-triage-architecture.browser-check.json"
   },
+  "update": {
+    "status": "current",
+    "installedVersion": "3.2.0",
+    "availableVersion": "3.2.0",
+    "releaseNotes": null,
+    "checkedAt": "2026-11-17T19:02:45.224Z",
+    "source": "cache",
+    "noticeRequired": false,
+    "noticeText": null
+  },
   "visualReview": "not-requested",
-  "durationMs": 2350,
+  "durationMs": 3542,
   "browserCheck": {
     "requested": true,
     "ran": true
@@ -41,7 +51,7 @@
   "visualReviewRecommendation": {
     "action": "inspect-route-readability",
     "signals": {
-      "resolvedCrossovers": 4,
+      "resolvedCrossovers": 5,
       "routesOverSuggestedBends": 1
     },
     "reason": "Automated gates passed, but crossings or detours still need perceptual review before claiming visual quality.",
@@ -65,8 +75,8 @@
             "artifactIndex": 10
           },
           "point": [
-            880,
-            422
+            820,
+            418
           ]
         },
         {
@@ -82,13 +92,35 @@
             "id": "agent-repo",
             "from": "agent",
             "to": "repo",
-            "label": "읽기 전용 tool",
+            "label": "읽기 전용 도구 4종",
             "collectionIndex": 10,
             "artifactIndex": 11
           },
           "point": [
-            1385,
-            422
+            1271,
+            417.99999999999994
+          ]
+        },
+        {
+          "left": {
+            "id": "api-sandbox",
+            "from": "api",
+            "to": "sandbox",
+            "label": "NOW 조치안 검증",
+            "collectionIndex": 5,
+            "artifactIndex": 6
+          },
+          "right": {
+            "id": "agent-local",
+            "from": "agent",
+            "to": "local",
+            "label": "코드 사용 여부 판정",
+            "collectionIndex": 16,
+            "artifactIndex": 17
+          },
+          "point": [
+            1284.9999999999998,
+            417.9999999999999
           ]
         },
         {
@@ -96,7 +128,7 @@
             "id": "agent-llm",
             "from": "agent",
             "to": "llm",
-            "label": "근거 데이터만 전송",
+            "label": "코드 없이 사실 값만",
             "collectionIndex": 8,
             "artifactIndex": 9
           },
@@ -109,7 +141,7 @@
             "artifactIndex": 15
           },
           "point": [
-            1392,
+            1292,
             306
           ]
         },
@@ -131,7 +163,7 @@
             "artifactIndex": 15
           },
           "point": [
-            1378,
+            1278,
             306
           ],
           "sharedNode": "cache"
@@ -147,14 +179,14 @@
             "collectionIndex": 5,
             "artifactIndex": 6
           },
-          "bends": 4,
-          "stretch": 1.12,
+          "bends": 3,
+          "stretch": 1.053,
           "directCorridorBlockers": [
             {
               "id": "pipeline",
               "label": "SBOM·스캔·보강",
               "box": [
-                810,
+                750,
                 330,
                 140,
                 64
@@ -164,7 +196,7 @@
               "id": "score",
               "label": "규칙 점수 엔진",
               "box": [
-                1060,
+                980,
                 330,
                 140,
                 64
@@ -174,7 +206,7 @@
               "id": "agent",
               "label": "트리아지 에이전트",
               "box": [
-                1315,
+                1215,
                 330,
                 140,
                 64
@@ -188,6 +220,7 @@
     "hints": [
       "api → sandbox crosses pipeline → repo: move the node of whichever is a branch, return, or second entrance to the other side of the main path, so that relationship runs through an empty corridor.",
       "api → sandbox crosses agent → repo: move the node of whichever is a branch, return, or second entrance to the other side of the main path, so that relationship runs through an empty corridor.",
+      "api → sandbox crosses agent → local: move the node of whichever is a branch, return, or second entrance to the other side of the main path, so that relationship runs through an empty corridor.",
       "agent → llm crosses sandbox → cache: move the node of whichever is a branch, return, or second entrance to the other side of the main path, so that relationship runs through an empty corridor.",
       "agent → cache and sandbox → cache cross next to cache: move node agent or sandbox so the two reach cache from different sides (for example one level with it, one directly above or below it)."
     ],
