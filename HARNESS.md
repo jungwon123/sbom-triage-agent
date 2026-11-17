@@ -114,3 +114,4 @@ for t in final_triage where final_bucket == NOW:
 | 2026-10-31 | P0 | 시나리오 1·2 실측: NOW 30패키지 검증, 변이 36건 (`docs/poc-results.md`) | verified 20/30, 실제 테스트 확인 2건 | 키 확보, 라벨링 |
 | 2026-11-01 | P0 | 대시보드 React(Vite) 전환, 저장소 결정(D31, D32), 아키텍처 재생성 | finalize 통과 | 키 확보, 라벨링 |
 | 2026-11-01 | P0 | 운영 PoC 2종 측정, 키워드와 학습 자료 문서 추가, D33 (`docs/poc-results.md`) | 동시 4개에서 처리량 최고, 큐 유실 0, LLM 병목 미측정 | 키 확보, 라벨링 |
+| 2026-11-18 | P1~P3.5 | `backend/triage/` 구현: SBOM(Syft, lockfile, SBOM 파일, Maven pom), 스캔·보강, 규칙 점수, 에이전트(Anthropic·OpenAI·replay 어댑터), 샌드박스 검증, eval, doctor, API. 기본 모델 Fable 5.2 (D34) | pytest 80 통과(Docker 격리 포함). 3개 레포 리플레이 결과가 PoC와 일치(2,665 / 581 / 332 / NOW 41). 데모 레포 NOW 2건 verified, tests_run 27. **LLM 실호출 미검증(키 없음)**, golden 라벨 0건 | `.env`에 키 입력 후 `triage doctor --llm`, `triage agent`; 라벨링; `web/` 대시보드(P4) |

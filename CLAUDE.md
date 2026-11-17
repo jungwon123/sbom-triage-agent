@@ -14,7 +14,7 @@ npm 레포의 취약점을 CVSS 목록이 아니라 **NOW / NEXT / MONITOR** 3�
 |---|---|
 | 파이프라인·에이전트 | Python 3.12, uv, Pydantic v2, httpx |
 | API | FastAPI (SSE로 진행 로그 스트리밍) |
-| LLM | Anthropic API (tool use), 모델명은 `.env`의 `LLM_MODEL` |
+| LLM | Anthropic API (tool use), 기본 모델 **Claude Fable 5.2 (`claude-fable-5-2`)**. `.env`의 `LLM_PROVIDER`·`LLM_MODEL`로 주입하고 코드에 하드코딩하지 않는다. 본선 대비로 OpenAI 어댑터도 둔다 (HANDOFF D34) |
 | 외부 데이터 | Syft, OSV API, FIRST EPSS API, CISA KEV JSON |
 | 검증 샌드박스 | Docker (일회용 컨테이너) |
 | 대시보드 | React (Vite) + TypeScript + Tailwind. 빌드 결과물을 FastAPI가 정적 서빙 (운영에 Node 서버 없음) |
@@ -33,11 +33,13 @@ sbom-triage/
 │     ├─ scan.py         # ② SBOM 컴포넌트 → OSV querybatch → Finding
 │     ├─ enrich/         # ③ epss.py, kev.py, semver.py, usages.py(Python 파일 순회)
 │     ├─ score.py        # ④ 규칙 점수 (순수 함수)
-│     ├─ agent/          # ⑤ llm.py(어댑터), tools.py, prompts.py, run.py
+│     ├─ agent/          # ⑤ llm.py(인터페이스), llm_anthropic.py, llm_openai.py, llm_replay.py, tools.py, prompts.py, run.py
 │     ├─ verify/         # ⑥ sandbox.py(Docker), apply.py(명령 조립), run.py(판정)
 │     ├─ models.py       # Finding, Triage, Remediation, Verification (단일 진실 원천)
 │     ├─ cache.py        # 외부 응답 디스크 캐시
 │     ├─ runner.py       # 단계 호출 순서와 이벤트 기록 (CLI·API 공용)
+│     ├─ eval.py         # golden 일치율, NOW 누락
+│     ├─ doctor.py       # 환경 점검
 │     └─ api.py          # FastAPI
 ├─ web/                  # ⑦ React(Vite) 대시보드
 ├─ fixtures/
@@ -70,7 +72,10 @@ sbom-triage/
 ## 6. 자주 쓰는 명령
 
 ```bash
-uv run python -m triage scan fixtures/demo-repo        # ①~④
+uv run python -m triage doctor                         # 환경 점검 (--llm: LLM 호출 1회 확인)
+uv run python -m triage scan fixtures/demo-repo        # ①~④ (레포 디렉터리)
+uv run python -m triage scan path/to/bom.cdx.json      # ①~④ (SBOM 파일: CycloneDX 또는 SPDX JSON)
+uv run python -m triage run fixtures/demo-repo --setup "npx prisma generate"   # ①~⑥ 한 번에
 uv run python -m triage agent out/<run_id>             # ⑤
 uv run python -m triage verify out/<run_id>            # ⑥ NOW 항목 샌드박스 검증
 uv run python -m triage eval out/<run_id>              # golden 일치율

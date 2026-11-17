@@ -86,6 +86,7 @@
 | D31 | 대시보드를 Next.js에서 Vite + React로 변경, FastAPI가 정적 서빙 | 채택 | SSR·서버 기능이 불필요, 사내망에 Node 서버를 두지 않음 |
 | D32 | 프로토타입 저장소는 파일 유지(DB 없음). 운영 설계는 PostgreSQL, 대규모 대응은 작업 큐와 워커 분리 | 채택 | 단일 사용자 시연에 DB 불필요. 병목은 DB가 아니라 샌드박스와 LLM 호출 |
 | D33 | 운영 큐는 PostgreSQL `SKIP LOCKED` + lease + fencing, 샌드박스는 서버당 동시 실행 제한(측정 환경 4개), 확장은 서버 추가 | 채택 (설계) | 운영 PoC: 동시 4개에서 처리량 최고, 큐 유실 0 (`docs/poc-results.md`) |
+| D34 | 기본 LLM은 Claude Fable 5.2 (`claude-fable-5-2`). 사고는 항상 켜져 있어 `thinking` 파라미터를 보내지 않고 깊이는 `LLM_EFFORT`(기본 high)로 조절. 강제 `tool_choice`는 400이므로 `auto` + 프롬프트로 유도. 거절 대비 서버측 fallback(`fallbacks: "default"`) 사용. 본선(2026-11-24~25)에서 OpenAI 도구가 제공될 수 있어 `LLM_PROVIDER=openai` 어댑터를 별도 파일로 둔다 | 채택 | 사용자 지정 (2026-11-18) |
 | D21 | 서비스 맥락(`service_criticality`, `internet_facing`)을 입력받되 근거·표시 전용 | 채택 (T1 반영) | 서비스 관점 영향도 보강, 점수 결정성과 D13 유지 |
 
 ---
@@ -323,7 +324,7 @@ for t in final_triage where final_bucket == NOW:
 
 ### 6.7 LLM / 에이전트
 
-- Anthropic API tool use, 모델명은 `.env`의 `LLM_MODEL`로 주입 (하드코딩 금지)
+- Anthropic API tool use, 모델명은 `.env`의 `LLM_MODEL`로 주입 (하드코딩 금지). 기본값 `claude-fable-5-2` (D34)
 - 항목당 tool call 최대 6회, 출력은 Pydantic 검증 → 실패 시 오류 메시지 붙여 1회 재시도 → 재실패 시 규칙 결과 fallback
 - **근거 사실성 검증**: `rationale`에서 숫자(CVSS, EPSS, 버전 문자열)를 추출해 `Finding` 값과 대조하는 테스트 필수
 - LLM 호출은 어댑터(`agent/llm.py`)로 분리 — 온프레미스 시 사내 LLM 교체 대비 (5.8)
