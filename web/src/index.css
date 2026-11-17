@@ -1,0 +1,24 @@
+@import "tailwindcss";
+@import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
+
+@theme {
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  /* cool paper and ink; the only saturated colors on the page are the three buckets */
+  --color-paper: #f5f6f8;
+  --color-sheet: #ffffff;
+  --color-ink: #151a22;
+  --color-dim: #5b6472;
+  --color-rule: #dfe3ea;
+  --color-now: #dc2626;
+  --color-now-soft: #fdeceb;
+  --color-next: #d97706;
+  --color-next-soft: #fdf3e1;
+  --color-monitor: #64748b;
+  --color-monitor-soft: #eef1f5;
+  --color-link: #1e4fd8;
+}
+
+html { background: var(--color-paper); color: var(--color-ink); }
+body { font-family: var(--font-sans); font-feature-settings: "tnum", "ss06"; -webkit-font-smoothing: antialiased; }
+:focus-visible { outline: 2px solid var(--color-link); outline-offset: 2px; }
