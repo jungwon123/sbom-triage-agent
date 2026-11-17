@@ -76,6 +76,11 @@ class RemediationProposal(Strict):     # what the LLM may propose
     notes: str | None
 
 
+class CodeVerdict(Strict):             # stage 1 of two-stage mode: stays inside the network
+    reachability: Reachability
+    evidence_files: list[str]
+
+
 class AgentVerdict(Strict):            # LLM output: no score fields
     reachability: Reachability
     proposed_bucket: Bucket
@@ -138,6 +143,8 @@ class Triage(Strict):
     verification: Verification | None = None
     needs_review: bool = False
     decided_by: Literal["rule", "agent", "agent_fallback"] = "rule"
+    evidence_files: list[str] = Field(default_factory=list)   # files the code-reading model relied on
+    code_read_by: Literal["rule", "agent", "local_agent"] = "rule"  # who set reachability
 
 
 def schema_json() -> str:

@@ -97,23 +97,99 @@ def scan(target: pathlib.Path, name: str | None = None, context: ServiceContext 
     return run
 
 
-def agent(run: Run, limit: int | None = None) -> Run:
-    """⑤. LLM_PROVIDER=none keeps the rule result."""
+def _llm_meta(llm, code_llm) -> dict:
+    describe = lambda m: {"provider": m.name, "model": getattr(m, "model", None)} if m else None  # noqa: E731
+    return {"provider": llm.name if llm else "none", "model": getattr(llm, "model", None),
+            "code_reader": describe(code_llm), "mode": "two_stage" if code_llm else "single"}
+
+
+def agent(run: Run, limit: int | None = None, writer: str | None = None, code_reader: str | None = None,
+          tag: str = "") -> Run:
+    """⑤. writer "none" keeps the rule bucket. code_reader set = two-stage: only that model reads source code.
+
+    With a tag the result goes to triage.<tag>.json and the main triage.json stays as it is (for comparisons).
+    """
     findings = run.findings()
-    llm = llm_mod.make(str(run.dir))
-    run.emit({"type": "stage", "stage": "agent", "status": "start", "provider": llm.name if llm else "none"})
-    triage = agent_run.run(findings, run.repo(), llm, run.dir, limit=limit, emit=run.emit)
+    llm = llm_mod.make(str(run.dir), writer)
+    reader_name = code_reader if code_reader is not None else llm_mod.code_provider()
+    code_llm = llm_mod.make(str(run.dir), reader_name) if reader_name and reader_name != "none" else None
+    info = _llm_meta(llm, code_llm)
+    run.emit({"type": "stage", "stage": "agent", "status": "start", "tag": tag, **info})
+    triage = agent_run.run(findings, run.repo(), llm, run.dir, limit=limit, emit=run.emit, code_llm=code_llm, tag=tag)
+    if tag:
+        run.write(f"triage.{tag}.json", [t.model_dump() for t in triage])
+        run.emit({"type": "stage", "stage": "agent", "status": "done", "tag": tag, **summarize(findings, triage)})
+        return run
     old = {t.finding_id: t for t in run.triage()}
     for t in triage:   # keep earlier verification results
         t.verification = old[t.finding_id].verification if t.finding_id in old else None
     run.save_triage(triage)
     meta = run.meta
     meta["summary"] = summarize(findings, triage)
-    meta["llm"] = {"provider": llm.name if llm else "none", "model": getattr(llm, "model", None)}
+    meta["llm"] = info
     meta["stages"] = sorted(set(meta["stages"]) | {"agent"})
     run.write("meta.json", meta)
     run.emit({"type": "stage", "stage": "agent", "status": "done", **meta["summary"]})
     return run
+
+
+def log_stats(run: Run, tag: str) -> dict:
+    """Tool-call reliability of one configuration, from its agent log (matters most for small local models)."""
+    path = run.dir / f"agent_log.{tag}.jsonl"
+    events = [json.loads(x) for x in path.read_text().splitlines() if x.strip()] if path.exists() else []
+    calls = [e for e in events if e.get("type") == "tool_call"]
+    return {"llm_responses": sum(e.get("type") == "llm_response" for e in events),
+            "tool_calls": len(calls), "tool_errors": sum(bool(e.get("is_error")) for e in calls),
+            "contract_violations": sum(e.get("type") == "contract_violation" for e in events),
+            "llm_errors": sum(e.get("type") == "llm_error" for e in events),
+            "input_tokens": sum(e.get("input_tokens") or 0 for e in events),
+            "output_tokens": sum(e.get("output_tokens") or 0 for e in events)}
+
+
+CONFIGS = {   # name -> (writer, code reader). "api" resolves to LLM_PROVIDER from .env
+    "rule": ("none", "none"),
+    "api": ("api", "none"),
+    "local": ("local", "none"),
+    "split": ("api", "local"),
+    "local_reader": ("none", "local"),
+}
+
+
+def compare(run: Run, names: list[str], golden: dict[str, str], limit: int | None = None) -> dict:
+    """Step 4: run the agent under several LLM configurations on the same findings and score each."""
+    from . import eval as eval_mod
+    findings = run.findings()
+    api = llm_mod.provider()
+    result: dict = {}
+    for name in names:
+        writer, reader = CONFIGS[name]
+        writer = api if writer == "api" else writer
+        for stale in (f"agent_log.{name}.jsonl", f"agent_answers.{name}.json"):
+            (run.dir / stale).unlink(missing_ok=True)
+        started = time.time()
+        try:
+            agent(run, limit, writer, reader, tag=name)
+        except llm_mod.LLMError as e:
+            result[name] = {"error": str(e)}
+            continue
+        triage = [Triage.model_validate(x) for x in run.read(f"triage.{name}.json")]
+        ev = eval_mod.evaluate(findings, triage, golden)
+        row = {"writer": writer, "code_reader": reader,
+               "judged": sum(t.decided_by == "agent" for t in triage),
+               "fell_back": sum(t.decided_by == "agent_fallback" for t in triage),
+               "reachability": {k: sum(t.reachability == k and t.decided_by != "rule" for t in triage)
+                                for k in ("used_symbol", "imported_only", "unused", "unknown")},
+               "moved": sum(t.final_bucket != t.rule_bucket for t in triage),
+               "buckets": summarize(findings, triage)["final"],
+               "seconds": round(time.time() - started, 1), **log_stats(run, name)}
+        if ev.get("matched"):
+            row.update(agreement_pct=ev["rule_plus_agent"]["agreement_pct"],
+                       now_missed=len(ev["rule_plus_agent"]["now_missed"]), matched=ev["matched"])
+        else:
+            row["agreement_pct"] = None
+        result[name] = row
+    run.write("compare.json", result)
+    return result
 
 
 def verify(run: Run, setup_cmd: str | None = None) -> Run:

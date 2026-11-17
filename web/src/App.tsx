@@ -118,7 +118,13 @@ function Context({ run }: { run: RunDetail }) {
       </div>
       <div className="flex gap-1.5" title="서비스 중요도와 외부 노출은 참고용이며 점수에 넣지 않습니다">
         <dt>판단</dt>
-        <dd className="text-ink">{llm && llm.provider !== "none" ? `규칙 + AI (${llm.model ?? llm.provider})` : "규칙만"}</dd>
+        <dd className="text-ink">
+          {llm?.code_reader
+            ? `규칙 + AI (코드 판독은 사내 모델 ${llm.code_reader.model ?? "local"}${llm.provider !== "none" ? `, 작성은 ${llm.model ?? llm.provider}` : ""})`
+            : llm && llm.provider !== "none"
+              ? `규칙 + AI (${llm.model ?? llm.provider})`
+              : "규칙만"}
+        </dd>
       </div>
     </dl>
   );

@@ -41,18 +41,27 @@ def checks(test_llm: bool = False) -> list[tuple[str, str, str]]:
     p = llm_mod.provider()
     key = {"anthropic": "ANTHROPIC_API_KEY", "openai": "OPENAI_API_KEY"}.get(p)
     has_key = bool(key and os.environ.get(key))
-    model = os.environ.get("OPENAI_MODEL" if p == "openai" else "LLM_MODEL", "claude-fable-5-2" if p == "anthropic" else "")
+    model = os.environ.get({"openai": "OPENAI_MODEL", "local": "LOCAL_LLM_MODEL"}.get(p, "LLM_MODEL"),
+                           "claude-fable-5-2" if p == "anthropic" else "")
     rows.append(("LLM_PROVIDER", "ok", f"{p} / model={model or '미설정'}"))
     if key:
         rows.append((key, "ok" if has_key else "warn", "설정됨" if has_key else "없음 (.env에 입력, 없으면 규칙 결과만 사용)"))
-    if test_llm and p in ("anthropic", "openai"):
+    rows.append(("SLACK_WEBHOOK_URL", "ok", "설정됨" if os.environ.get("SLACK_WEBHOOK_URL") else "없음 (알림을 쓰지 않으면 무시)"))
+    reader = llm_mod.code_provider()
+    rows.append(("LLM_CODE_PROVIDER", "ok", f"{reader} (소스코드는 이 모델만 읽음)" if reader else "미설정 (한 모델이 코드 판독과 작성을 모두 함)"))
+    if "local" in (p, reader):
+        lm = os.environ.get("LOCAL_LLM_MODEL")
+        rows.append(("LOCAL_LLM_MODEL", "ok" if lm else "fail", lm or "없음 (.env에 로컬 모델 이름 입력)"))
+    for label, name in (("LLM call", p), ("code reader call", reader)):
+        if not (test_llm and name in ("anthropic", "openai", "local")):
+            continue
         try:
-            session = llm_mod.make().start("Reply with JSON only.", 'Return {"ok": true}.', [],
+            session = llm_mod.make(name=name).start("Reply with JSON only.", 'Return {"ok": true}.', [],
                                             {"type": "object", "properties": {"ok": {"type": "boolean"}},
                                              "required": ["ok"], "additionalProperties": False}, 0, lambda e: None, "doctor")
-            rows.append(("LLM call", "ok", session.run(lambda n, a: ("", True))[:40]))
+            rows.append((label, "ok", session.run(lambda n, a: ("", True))[:40]))
         except Exception as e:
-            rows.append(("LLM call", "fail", str(e)[:120]))
+            rows.append((label, "fail", str(e)[:120]))
     return rows
 
 

@@ -58,3 +58,9 @@ const order: Record<Bucket, number> = { NOW: 0, NEXT: 1, MONITOR: 2 };
 export const byPriority = (a: Item, b: Item) =>
   order[a.triage.final_bucket] - order[b.triage.final_bucket] || b.triage.risk - a.triage.risk;
 export const byCvss = (a: Item, b: Item) => (b.finding.cvss ?? -1) - (a.finding.cvss ?? -1) || b.triage.risk - a.triage.risk;
+
+export const codeReadLabel: Record<NonNullable<Triage["code_read_by"]>, string> = {
+  rule: "import 검색(규칙)으로 판단",
+  agent: "AI가 코드를 읽고 판단",
+  local_agent: "사내 모델이 코드를 읽고 판단, 코드는 외부로 보내지 않음",
+};

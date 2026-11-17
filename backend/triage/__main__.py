@@ -43,6 +43,14 @@ def main(argv: list[str] | None = None) -> int:
             p.add_argument("--no-verify", action="store_true")
     p = sub.add_parser("agent"); p.add_argument("run_dir", type=pathlib.Path); p.add_argument("--limit", type=int)
     p = sub.add_parser("verify"); p.add_argument("run_dir", type=pathlib.Path); p.add_argument("--setup")
+    p = sub.add_parser("notify", help="send the run summary to Slack (SLACK_WEBHOOK_URL)")
+    p.add_argument("run_dir", type=pathlib.Path)
+    p.add_argument("--dry-run", action="store_true", help="print the message instead of sending it")
+    p.add_argument("--link", help="dashboard URL to include, e.g. http://triage.internal/?run=<id>")
+    p = sub.add_parser("compare", help="run several LLM configurations on one run and score each")
+    p.add_argument("run_dir", type=pathlib.Path)
+    p.add_argument("--configs", default="rule,api,local,split", help="comma list of: " + ", ".join(runner.CONFIGS))
+    p.add_argument("--limit", type=int); p.add_argument("--golden", type=pathlib.Path, default=None)
     p = sub.add_parser("eval"); p.add_argument("run_dir", type=pathlib.Path)
     p.add_argument("--golden", type=pathlib.Path, default=None)
     p = sub.add_parser("doctor"); p.add_argument("--llm", action="store_true", help="also make one small LLM call")
@@ -62,13 +70,30 @@ def main(argv: list[str] | None = None) -> int:
             runner.agent(run, a.limit)
             if not a.no_verify:
                 runner.verify(run, a.setup)
+    elif a.cmd == "notify":
+        from . import notify
+        run = runner.Run(a.run_dir)
+        payload = notify.build_message(run.meta["name"], run.findings(), run.triage(), a.link)
+        sent, detail = notify.send(payload, a.dry_run)
+        run.emit({"type": "notify", "channel": "slack", "sent": sent, "detail": detail})
+        if not sent:
+            print(json.dumps(payload, ensure_ascii=False, indent=1))
+        print(f"sent={sent} ({detail})")
+        return 0 if sent or a.dry_run else 1
     elif a.cmd == "agent":
         run = runner.agent(runner.Run(a.run_dir), a.limit)
     elif a.cmd == "verify":
         run = runner.verify(runner.Run(a.run_dir), a.setup)
-    else:  # eval
+    else:  # eval, compare
         run = runner.Run(a.run_dir)
         golden = a.golden or next((p for p in (ROOT / "fixtures/golden.yaml", ROOT / "fixtures/golden-sheet.csv") if p.exists()), None)
+        if a.cmd == "compare":
+            names = [n.strip() for n in a.configs.split(",") if n.strip()]
+            unknown = [n for n in names if n not in runner.CONFIGS]
+            if unknown:
+                print(f"unknown config: {unknown}"); return 2
+            labels = eval_mod.load_golden(golden) if golden else {}
+            print(json.dumps(runner.compare(run, names, labels, a.limit), ensure_ascii=False, indent=1)); return 0
         if golden is None:
             print("정답 파일이 없습니다 (fixtures/golden.yaml 또는 golden-sheet.csv)"); return 1
         result = eval_mod.evaluate(run.findings(), run.triage(), eval_mod.load_golden(golden))

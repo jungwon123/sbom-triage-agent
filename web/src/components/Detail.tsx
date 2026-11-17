@@ -1,6 +1,6 @@
 import type { Item } from "../lib/api";
 import {
-  bucketColor, bucketMeaning, decidedLabel, fmtCvss, fmtEpss, reachLabel, reasonLabel, stepLabel, verdictLabel,
+  bucketColor, bucketMeaning, codeReadLabel, decidedLabel, fmtCvss, fmtEpss, reachLabel, reasonLabel, stepLabel, verdictLabel,
 } from "../lib/format";
 import type { Verification } from "../lib/types";
 
@@ -62,6 +62,10 @@ export default function Detail({ item }: { item: Item }) {
             <Fact k="조치 비용" v={{ low: "낮음", medium: "보통", high: "높음" }[t.effort]} />
             <Fact k="코드 사용" v={reachLabel[t.reachability]} />
           </dl>
+          <p className="mt-2 text-sm text-dim">
+            코드 사용 여부: {codeReadLabel[t.code_read_by ?? "rule"]}
+            {(t.evidence_files ?? []).length > 0 && ` (근거 파일: ${(t.evidence_files ?? []).join(", ")})`}
+          </p>
           {(f.missing ?? []).length > 0 && (
             <p className="mt-2 text-sm text-dim">확보하지 못한 데이터: {(f.missing ?? []).join(", ")}</p>
           )}

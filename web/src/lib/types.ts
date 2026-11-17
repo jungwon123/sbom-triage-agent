@@ -111,4 +111,6 @@ export interface Triage {
   verification?: Verification | null;
   needs_review?: boolean;
   decided_by?: "rule" | "agent" | "agent_fallback";
+  evidence_files?: string[];
+  code_read_by?: "rule" | "agent" | "local_agent";
 }

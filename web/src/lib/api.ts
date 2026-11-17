@@ -33,7 +33,12 @@ export interface RunDetail {
     coverage: { components: number; epss_pct: number; kev_feed: boolean; kev_hits: number };
     summary: Summary;
     stages: string[];
-    llm?: { provider: string; model: string | null } | null;
+    llm?: {
+      provider: string;
+      model: string | null;
+      mode?: "single" | "two_stage";
+      code_reader?: { provider: string; model: string | null } | null;
+    } | null;
   };
   items: Item[];
 }

@@ -30,12 +30,18 @@ class LLM(Protocol):
 
 
 def provider() -> str:
+    """Model that writes the verdict. May run outside the network."""
     return os.environ.get("LLM_PROVIDER", "anthropic").lower()
 
 
-def make(run_dir: str | None = None) -> LLM | None:
-    """None means rule-only (LLM_PROVIDER=none)."""
-    p = provider()
+def code_provider() -> str | None:
+    """Model allowed to read source code. Unset means one model does both jobs (single stage)."""
+    return (os.environ.get("LLM_CODE_PROVIDER") or "").lower() or None
+
+
+def make(run_dir: str | None = None, name: str | None = None) -> LLM | None:
+    """None means rule-only (provider "none")."""
+    p = name or provider()
     if p == "none":
         return None
     if p == "anthropic":
@@ -44,7 +50,10 @@ def make(run_dir: str | None = None) -> LLM | None:
     if p == "openai":
         from .llm_openai import OpenAILLM
         return OpenAILLM()
+    if p == "local":
+        from .llm_local import LocalLLM
+        return LocalLLM()
     if p == "replay":
         from .llm_replay import ReplayLLM
         return ReplayLLM(os.environ.get("LLM_REPLAY_FROM") or run_dir)
-    raise LLMError(f"unknown LLM_PROVIDER={p}")
+    raise LLMError(f"unknown LLM provider {p}")
