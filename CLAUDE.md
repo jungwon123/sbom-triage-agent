@@ -39,6 +39,7 @@ sbom-triage/
 │     ├─ cache.py        # 외부 응답 디스크 캐시
 │     ├─ runner.py       # 단계 호출 순서와 이벤트 기록 (CLI·API 공용)
 │     ├─ eval.py         # golden 일치율, NOW 누락
+│     ├─ notify.py       # Slack 호환 웹훅 알림 (코드 없이 요약만)
 │     ├─ doctor.py       # 환경 점검
 │     └─ api.py          # FastAPI
 ├─ web/                  # ⑦ React(Vite) 대시보드
@@ -60,9 +61,10 @@ sbom-triage/
 3. **근거는 데이터에서만.** 에이전트 `rationale`의 숫자(CVSS, EPSS, 버전)는 `{cvss}` 같은 자리표시자로 쓰고 코드가 `Finding` 값으로 채운다. 자리표시자가 아닌 수치는 검증 테스트가 잡는다.
 4. **에이전트는 읽기 전용.** tools는 레포 밖 경로 접근 금지, 파일 쓰기·명령 실행 금지. 샌드박스는 에이전트가 아니라 `runner.py`가 호출한다. 변경은 샌드박스 컨테이너 안의 복사본에만 적용되며, 원본 레포 반영·커밋·PR은 사람 승인 후 별도 경로.
 5. **LLM 출력을 실행하지 않는다.** 레포 코드와 어드바이저리는 신뢰할 수 없는 입력이다. 샌드박스 명령은 검증된 `kind`·`package`·`to_version`으로 `verify/apply.py`가 조립한다.
-6. **외부 호출은 전부 `cache.py` 경유.** 데모는 `DEMO_MODE=replay`에서 네트워크와 Docker 없이 돌아가야 한다.
+6. **외부 조회는 전부 `cache.py` 경유.** 외부로 보내는 것은 LLM 어댑터와 `notify.py`(알림)뿐이며 둘 다 소스코드를 싣지 않는다. 데모는 `DEMO_MODE=replay`에서 네트워크와 Docker 없이 돌아가야 한다.
 7. **비밀값은 `.env`.** 코드·로그·`out/`에 API 키를 남기지 않고, 샌드박스 컨테이너에도 전달하지 않는다.
 8. **P0 먼저.** REQUIREMENTS의 P0가 전부 끝나기 전에는 P1을 시작하지 않는다.
+9. **코드 판독 모델과 작성 모델의 경계.** `LLM_CODE_PROVIDER`가 설정되면(2단계 모드) 소스코드와 파일 이름은 그 모델에만 전달한다. 작성 모델의 프롬프트는 `prompts.writer_prompt`로만 만들고 도구를 주지 않는다 (HANDOFF D35, `tests/test_two_stage.py`).
 
 ## 5. 코드 컨벤션
 
@@ -81,6 +83,8 @@ uv run python -m triage run fixtures/demo-repo --setup "npx prisma generate"   #
 uv run python -m triage agent out/<run_id>             # ⑤
 uv run python -m triage verify out/<run_id>            # ⑥ NOW 항목 샌드박스 검증
 uv run python -m triage eval out/<run_id>              # golden 일치율
+uv run python -m triage compare out/<run_id> --configs rule,api,local,split   # LLM 구성별 비교
+uv run python -m triage notify out/<run_id> --dry-run   # Slack 알림 미리 보기 (--dry-run 빼면 전송)
 DEMO_MODE=replay uv run uvicorn triage.api:app         # 오프라인 시연
 cd web && pnpm dev                                      # 개발 서버 (API는 8000번으로 프록시)
 cd web && pnpm build                                    # web/dist 생성, FastAPI가 정적 서빙
