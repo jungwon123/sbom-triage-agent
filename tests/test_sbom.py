@@ -1,0 +1,74 @@
+import json
+
+from triage import sbom
+from triage.enrich import semver
+
+LOCK = {"lockfileVersion": 3, "packages": {
+    "": {"dependencies": {"express": "^4"}, "devDependencies": {"jest": "^29"}},
+    "node_modules/express": {"version": "4.18.0", "dependencies": {"qs": "6.5.2"}},
+    "node_modules/qs": {"version": "6.5.2"},
+    "node_modules/jest": {"version": "29.0.0", "dev": True, "dependencies": {"@scope/util": "1.0.0"}},
+    "node_modules/@scope/util": {"version": "1.0.0", "dev": True},
+}}
+
+
+def by_name(comps):
+    return {c.name: c for c in comps}
+
+
+def test_npm_lock_scope_direct_paths():
+    c = by_name(sbom.npm_lock_components(LOCK))
+    assert c["express"].direct and c["express"].scope == "prod"
+    assert not c["qs"].direct and c["qs"].paths == [["express", "qs"]]
+    assert c["jest"].scope == "dev" and c["@scope/util"].paths == [["jest", "@scope/util"]]
+
+
+def test_cyclonedx_roundtrip_keeps_metadata():
+    comps = sbom.npm_lock_components(LOCK)
+    back = by_name(sbom.components_from_cyclonedx(sbom.to_cyclonedx(comps, "lockfile")))
+    assert back["qs"].paths == [["express", "qs"]] and back["jest"].scope == "dev"
+    assert back["@scope/util"].purl == "pkg:npm/%40scope/util@1.0.0"
+
+
+def test_plain_cyclonedx_uses_dependency_graph():
+    bom = {"bomFormat": "CycloneDX", "metadata": {"component": {"bom-ref": "app"}},
+           "components": [{"bom-ref": "a", "name": "a", "version": "1.0.0", "purl": "pkg:npm/a@1.0.0"},
+                          {"bom-ref": "b", "name": "b", "version": "2.0.0", "purl": "pkg:npm/b@2.0.0", "scope": "optional"}],
+           "dependencies": [{"ref": "app", "dependsOn": ["a"]}, {"ref": "a", "dependsOn": ["b"]}]}
+    c = by_name(sbom.components_from_cyclonedx(bom))
+    assert c["a"].direct and not c["b"].direct and c["b"].paths == [["a", "b"]] and c["b"].scope == "dev"
+
+
+def test_spdx_file(tmp_path):
+    doc = {"spdxVersion": "SPDX-2.3", "documentDescribes": ["SPDXRef-app"],
+           "packages": [{"SPDXID": "SPDXRef-app", "name": "app"},
+                        {"SPDXID": "SPDXRef-l", "name": "log4j-core", "versionInfo": "2.14.1",
+                         "externalRefs": [{"referenceType": "purl", "referenceLocator": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1"}]}],
+           "relationships": [{"spdxElementId": "SPDXRef-app", "relationshipType": "DEPENDS_ON", "relatedSpdxElement": "SPDXRef-l"}]}
+    p = tmp_path / "bom.spdx.json"
+    p.write_text(json.dumps(doc))
+    bom, source = sbom.load_file(p)
+    [c] = sbom.components_from_cyclonedx(bom)
+    assert source == "file:spdx" and c.ecosystem == "Maven" and c.name == "org.apache.logging.log4j:log4j-core" and c.direct
+
+
+POM = """<project xmlns="http://maven.apache.org/POM/4.0.0"><version>1.0</version>
+<properties><log4j.version>2.14.1</log4j.version></properties>
+<dependencies>
+ <dependency><groupId>org.apache.logging.log4j</groupId><artifactId>log4j-core</artifactId><version>${log4j.version}</version></dependency>
+ <dependency><groupId>junit</groupId><artifactId>junit</artifactId><version>4.12</version><scope>test</scope></dependency>
+ <dependency><groupId>x</groupId><artifactId>managed</artifactId></dependency>
+</dependencies></project>"""
+
+
+def test_maven_pom():
+    c = by_name(sbom.maven_pom_components(POM))
+    assert c["org.apache.logging.log4j:log4j-core"].version == "2.14.1"
+    assert c["junit:junit"].scope == "dev" and "x:managed" not in c
+
+
+def test_semver():
+    assert semver.bump("1.2.3", "1.2.9") == "patch" and semver.bump("1.2.3", "2.0.0") == "major"
+    assert semver.lt("4.0.4", "4.0.6") and semver.lt("2.0.0-rc.1", "2.0.0")
+    assert semver.fixed_in(["1.0.5", "2.0.1", "0.9.0"], "1.0.0") == "1.0.5"
+    assert semver.fixed_max(["1.0.5", "2.0.1", "0.9.0"], "1.0.0") == "2.0.1"
