@@ -42,6 +42,8 @@ sbom-triage/
 │     ├─ doctor.py       # 환경 점검
 │     └─ api.py          # FastAPI
 ├─ web/                  # ⑦ React(Vite) 대시보드
+├─ kit/                  # 본선용 하네스 키트 (절차서, 문서 틀, 점검 스크립트). kit/README.md 참고
+├─ scripts/gen_types.py  # 스키마에서 프론트 타입 생성
 ├─ fixtures/
 │  ├─ demo-repo/         # 데모 대상 레포 체크아웃 (git 제외)
 │  ├─ demo-repo.ref      # 데모 레포 URL과 고정 커밋
@@ -53,7 +55,7 @@ sbom-triage/
 
 ## 4. 절대 규칙
 
-1. **스키마가 먼저다.** `models.py`가 백엔드·프론트·에이전트 출력의 단일 진실 원천. 필드를 바꾸면 `web/lib/types.ts`도 같은 커밋에서 바꾼다. `types.ts`는 JSON Schema에서 생성한다.
+1. **스키마가 먼저다.** `models.py`가 백엔드·프론트·에이전트 출력의 단일 진실 원천. 필드를 바꾸면 `web/src/lib/types.ts`도 같은 커밋에서 바꾼다. `types.ts`는 `uv run python scripts/gen_types.py`로 생성한다(손으로 고치지 않는다).
 2. **규칙과 LLM의 경계를 지킨다.** 점수 계산은 `score.py`의 순수 함수로만. LLM 출력 타입은 점수 필드가 없는 `AgentVerdict`이고 `Triage`는 코드가 조립한다. LLM은 `rule_bucket`을 **±1단계까지만** 조정하며 조정 시 `override_reason` 필수. KEV 하향 금지 등 안전장치(F6-9)는 코드가 강제한다.
 3. **근거는 데이터에서만.** 에이전트 `rationale`의 숫자(CVSS, EPSS, 버전)는 `{cvss}` 같은 자리표시자로 쓰고 코드가 `Finding` 값으로 채운다. 자리표시자가 아닌 수치는 검증 테스트가 잡는다.
 4. **에이전트는 읽기 전용.** tools는 레포 밖 경로 접근 금지, 파일 쓰기·명령 실행 금지. 샌드박스는 에이전트가 아니라 `runner.py`가 호출한다. 변경은 샌드박스 컨테이너 안의 복사본에만 적용되며, 원본 레포 반영·커밋·PR은 사람 승인 후 별도 경로.
@@ -67,7 +69,7 @@ sbom-triage/
 - Python: 타입힌트 필수, I/O 함수와 순수 함수 분리, 모듈 하나가 파이프라인 한 단계.
 - 에러: 외부 데이터 누락은 예외가 아니라 `None` + 로그. 파이프라인은 한 항목 실패로 멈추지 않는다.
 - 프론트: 데이터는 전부 FastAPI API로 읽고 `out/`을 직접 읽지 않는다. 실행 선택은 `?run=<id>` 쿼리. 버킷 색은 NOW=red, NEXT=amber, MONITOR=slate 고정.
-- 커밋: `feat(score): …`, `fix(agent): …` — 단계 이름을 scope로.
+- 커밋: `feat(score): …`, `fix(agent): …` — 단계 이름을 scope로. 커밋 메시지와 PR 본문에 AI 기여자 표기(`Co-Authored-By`, "Generated with …")를 넣지 않는다.
 
 ## 6. 자주 쓰는 명령
 
@@ -80,7 +82,10 @@ uv run python -m triage agent out/<run_id>             # ⑤
 uv run python -m triage verify out/<run_id>            # ⑥ NOW 항목 샌드박스 검증
 uv run python -m triage eval out/<run_id>              # golden 일치율
 DEMO_MODE=replay uv run uvicorn triage.api:app         # 오프라인 시연
-cd web && pnpm dev
+cd web && pnpm dev                                      # 개발 서버 (API는 8000번으로 프록시)
+cd web && pnpm build                                    # web/dist 생성, FastAPI가 정적 서빙
+uv run python scripts/gen_types.py                      # models.py → web/src/lib/types.ts
+bash kit/scripts/check.sh                               # 규칙, 테스트, 리플레이, git 점검
 uv run pytest -q
 ```
 

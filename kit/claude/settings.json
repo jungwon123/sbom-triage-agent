@@ -1,0 +1,17 @@
+{
+  "includeCoAuthoredBy": false,
+  "attribution": { "commit": "", "pr": "" },
+  "permissions": {
+    "deny": [
+      "Edit(./data/**)",
+      "Edit(./fixtures/demo-repo/**)",
+      "Edit(./fixtures/eval/**)",
+      "Edit(./.data_manifest.sha256)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(rm -rf:*)",
+      "Read(./.env)"
+    ]
+  }
+}

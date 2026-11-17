@@ -99,7 +99,7 @@ for t in final_triage where final_bucket == NOW:
 
 **끝낼 때**
 - [ ] 게이트 명령 실행 결과를 로그에 기록
-- [ ] 스키마를 바꿨다면 `web/lib/types.ts` 동기화 확인
+- [ ] 스키마를 바꿨다면 `web/src/lib/types.ts` 동기화 확인 (`scripts/gen_types.py --check`)
 - [ ] 미해결 이슈는 REQUIREMENTS 13장 "열린 질문"에 추가
 
 ## 7. 진행 로그
@@ -115,3 +115,4 @@ for t in final_triage where final_bucket == NOW:
 | 2026-11-01 | P0 | 대시보드 React(Vite) 전환, 저장소 결정(D31, D32), 아키텍처 재생성 | finalize 통과 | 키 확보, 라벨링 |
 | 2026-11-01 | P0 | 운영 PoC 2종 측정, 키워드와 학습 자료 문서 추가, D33 (`docs/poc-results.md`) | 동시 4개에서 처리량 최고, 큐 유실 0, LLM 병목 미측정 | 키 확보, 라벨링 |
 | 2026-11-18 | P1~P3.5 | `backend/triage/` 구현: SBOM(Syft, lockfile, SBOM 파일, Maven pom), 스캔·보강, 규칙 점수, 에이전트(Anthropic·OpenAI·replay 어댑터), 샌드박스 검증, eval, doctor, API. 기본 모델 Fable 5.2 (D34) | pytest 80 통과(Docker 격리 포함). 3개 레포 리플레이 결과가 PoC와 일치(2,665 / 581 / 332 / NOW 41). 데모 레포 NOW 2건 verified, tests_run 27. **LLM 실호출 미검증(키 없음)**, golden 라벨 0건 | `.env`에 키 입력 후 `triage doctor --llm`, `triage agent`; 라벨링; `web/` 대시보드(P4) |
+| 2026-11-18 | P4 | `web/` 대시보드(요약, 분포 띠, 정렬 토글, 목록, 상세, 검증 결과), `scripts/gen_types.py`, 본선용 하네스 키트 `kit/` | `tsc --noEmit` 통과, `pnpm build` 성공, 브라우저에서 데모 실행 화면 확인(데스크톱, 모바일). LLM 실호출은 여전히 미검증 | 키 입력 후 에이전트 실행, 라벨링, 시나리오와 리허설(P5) |
