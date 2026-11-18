@@ -104,7 +104,7 @@ def _llm_meta(llm, code_llm) -> dict:
 
 
 def agent(run: Run, limit: int | None = None, writer: str | None = None, code_reader: str | None = None,
-          tag: str = "") -> Run:
+          tag: str = "", only: set[str] | None = None) -> Run:
     """⑤. writer "none" keeps the rule bucket. code_reader set = two-stage: only that model reads source code.
 
     With a tag the result goes to triage.<tag>.json and the main triage.json stays as it is (for comparisons).
@@ -115,12 +115,15 @@ def agent(run: Run, limit: int | None = None, writer: str | None = None, code_re
     code_llm = llm_mod.make(str(run.dir), reader_name) if reader_name and reader_name != "none" else None
     info = _llm_meta(llm, code_llm)
     run.emit({"type": "stage", "stage": "agent", "status": "start", "tag": tag, **info})
-    triage = agent_run.run(findings, run.repo(), llm, run.dir, limit=limit, emit=run.emit, code_llm=code_llm, tag=tag)
+    triage = agent_run.run(findings, run.repo(), llm, run.dir, limit=limit, emit=run.emit, code_llm=code_llm, tag=tag,
+                           only=only)
     if tag:
         run.write(f"triage.{tag}.json", [t.model_dump() for t in triage])
         run.emit({"type": "stage", "stage": "agent", "status": "done", "tag": tag, **summarize(findings, triage)})
         return run
     old = {t.finding_id: t for t in run.triage()}
+    if only is not None:   # partial run: items outside `only` keep their earlier judgment
+        triage = [t if t.finding_id in only or t.finding_id not in old else old[t.finding_id] for t in triage]
     for t in triage:   # keep earlier verification results
         t.verification = old[t.finding_id].verification if t.finding_id in old else None
     run.save_triage(triage)

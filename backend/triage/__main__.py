@@ -42,6 +42,7 @@ def main(argv: list[str] | None = None) -> int:
             p.add_argument("--setup", help="extra setup command in the sandbox, e.g. 'npx prisma generate'")
             p.add_argument("--no-verify", action="store_true")
     p = sub.add_parser("agent"); p.add_argument("run_dir", type=pathlib.Path); p.add_argument("--limit", type=int)
+    p.add_argument("--labeled", action="store_true", help="judge only the findings that have a golden label")
     p = sub.add_parser("verify"); p.add_argument("run_dir", type=pathlib.Path); p.add_argument("--setup")
     p = sub.add_parser("notify", help="send the run summary to Slack (SLACK_WEBHOOK_URL)")
     p.add_argument("run_dir", type=pathlib.Path)
@@ -81,7 +82,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"sent={sent} ({detail})")
         return 0 if sent or a.dry_run else 1
     elif a.cmd == "agent":
-        run = runner.agent(runner.Run(a.run_dir), a.limit)
+        run = runner.Run(a.run_dir)
+        only = None
+        if a.labeled:
+            sheet = next((p for p in (ROOT / "fixtures/golden.yaml", ROOT / "fixtures/golden-sheet.csv") if p.exists()), None)
+            only = set(eval_mod.load_golden(sheet, run.meta.get("name"))) if sheet else set()
+        run = runner.agent(run, a.limit, only=only)
     elif a.cmd == "verify":
         run = runner.verify(runner.Run(a.run_dir), a.setup)
     else:  # eval, compare
@@ -92,11 +98,11 @@ def main(argv: list[str] | None = None) -> int:
             unknown = [n for n in names if n not in runner.CONFIGS]
             if unknown:
                 print(f"unknown config: {unknown}"); return 2
-            labels = eval_mod.load_golden(golden) if golden else {}
+            labels = eval_mod.load_golden(golden, run.meta.get("name")) if golden else {}
             print(json.dumps(runner.compare(run, names, labels, a.limit), ensure_ascii=False, indent=1)); return 0
         if golden is None:
             print("정답 파일이 없습니다 (fixtures/golden.yaml 또는 golden-sheet.csv)"); return 1
-        result = eval_mod.evaluate(run.findings(), run.triage(), eval_mod.load_golden(golden))
+        result = eval_mod.evaluate(run.findings(), run.triage(), eval_mod.load_golden(golden, run.meta.get("name")))
         run.write("eval.json", result)
         print(json.dumps(result, ensure_ascii=False, indent=1)); return 0
     meta = run.meta

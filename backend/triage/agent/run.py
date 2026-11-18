@@ -88,7 +88,7 @@ def merge(f: Finding, r: score.RuleResult, v: AgentVerdict | None, decided_by: s
     In two-stage mode `code` comes from the model inside the network and always decides
     reachability, whatever the writer model answered.
     """
-    review = score.needs_review(f)
+    review = score.needs_review(f, r.bucket)
     final, reason, held = r.bucket, None, False
     if v is not None:
         down = BUCKET_ORDER.index(v.proposed_bucket) < BUCKET_ORDER.index(r.bucket)
@@ -97,6 +97,8 @@ def merge(f: Finding, r: score.RuleResult, v: AgentVerdict | None, decided_by: s
         else:
             final = v.proposed_bucket
         reason = v.override_reason if final != r.bucket else None
+        if reason:   # models sometimes reuse rationale placeholders here
+            reason = fill([reason], fill_values(f, r.risk))[0]
     proposal = v.remediation if v is not None else apply.default_proposal(f)
     reach: Reachability = code.reachability if code is not None else v.reachability if v is not None else r.reachability
     return Triage(
@@ -206,12 +208,17 @@ def _json_part(text: str) -> str:
 
 def run(findings: list[Finding], repo: pathlib.Path | None, llm: LLM | None, run_dir: pathlib.Path,
         limit: int | None = None, workers: int = 4, emit: Callable[[dict], None] = lambda e: None,
-        code_llm: LLM | None = None, tag: str = "") -> list[Triage]:
-    """llm writes the verdict. code_llm, when given, is the only model that reads source code (two-stage)."""
+        code_llm: LLM | None = None, tag: str = "", only: set[str] | None = None) -> list[Triage]:
+    """llm writes the verdict. code_llm, when given, is the only model that reads source code (two-stage).
+
+    `only` narrows the candidates to those finding ids (still NOW/NEXT by rule only).
+    """
     by_id = {f.id: f for f in findings}
     rules = {f.id: score.score(f) for f in findings}
     candidates = sorted((f for f in findings if rules[f.id].bucket in ("NOW", "NEXT")),
                         key=lambda f: -rules[f.id].risk)
+    if only is not None:
+        candidates = [f for f in candidates if f.id in only]
     if limit is not None:
         candidates = candidates[:limit]
     lock = threading.Lock()

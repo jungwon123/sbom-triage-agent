@@ -50,3 +50,10 @@ def test_needs_review(make_finding, runtime_site):
 
 def test_sbom_only_input_is_unknown(make_finding):
     assert score.score(make_finding(missing=["source"])).reachability == "unknown"
+
+
+def test_needs_review_high_epss_now_without_import(make_finding):
+    f = make_finding(epss_percentile=0.95)
+    assert score.needs_review(f, "NOW")
+    assert not score.needs_review(f, "NEXT")
+    assert not score.needs_review(make_finding(epss_percentile=0.5), "NOW")

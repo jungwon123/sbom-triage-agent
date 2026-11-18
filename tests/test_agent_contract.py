@@ -118,3 +118,19 @@ def test_monitor_items_skip_the_llm(make_finding, tmp_path):
     llm = FakeLLM([])
     [t] = agent_run.run([f], None, llm, tmp_path)
     assert t.rule_bucket == "MONITOR" and t.decided_by == "rule"
+
+
+def test_high_epss_now_is_not_downgraded_without_runtime_import(make_finding):
+    f = make_finding(cvss=9.8, epss_percentile=0.95, direct=False)   # transitive: no import sites
+    r = score.score(f)
+    assert r.bucket == "NOW"
+    t = agent_run.merge(f, r, verdict(proposed_bucket="NEXT", override_reason="import 없음"), "agent")
+    assert t.final_bucket == "NOW" and t.needs_review
+
+
+def test_override_reason_placeholders_filled(make_finding):
+    f = make_finding(cvss=5.0, epss_percentile=0.3, package="lodash")
+    r = score.score(f)
+    down = {"NOW": "NEXT", "NEXT": "MONITOR"}[r.bucket]
+    t = agent_run.merge(f, r, verdict(proposed_bucket=down, override_reason="{package}를 쓰지 않습니다"), "agent")
+    assert t.override_reason == "lodash를 쓰지 않습니다"

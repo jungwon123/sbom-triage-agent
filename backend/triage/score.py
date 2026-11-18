@@ -50,10 +50,15 @@ def bucket(risk: float, eff: str) -> Bucket:
     return "NEXT" if risk >= NEXT_AT else "MONITOR"
 
 
-def needs_review(f: Finding, guards: Guards = Guards()) -> bool:
-    """Items the agent must not downgrade on its own (F6-9)."""
+def needs_review(f: Finding, rule_bucket: Bucket | None = None, guards: Guards = Guards()) -> bool:
+    """Items the agent must not downgrade on its own (F6-9).
+
+    KEV always. High EPSS when runtime code imports the package, or when the rule bucket is NOW:
+    "no import found" is not enough to lower an item that is both urgent by rule and actively exploited.
+    """
     runtime = any(s.kind == "runtime" for s in f.import_sites)
-    return f.kev or ((f.epss_percentile or 0) >= guards.epss_review_percentile and runtime)
+    hot = (f.epss_percentile or 0) >= guards.epss_review_percentile
+    return f.kev or (hot and (runtime or rule_bucket == "NOW"))
 
 
 @dataclass(frozen=True)

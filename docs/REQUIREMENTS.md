@@ -175,7 +175,7 @@ bucket
 | F6-5 | 출력은 JSON 스키마 강제 (Pydantic 검증 실패 시 1회 재시도, 이후 규칙 결과로 fallback) | P0 |
 | F6-6 | PR 초안 (제목·본문·변경 diff) 생성 — **생성만, 푸시는 하지 않음** | P2 |
 | F6-7 | 전체 요약 (경영진용 3문장) | P1 |
-| F6-9 | 하향 안전장치: KEV 등재 항목은 하향 금지. EPSS 백분위 0.9 이상이면서 `runtime` import가 있는 항목은 자동 하향하지 않고 규칙 버킷을 유지한 채 `needs_review`로 표시. 임계값은 설정 파일로 분리 | P0 |
+| F6-9 | 하향 안전장치: KEV 등재 항목은 하향 금지. EPSS 백분위 0.9 이상이면서 `runtime` import가 있거나 규칙 버킷이 NOW인 항목은 자동 하향하지 않고 규칙 버킷을 유지한 채 `needs_review`로 표시. 임계값은 설정 파일로 분리 | P0 |
 | F6-8 | 조치 제안 검증: 패키지명이 Finding과 일치, `to_version`이 유효한 semver이고 `fixed_in` 이상. 위반 시 샌드박스로 보내지 않고 규칙 결과로 fallback | P0 |
 
 **에이전트 도구 (tools)**
