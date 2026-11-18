@@ -129,7 +129,7 @@ def test_high_epss_now_is_not_downgraded_without_runtime_import(make_finding):
 
 
 def test_override_reason_placeholders_filled(make_finding):
-    f = make_finding(cvss=5.0, epss_percentile=0.3, package="lodash")
+    f = make_finding(cvss=5.0, epss_percentile=0.89, package="lodash")
     r = score.score(f)
     down = {"NOW": "NEXT", "NEXT": "MONITOR"}[r.bucket]
     t = agent_run.merge(f, r, verdict(proposed_bucket=down, override_reason="{package}를 쓰지 않습니다"), "agent")

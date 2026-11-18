@@ -15,6 +15,9 @@ SCOPE_W = {"prod": 1.0, "dev": 0.2}
 PATH_W = {True: 1.0, False: 0.7}
 DEFAULT_CVSS = 5.0       # severity unknown: middle of the scale, recorded in Finding.missing
 DEFAULT_EXPLOIT = 0.5    # EPSS unknown
+EPSS_FLOOR = 0.8         # D38: percentiles below this score 0. The scale is skewed: the 80th percentile is
+                         # roughly a 2% chance of exploitation, so the raw percentile rated almost everything high
+NO_SOURCE_W = 0.4        # D38: reachability unknown because there is no source to search (SBOM-only input)
 
 
 @dataclass(frozen=True)
@@ -29,10 +32,18 @@ def rule_reachability(f: Finding) -> Reachability:
     return "imported_only" if any(s.kind == "runtime" for s in f.import_sites) else "unused"
 
 
+def exploit_weight(percentile: float | None) -> float:
+    """EPSS percentile -> 0..1, counting only the part above EPSS_FLOOR."""
+    if percentile is None:
+        return DEFAULT_EXPLOIT
+    return max(0.0, (percentile - EPSS_FLOOR) / (1 - EPSS_FLOOR))
+
+
 def breakdown(f: Finding, reach: Reachability) -> dict[str, float]:
     sev = (f.cvss if f.cvss is not None else DEFAULT_CVSS) / 10 * 25
-    exploit_raw = 1.0 if f.kev else (f.epss_percentile if f.epss_percentile is not None else DEFAULT_EXPLOIT)
-    exp = SCOPE_W[f.scope] * PATH_W[f.direct] * REACH_W[reach] * 50
+    exploit_raw = 1.0 if f.kev else exploit_weight(f.epss_percentile)
+    reach_w = NO_SOURCE_W if reach == "unknown" and "source" in f.missing else REACH_W[reach]
+    exp = SCOPE_W[f.scope] * PATH_W[f.direct] * reach_w * 50
     return {"severity": round(sev, 2), "exploit": round(exploit_raw * 25, 2), "exposure": round(exp, 2)}
 
 

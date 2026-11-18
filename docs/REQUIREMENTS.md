@@ -142,11 +142,13 @@
 ```
 risk (0~100)
   severity   = CVSS / 10                          × 25
-  exploit    = 1.0 if KEV else EPSS 백분위         × 25
+  exploit    = 1.0 if KEV else max(0, (EPSS 백분위 - 0.8) / 0.2)   × 25
+               (백분위 0.8 미만은 0점. 백분위 0.8이 악용 확률 약 2%에 해당해 백분위 그대로는 변별이 안 됨, D38)
   exposure   = scope_w × path_w × reach_w          × 50
       scope_w : prod 1.0 / dev 0.2
       path_w  : direct 1.0 / transitive 0.7
       reach_w : 심볼 사용 1.0 / import만 0.6 / 미사용 0.2 / 미판정 0.6
+                소스가 없어서 미판정이면 0.4 (SBOM 파일만 입력된 경우, D38)
 
 ④ 단계의 reach_w 판정 (에이전트 판정 전)
   direct     : runtime import_sites 있으면 import만, 없거나 test뿐이면 미사용
