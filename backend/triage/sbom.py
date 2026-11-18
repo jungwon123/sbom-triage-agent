@@ -31,17 +31,37 @@ def maven_purl(group: str, artifact: str, version: str) -> str:
     return f"pkg:maven/{group}/{artifact}@{version}"
 
 
+PURL_ECOSYSTEMS = {"npm": "npm", "maven": "Maven", "pypi": "PyPI", "golang": "Go", "cargo": "crates.io",
+                   "nuget": "NuGet", "gem": "RubyGems", "composer": "Packagist"}   # purl type -> OSV ecosystem
+
+
 def parse_purl(purl: str) -> tuple[str, str, str] | None:
-    """-> (ecosystem, name, version) for npm and Maven purls, else None."""
-    m = re.match(r"^pkg:(npm|maven)/(.+)@([^?#]+)", purl or "")
-    if not m:
+    """-> (OSV ecosystem, OSV package name, version), or None for a purl type we cannot look up."""
+    m = re.match(r"^pkg:([a-z0-9.+-]+)/(.+)@([^?#]+)", purl or "", re.I)
+    if not m or m.group(1).lower() not in PURL_ECOSYSTEMS:
         return None
-    kind, body, version = m.groups()
-    body = urllib.parse.unquote(body)
-    if kind == "npm":
-        return "npm", body, version
-    group, _, artifact = body.rpartition("/")
-    return ("Maven", f"{group}:{artifact}", version) if group else None
+    kind, body, version = m.group(1).lower(), urllib.parse.unquote(m.group(2)), urllib.parse.unquote(m.group(3))
+    eco = PURL_ECOSYSTEMS[kind]
+    if kind == "maven":
+        group, _, artifact = body.rpartition("/")
+        return (eco, f"{group}:{artifact}", version) if group else None
+    if kind == "pypi":
+        body = re.sub(r"[-_.]+", "-", body).lower()      # PEP 503 name normalisation
+    elif kind == "golang":
+        version = version.removeprefix("v")              # OSV lists Go versions without the leading v
+    return eco, body, version
+
+
+def unsupported_purls(bom: dict) -> dict[str, int]:
+    """Components the scan cannot look up, counted by purl type ("none" = no purl). Never silently dropped."""
+    out: dict[str, int] = {}
+    for c in bom.get("components", []):
+        purl = c.get("purl") or ""
+        if not parse_purl(purl):
+            m = re.match(r"^pkg:([^/]+)/", purl)
+            kind = m.group(1).lower() if m else "none"
+            out[kind] = out.get(kind, 0) + 1
+    return out
 
 
 # ---------- npm lockfile ----------

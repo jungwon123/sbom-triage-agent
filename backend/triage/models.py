@@ -9,7 +9,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-Ecosystem = Literal["npm", "Maven"]
+Ecosystem = Literal["npm", "Maven", "PyPI", "Go", "crates.io", "NuGet", "RubyGems", "Packagist"]
 Bucket = Literal["NOW", "NEXT", "MONITOR"]
 Reachability = Literal["used_symbol", "imported_only", "unused", "unknown"]
 RemediationKind = Literal["upgrade_direct", "override_transitive", "mitigation_only"]

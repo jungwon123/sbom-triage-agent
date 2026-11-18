@@ -86,8 +86,13 @@ def jvm_prefix(maven_name: str) -> str:
     return ".".join(parts[:3]) if len(parts) > 3 else group
 
 
+SEARCHABLE = ("npm", "Maven")   # ecosystems with an import search; others are reported as source missing
+
+
 def find(pkg: str, ecosystem: str, files: list[tuple[str, str]], limit: int = 50) -> list[CodeRef]:
     refs: list[CodeRef] = []
+    if ecosystem not in SEARCHABLE:
+        return refs
     if ecosystem == "npm":
         pat = js_pattern(pkg)
     else:
@@ -108,6 +113,6 @@ def find(pkg: str, ecosystem: str, files: list[tuple[str, str]], limit: int = 50
 
 
 def files_for(repo: pathlib.Path | None, ecosystem: str) -> list[tuple[str, str]]:
-    if repo is None:
+    if repo is None or ecosystem not in SEARCHABLE:
         return []
     return list(source_files(repo, JS_EXT if ecosystem == "npm" else JVM_EXT))

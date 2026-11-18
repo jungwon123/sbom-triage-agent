@@ -10,7 +10,7 @@ export interface CodeRef {
 export interface Component {
   name: string;
   version: string;
-  ecosystem: "npm" | "Maven";
+  ecosystem: "npm" | "Maven" | "PyPI" | "Go" | "crates.io" | "NuGet" | "RubyGems" | "Packagist";
   purl: string;
   scope?: "prod" | "dev";
   direct?: boolean;
@@ -26,7 +26,7 @@ export interface Finding {
   id: string;
   vuln_id: string;
   aliases: string[];
-  ecosystem: "npm" | "Maven";
+  ecosystem: "npm" | "Maven" | "PyPI" | "Go" | "crates.io" | "NuGet" | "RubyGems" | "Packagist";
   package: string;
   version: string;
   scope: "prod" | "dev";

@@ -79,10 +79,15 @@ def scan(target: pathlib.Path, name: str | None = None, context: ServiceContext 
         repo = target
     run.write("sbom.cdx.json", bom)
     components = sbom.components_from_cyclonedx(bom)
-    run.emit({"type": "stage", "stage": "sbom", "status": "done", "source": source, "components": len(components)})
+    skipped = sbom.unsupported_purls(bom)
+    if skipped:
+        log.warning("SBOM components not scanned (unsupported or missing purl): %s", skipped)
+    run.emit({"type": "stage", "stage": "sbom", "status": "done", "source": source, "components": len(components),
+              "unsupported": skipped})
 
     run.emit({"type": "stage", "stage": "scan", "status": "start"})
     findings, coverage = scan_mod.scan(components, repo)
+    coverage["unsupported"] = skipped
     run.write("findings.json", [f.model_dump() for f in findings])
     run.emit({"type": "stage", "stage": "scan", "status": "done", **coverage})
 

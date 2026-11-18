@@ -101,8 +101,8 @@ def scan(components: list[Component], repo: pathlib.Path | None) -> tuple[list[F
         lo = semver.fixed_in(fixes, comp.version)
         if comp.ecosystem not in file_cache:
             file_cache[comp.ecosystem] = usages.files_for(repo, comp.ecosystem)
-        if repo is None:
-            missing.append("source")
+        if repo is None or comp.ecosystem not in usages.SEARCHABLE:
+            missing.append("source")     # no import search for this input: reachability stays unknown
         findings.append(Finding(
             id=f"{canon}@{comp.name}@{comp.version}", vuln_id=canon,
             aliases=sorted({vid, *d.get("aliases", [])} - {canon}), ecosystem=comp.ecosystem,

@@ -72,3 +72,19 @@ def test_semver():
     assert semver.lt("4.0.4", "4.0.6") and semver.lt("2.0.0-rc.1", "2.0.0")
     assert semver.fixed_in(["1.0.5", "2.0.1", "0.9.0"], "1.0.0") == "1.0.5"
     assert semver.fixed_max(["1.0.5", "2.0.1", "0.9.0"], "1.0.0") == "2.0.1"
+
+
+def test_purl_ecosystems():
+    assert sbom.parse_purl("pkg:pypi/Django_Rest.framework@3.14.0") == ("PyPI", "django-rest-framework", "3.14.0")
+    assert sbom.parse_purl("pkg:golang/golang.org/x/net@v0.17.0") == ("Go", "golang.org/x/net", "0.17.0")
+    assert sbom.parse_purl("pkg:cargo/tokio@1.28.0") == ("crates.io", "tokio", "1.28.0")
+    assert sbom.parse_purl("pkg:nuget/Newtonsoft.Json@12.0.1") == ("NuGet", "Newtonsoft.Json", "12.0.1")
+    assert sbom.parse_purl("pkg:npm/%40scope/util@1.0.0?x=1") == ("npm", "@scope/util", "1.0.0")
+    assert sbom.parse_purl("pkg:deb/debian/openssl@1.1.1") is None
+
+
+def test_unsupported_components_are_counted_not_dropped_silently():
+    bom = {"components": [{"purl": "pkg:pypi/flask@2.0.0"}, {"purl": "pkg:deb/debian/openssl@1.1.1"},
+                          {"purl": "pkg:deb/debian/zlib@1.2"}, {"name": "no-purl"}]}
+    assert sbom.unsupported_purls(bom) == {"deb": 2, "none": 1}
+    assert [c.ecosystem for c in sbom.components_from_cyclonedx(bom)] == ["PyPI"]

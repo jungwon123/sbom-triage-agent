@@ -25,7 +25,7 @@ def lt(a: str, b: str) -> bool:
 
 def fixes_for(detail: dict, ecosystem: str, name: str) -> list[str]:
     return [e["fixed"] for a in detail.get("affected", [])
-            if a.get("package", {}).get("name") == name and a.get("package", {}).get("ecosystem") == ecosystem
+            if str(a.get("package", {}).get("name", "")).lower() == name.lower() and a.get("package", {}).get("ecosystem") == ecosystem
             for r in a.get("ranges", []) if r.get("type") in ("SEMVER", "ECOSYSTEM")
             for e in r.get("events", []) if "fixed" in e]
 
