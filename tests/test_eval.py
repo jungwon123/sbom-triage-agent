@@ -16,3 +16,11 @@ def test_sheet_without_labels_is_empty(tmp_path):
     p = tmp_path / "sheet.csv"
     p.write_text("item,repo,package,version,advisory,label(NOW/NEXT/MONITOR)\nG01,r,lib,1.0.0,CVE-1,\nG02,r,lib,1.0.0,CVE-2,now\n", encoding="utf-8-sig")
     assert ev.load_golden(p) == {"CVE-2@lib@1.0.0": "NOW"}
+
+
+def test_labels_are_scoped_to_their_repo(tmp_path):
+    p = tmp_path / "sheet.csv"
+    p.write_text("item,repo,package,version,advisory,label(NOW/NEXT/MONITOR)\n"
+                 "G01,realworld,lib,1.0.0,CVE-1,NOW\nG02,mongoose,lib,1.0.0,CVE-1,MONITOR\n", encoding="utf-8-sig")
+    assert ev.load_golden(p, "realworld") == {"CVE-1@lib@1.0.0": "NOW"}
+    assert ev.load_golden(p, "node-express-mongoose") == {"CVE-1@lib@1.0.0": "MONITOR"}

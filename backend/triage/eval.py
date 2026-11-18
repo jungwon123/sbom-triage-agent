@@ -13,19 +13,28 @@ LABEL_COL = "label(NOW/NEXT/MONITOR)"
 BUCKETS = {"NOW", "NEXT", "MONITOR"}
 
 
-def load_golden(path: pathlib.Path) -> dict[str, str]:
-    """finding id -> label. Accepts golden.yaml or the labeling sheet CSV. Unlabeled rows are skipped."""
+def _same_repo(row: dict, repo: str | None) -> bool:
+    """Labels belong to one repository: the same package@version can deserve another bucket elsewhere."""
+    want = str(row.get("repo") or "").strip().lower()
+    return not repo or not want or want in repo.lower()
+
+
+def load_golden(path: pathlib.Path, repo: str | None = None) -> dict[str, str]:
+    """finding id -> label. Accepts golden.yaml or the labeling sheet CSV. Unlabeled rows are skipped.
+
+    `repo` is the run name; rows with a `repo` column are kept only when it matches.
+    """
     out: dict[str, str] = {}
     if path.suffix in (".yaml", ".yml"):
         for row in yaml.safe_load(path.read_text()) or []:
             fid = row.get("finding_id") or f"{row['advisory']}@{row['package']}@{row['version']}"
-            if str(row.get("label", "")).upper() in BUCKETS:
+            if str(row.get("label", "")).upper() in BUCKETS and _same_repo(row, repo):
                 out[fid] = row["label"].upper()
         return out
     with path.open(encoding="utf-8-sig") as fh:
         for row in csv.DictReader(fh):
             label = (row.get(LABEL_COL) or "").strip().upper()
-            if label in BUCKETS:
+            if label in BUCKETS and _same_repo(row, repo):
                 out[f"{row['advisory']}@{row['package']}@{row['version']}"] = label
     return out
 
