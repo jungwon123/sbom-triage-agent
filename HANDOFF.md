@@ -90,6 +90,7 @@
 | D35 | LLM 2단계 분리(선택): `LLM_CODE_PROVIDER=local`이면 사내 모델만 소스코드를 읽어 도달성을 판정하고, 외부 모델(`LLM_PROVIDER`)은 코드와 파일 이름 없이 사실 값만 받아 등급 제안, 근거, 조치안을 쓴다. 도달성은 항상 사내 모델 값을 쓴다 | 채택 (구현, 실호출 미검증) | 소스코드를 외부로 보내지 않기 위함. 규칙과 계약 검사가 있어 약한 로컬 모델도 안전하게 쓸 수 있음. 정확도는 `triage compare`로 측정 예정 |
 | D36 | Slack 알림(`triage notify`): 등급 요약, NOW 항목, 검증 판정, 대시보드 링크를 웹훅으로 보낸다. 코드, 파일 이름, LLM이 쓴 문장은 넣지 않는다. 리플레이 모드에서는 보내지 않는다. 승인 버튼은 넣지 않고 대시보드로 연결한다 | 채택 (구현, 실제 전송 미검증) | 사내 메신저의 Slack 호환 웹훅으로도 바꿀 수 있음. 승인까지 Slack에서 받으려면 외부에서 접근 가능한 수신 주소가 필요해 사내망 설계와 맞지 않음 |
 | D37 | 하향 안전장치 확대: EPSS 백분위 0.9 이상이고 규칙 버킷이 NOW이면 import가 없어도 AI가 내리지 못한다 | 채택 | 라벨 20건 측정에서 AI가 EPSS 상위 10% 안의 NOW 2건(minimist, systeminformation)을 "import 없음"만으로 NEXT로 내렸음. 같은 20건을 보고 정한 기준이라 다른 자료에서 다시 확인해야 함 |
+| D38 | 점수 조정: EPSS는 백분위 0.8 초과분만 반영하고, 소스가 없어 판독할 수 없는 항목의 노출 가중치를 0.6에서 0.4로 낮춘다 | 채택 | 블라인드 SBOM 2개(47건)에서 규칙이 14건만 맞았고 틀린 33건이 모두 과대평가였음. 286건 중 MONITOR가 3건뿐이라 목록을 줄이지 못했음. 블라인드 47건과 기존 20건을 보고 정한 값이므로 새 블라인드 세트(`fixtures/blind2/`)로 확인한다. 가드 임계값 0.9(D37)는 그대로 |
 | D21 | 서비스 맥락(`service_criticality`, `internet_facing`)을 입력받되 근거·표시 전용 | 채택 (T1 반영) | 서비스 관점 영향도 보강, 점수 결정성과 D13 유지 |
 
 ---
@@ -338,11 +339,12 @@ for t in final_triage where final_bucket == NOW:
 ```
 risk (0~100) = severity×25 + exploit×25 + exposure×50
   severity = CVSS/10
-  exploit  = 1.0 if KEV else EPSS 백분위 (없으면 상수, 근거에 명시)
+  exploit  = 1.0 if KEV else max(0, (EPSS 백분위 - 0.8) / 0.2) (없으면 상수, 근거에 명시. D38)
   exposure = scope_w × path_w × reach_w
       scope_w : prod 1.0 / dev 0.2
       path_w  : direct 1.0 / transitive 0.7
       reach_w : used_symbol 1.0 / imported_only 0.6 / unused 0.2 / unknown 0.6
+                소스가 없어서 unknown이면 0.4 (D38)
 effort: low(patch·minor) / medium(major 또는 overrides) / high(수정 버전 없음)
 bucket: NOW risk≥60 / NEXT 30≤risk<60 또는 (risk≥60 & effort=high) / MONITOR risk<30
 ```
