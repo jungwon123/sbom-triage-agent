@@ -1,0 +1,1003 @@
+{
+  "spdxVersion": "SPDX-2.3",
+  "dataLicense": "CC0-1.0",
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "name": "docflow-backoffice-1.14.0",
+  "documentNamespace": "https://example.invalid/spdx/docflow-backoffice-1.14.0-9d2c4e1a-3b7f-4f0e-8a55-6c1d2e9f7b30",
+  "creationInfo": {
+    "created": "2026-11-18T09:00:00Z",
+    "creators": [
+      "Tool: blind-fixture-author-1.0"
+    ]
+  },
+  "documentDescribes": [
+    "SPDXRef-Package-docflow-backoffice"
+  ],
+  "packages": [
+    {
+      "name": "docflow-backoffice",
+      "SPDXID": "SPDXRef-Package-docflow-backoffice",
+      "versionInfo": "1.14.0",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "APPLICATION",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "supplier": "Organization: Hanbit Retail (fictional)",
+      "comment": "Internal back-office document and report service (fictional). Reachable only from the corporate network; not internet-facing."
+    },
+    {
+      "name": "Django",
+      "SPDXID": "SPDXRef-Package-pypi-django-4.2.10",
+      "versionInfo": "4.2.10",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/django@4.2.10"
+        }
+      ]
+    },
+    {
+      "name": "djangorestframework",
+      "SPDXID": "SPDXRef-Package-pypi-djangorestframework-3.14.0",
+      "versionInfo": "3.14.0",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/djangorestframework@3.14.0"
+        }
+      ]
+    },
+    {
+      "name": "celery",
+      "SPDXID": "SPDXRef-Package-pypi-celery-5.2.1",
+      "versionInfo": "5.2.1",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/celery@5.2.1"
+        }
+      ]
+    },
+    {
+      "name": "gunicorn",
+      "SPDXID": "SPDXRef-Package-pypi-gunicorn-20.1.0",
+      "versionInfo": "20.1.0",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/gunicorn@20.1.0"
+        }
+      ]
+    },
+    {
+      "name": "Pillow",
+      "SPDXID": "SPDXRef-Package-pypi-pillow-9.5.0",
+      "versionInfo": "9.5.0",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/pillow@9.5.0"
+        }
+      ]
+    },
+    {
+      "name": "PyYAML",
+      "SPDXID": "SPDXRef-Package-pypi-pyyaml-5.3.1",
+      "versionInfo": "5.3.1",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/pyyaml@5.3.1"
+        }
+      ]
+    },
+    {
+      "name": "reportlab",
+      "SPDXID": "SPDXRef-Package-pypi-reportlab-3.6.12",
+      "versionInfo": "3.6.12",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/reportlab@3.6.12"
+        }
+      ]
+    },
+    {
+      "name": "requests",
+      "SPDXID": "SPDXRef-Package-pypi-requests-2.25.1",
+      "versionInfo": "2.25.1",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/requests@2.25.1"
+        }
+      ]
+    },
+    {
+      "name": "python-jose",
+      "SPDXID": "SPDXRef-Package-pypi-python-jose-3.3.0",
+      "versionInfo": "3.3.0",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/python-jose@3.3.0"
+        }
+      ]
+    },
+    {
+      "name": "lxml",
+      "SPDXID": "SPDXRef-Package-pypi-lxml-4.6.2",
+      "versionInfo": "4.6.2",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/lxml@4.6.2"
+        }
+      ]
+    },
+    {
+      "name": "Jinja2",
+      "SPDXID": "SPDXRef-Package-pypi-jinja2-3.1.2",
+      "versionInfo": "3.1.2",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/jinja2@3.1.2"
+        }
+      ]
+    },
+    {
+      "name": "paramiko",
+      "SPDXID": "SPDXRef-Package-pypi-paramiko-2.11.0",
+      "versionInfo": "2.11.0",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/paramiko@2.11.0"
+        }
+      ]
+    },
+    {
+      "name": "redis",
+      "SPDXID": "SPDXRef-Package-pypi-redis-4.5.3",
+      "versionInfo": "4.5.3",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/redis@4.5.3"
+        }
+      ]
+    },
+    {
+      "name": "numpy",
+      "SPDXID": "SPDXRef-Package-pypi-numpy-1.21.0",
+      "versionInfo": "1.21.0",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/numpy@1.21.0"
+        }
+      ]
+    },
+    {
+      "name": "psycopg2-binary",
+      "SPDXID": "SPDXRef-Package-pypi-psycopg2-binary-2.9.9",
+      "versionInfo": "2.9.9",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/psycopg2-binary@2.9.9"
+        }
+      ]
+    },
+    {
+      "name": "openpyxl",
+      "SPDXID": "SPDXRef-Package-pypi-openpyxl-3.0.9",
+      "versionInfo": "3.0.9",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/openpyxl@3.0.9"
+        }
+      ]
+    },
+    {
+      "name": "sentry-sdk",
+      "SPDXID": "SPDXRef-Package-pypi-sentry-sdk-1.14.0",
+      "versionInfo": "1.14.0",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/sentry-sdk@1.14.0"
+        }
+      ]
+    },
+    {
+      "name": "sqlparse",
+      "SPDXID": "SPDXRef-Package-pypi-sqlparse-0.4.3",
+      "versionInfo": "0.4.3",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/sqlparse@0.4.3"
+        }
+      ]
+    },
+    {
+      "name": "asgiref",
+      "SPDXID": "SPDXRef-Package-pypi-asgiref-3.7.2",
+      "versionInfo": "3.7.2",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/asgiref@3.7.2"
+        }
+      ]
+    },
+    {
+      "name": "urllib3",
+      "SPDXID": "SPDXRef-Package-pypi-urllib3-1.26.5",
+      "versionInfo": "1.26.5",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/urllib3@1.26.5"
+        }
+      ]
+    },
+    {
+      "name": "certifi",
+      "SPDXID": "SPDXRef-Package-pypi-certifi-2022.12.7",
+      "versionInfo": "2022.12.7",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/certifi@2022.12.7"
+        }
+      ]
+    },
+    {
+      "name": "idna",
+      "SPDXID": "SPDXRef-Package-pypi-idna-2.10",
+      "versionInfo": "2.10",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/idna@2.10"
+        }
+      ]
+    },
+    {
+      "name": "chardet",
+      "SPDXID": "SPDXRef-Package-pypi-chardet-4.0.0",
+      "versionInfo": "4.0.0",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/chardet@4.0.0"
+        }
+      ]
+    },
+    {
+      "name": "ecdsa",
+      "SPDXID": "SPDXRef-Package-pypi-ecdsa-0.18.0",
+      "versionInfo": "0.18.0",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/ecdsa@0.18.0"
+        }
+      ]
+    },
+    {
+      "name": "rsa",
+      "SPDXID": "SPDXRef-Package-pypi-rsa-4.9",
+      "versionInfo": "4.9",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/rsa@4.9"
+        }
+      ]
+    },
+    {
+      "name": "pyasn1",
+      "SPDXID": "SPDXRef-Package-pypi-pyasn1-0.4.8",
+      "versionInfo": "0.4.8",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/pyasn1@0.4.8"
+        }
+      ]
+    },
+    {
+      "name": "cryptography",
+      "SPDXID": "SPDXRef-Package-pypi-cryptography-39.0.0",
+      "versionInfo": "39.0.0",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/cryptography@39.0.0"
+        }
+      ]
+    },
+    {
+      "name": "bcrypt",
+      "SPDXID": "SPDXRef-Package-pypi-bcrypt-4.0.1",
+      "versionInfo": "4.0.1",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/bcrypt@4.0.1"
+        }
+      ]
+    },
+    {
+      "name": "PyNaCl",
+      "SPDXID": "SPDXRef-Package-pypi-pynacl-1.5.0",
+      "versionInfo": "1.5.0",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/pynacl@1.5.0"
+        }
+      ]
+    },
+    {
+      "name": "kombu",
+      "SPDXID": "SPDXRef-Package-pypi-kombu-5.2.4",
+      "versionInfo": "5.2.4",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/kombu@5.2.4"
+        }
+      ]
+    },
+    {
+      "name": "click",
+      "SPDXID": "SPDXRef-Package-pypi-click-8.1.7",
+      "versionInfo": "8.1.7",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/click@8.1.7"
+        }
+      ]
+    },
+    {
+      "name": "pytz",
+      "SPDXID": "SPDXRef-Package-pypi-pytz-2024.1",
+      "versionInfo": "2024.1",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/pytz@2024.1"
+        }
+      ]
+    },
+    {
+      "name": "six",
+      "SPDXID": "SPDXRef-Package-pypi-six-1.16.0",
+      "versionInfo": "1.16.0",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/six@1.16.0"
+        }
+      ]
+    },
+    {
+      "name": "setuptools",
+      "SPDXID": "SPDXRef-Package-pypi-setuptools-65.5.0",
+      "versionInfo": "65.5.0",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/setuptools@65.5.0"
+        }
+      ]
+    },
+    {
+      "name": "wheel",
+      "SPDXID": "SPDXRef-Package-pypi-wheel-0.37.1",
+      "versionInfo": "0.37.1",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/wheel@0.37.1"
+        }
+      ]
+    },
+    {
+      "name": "pytest",
+      "SPDXID": "SPDXRef-Package-pypi-pytest-7.1.3",
+      "versionInfo": "7.1.3",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/pytest@7.1.3"
+        }
+      ]
+    },
+    {
+      "name": "pluggy",
+      "SPDXID": "SPDXRef-Package-pypi-pluggy-1.4.0",
+      "versionInfo": "1.4.0",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/pluggy@1.4.0"
+        }
+      ]
+    },
+    {
+      "name": "iniconfig",
+      "SPDXID": "SPDXRef-Package-pypi-iniconfig-2.0.0",
+      "versionInfo": "2.0.0",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/iniconfig@2.0.0"
+        }
+      ]
+    },
+    {
+      "name": "packaging",
+      "SPDXID": "SPDXRef-Package-pypi-packaging-24.0",
+      "versionInfo": "24.0",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/packaging@24.0"
+        }
+      ]
+    },
+    {
+      "name": "black",
+      "SPDXID": "SPDXRef-Package-pypi-black-23.12.1",
+      "versionInfo": "23.12.1",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "primaryPackagePurpose": "LIBRARY",
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/black@23.12.1"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-DOCUMENT",
+      "relationshipType": "DESCRIBES",
+      "relatedSpdxElement": "SPDXRef-Package-docflow-backoffice"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-docflow-backoffice",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-django-4.2.10"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-docflow-backoffice",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-djangorestframework-3.14.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-docflow-backoffice",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-celery-5.2.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-docflow-backoffice",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-gunicorn-20.1.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-docflow-backoffice",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-pillow-9.5.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-docflow-backoffice",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-pyyaml-5.3.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-docflow-backoffice",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-reportlab-3.6.12"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-docflow-backoffice",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-requests-2.25.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-docflow-backoffice",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-python-jose-3.3.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-docflow-backoffice",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-lxml-4.6.2"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-docflow-backoffice",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-jinja2-3.1.2"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-docflow-backoffice",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-paramiko-2.11.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-docflow-backoffice",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-redis-4.5.3"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-docflow-backoffice",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-numpy-1.21.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-docflow-backoffice",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-psycopg2-binary-2.9.9"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-docflow-backoffice",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-openpyxl-3.0.9"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-docflow-backoffice",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-sentry-sdk-1.14.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-pypi-setuptools-65.5.0",
+      "relationshipType": "BUILD_DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-Package-docflow-backoffice"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-pypi-wheel-0.37.1",
+      "relationshipType": "BUILD_DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-Package-docflow-backoffice"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-pypi-pytest-7.1.3",
+      "relationshipType": "TEST_DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-Package-docflow-backoffice"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-pypi-black-23.12.1",
+      "relationshipType": "DEV_DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-Package-docflow-backoffice"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-pypi-django-4.2.10",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-sqlparse-0.4.3"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-pypi-django-4.2.10",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-asgiref-3.7.2"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-pypi-djangorestframework-3.14.0",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-django-4.2.10"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-pypi-djangorestframework-3.14.0",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-pytz-2024.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-pypi-celery-5.2.1",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-kombu-5.2.4"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-pypi-celery-5.2.1",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-click-8.1.7"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-pypi-celery-5.2.1",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-pytz-2024.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-pypi-reportlab-3.6.12",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-pillow-9.5.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-pypi-requests-2.25.1",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-urllib3-1.26.5"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-pypi-requests-2.25.1",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-certifi-2022.12.7"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-pypi-requests-2.25.1",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-idna-2.10"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-pypi-requests-2.25.1",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-chardet-4.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-pypi-python-jose-3.3.0",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-ecdsa-0.18.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-pypi-python-jose-3.3.0",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-rsa-4.9"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-pypi-python-jose-3.3.0",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-pyasn1-0.4.8"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-pypi-paramiko-2.11.0",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-cryptography-39.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-pypi-paramiko-2.11.0",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-bcrypt-4.0.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-pypi-paramiko-2.11.0",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-pynacl-1.5.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-pypi-paramiko-2.11.0",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-six-1.16.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-pypi-sentry-sdk-1.14.0",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-urllib3-1.26.5"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-pypi-sentry-sdk-1.14.0",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-certifi-2022.12.7"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-pypi-ecdsa-0.18.0",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-six-1.16.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-pypi-rsa-4.9",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-pyasn1-0.4.8"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-pypi-pytest-7.1.3",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-pluggy-1.4.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-pypi-pytest-7.1.3",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-iniconfig-2.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-pypi-pytest-7.1.3",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-packaging-24.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-pypi-black-23.12.1",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-click-8.1.7"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-pypi-black-23.12.1",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pypi-packaging-24.0"
+    }
+  ]
+}

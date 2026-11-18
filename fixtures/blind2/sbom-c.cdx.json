@@ -1,0 +1,605 @@
+{
+  "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:c1a7e3d2-4f58-4b6a-9e0d-7b2a1c5f8e63",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-11-18T12:00:00Z",
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "name": "blind-fixture-author",
+          "version": "1.0"
+        }
+      ]
+    },
+    "component": {
+      "type": "application",
+      "bom-ref": "pkg:npm/%40hanbit/settlement-batch-console@4.2.0",
+      "group": "@hanbit",
+      "name": "settlement-batch-console",
+      "version": "4.2.0",
+      "purl": "pkg:npm/%40hanbit/settlement-batch-console@4.2.0",
+      "description": "Internal settlement batch jobs and back-office console (fictional). Corporate network only; not internet-facing.",
+      "properties": [
+        {
+          "name": "service:internet_facing",
+          "value": "false"
+        },
+        {
+          "name": "service:criticality",
+          "value": "medium"
+        }
+      ]
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/koa@2.13.1",
+      "name": "koa",
+      "version": "2.13.1",
+      "purl": "pkg:npm/koa@2.13.1",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/systeminformation@5.3.0",
+      "name": "systeminformation",
+      "version": "5.3.0",
+      "purl": "pkg:npm/systeminformation@5.3.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/sharp@0.32.0",
+      "name": "sharp",
+      "version": "0.32.0",
+      "purl": "pkg:npm/sharp@0.32.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/jsonpath-plus@7.2.0",
+      "name": "jsonpath-plus",
+      "version": "7.2.0",
+      "purl": "pkg:npm/jsonpath-plus@7.2.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/xlsx@0.18.5",
+      "name": "xlsx",
+      "version": "0.18.5",
+      "purl": "pkg:npm/xlsx@0.18.5",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/nodemailer@6.4.10",
+      "name": "nodemailer",
+      "version": "6.4.10",
+      "purl": "pkg:npm/nodemailer@6.4.10",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/node-fetch@2.6.1",
+      "name": "node-fetch",
+      "version": "2.6.1",
+      "purl": "pkg:npm/node-fetch@2.6.1",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/got@11.8.2",
+      "name": "got",
+      "version": "11.8.2",
+      "purl": "pkg:npm/got@11.8.2",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/underscore@1.12.0",
+      "name": "underscore",
+      "version": "1.12.0",
+      "purl": "pkg:npm/underscore@1.12.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/sequelize@6.6.2",
+      "name": "sequelize",
+      "version": "6.6.2",
+      "purl": "pkg:npm/sequelize@6.6.2",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/ssh2@0.8.9",
+      "name": "ssh2",
+      "version": "0.8.9",
+      "purl": "pkg:npm/ssh2@0.8.9",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/simple-git@3.14.1",
+      "name": "simple-git",
+      "version": "3.14.1",
+      "purl": "pkg:npm/simple-git@3.14.1",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/js-yaml@3.13.0",
+      "name": "js-yaml",
+      "version": "3.13.0",
+      "purl": "pkg:npm/js-yaml@3.13.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/crypto-js@4.1.1",
+      "name": "crypto-js",
+      "version": "4.1.1",
+      "purl": "pkg:npm/crypto-js@4.1.1",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/jszip@3.7.1",
+      "name": "jszip",
+      "version": "3.7.1",
+      "purl": "pkg:npm/jszip@3.7.1",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/shelljs@0.8.4",
+      "name": "shelljs",
+      "version": "0.8.4",
+      "purl": "pkg:npm/shelljs@0.8.4",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/pg@8.7.1",
+      "name": "pg",
+      "version": "8.7.1",
+      "purl": "pkg:npm/pg@8.7.1",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/ioredis@5.3.2",
+      "name": "ioredis",
+      "version": "5.3.2",
+      "purl": "pkg:npm/ioredis@5.3.2",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/commander@11.1.0",
+      "name": "commander",
+      "version": "11.1.0",
+      "purl": "pkg:npm/commander@11.1.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/winston@3.11.0",
+      "name": "winston",
+      "version": "3.11.0",
+      "purl": "pkg:npm/winston@3.11.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/node-cron@3.0.3",
+      "name": "node-cron",
+      "version": "3.0.3",
+      "purl": "pkg:npm/node-cron@3.0.3",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/date-fns@3.6.0",
+      "name": "date-fns",
+      "version": "3.6.0",
+      "purl": "pkg:npm/date-fns@3.6.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/bull@4.12.2",
+      "name": "bull",
+      "version": "4.12.2",
+      "purl": "pkg:npm/bull@4.12.2",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/validator@13.6.0",
+      "name": "validator",
+      "version": "13.6.0",
+      "purl": "pkg:npm/validator@13.6.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/dottie@2.0.2",
+      "name": "dottie",
+      "version": "2.0.2",
+      "purl": "pkg:npm/dottie@2.0.2",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/inflection@1.13.1",
+      "name": "inflection",
+      "version": "1.13.1",
+      "purl": "pkg:npm/inflection@1.13.1",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/cacheable-request@7.0.2",
+      "name": "cacheable-request",
+      "version": "7.0.2",
+      "purl": "pkg:npm/cacheable-request@7.0.2",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/http-cache-semantics@4.1.0",
+      "name": "http-cache-semantics",
+      "version": "4.1.0",
+      "purl": "pkg:npm/http-cache-semantics@4.1.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/cron-parser@4.9.0",
+      "name": "cron-parser",
+      "version": "4.9.0",
+      "purl": "pkg:npm/cron-parser@4.9.0",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/msgpackr@1.10.1",
+      "name": "msgpackr",
+      "version": "1.10.1",
+      "purl": "pkg:npm/msgpackr@1.10.1",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/debug@4.3.4",
+      "name": "debug",
+      "version": "4.3.4",
+      "purl": "pkg:npm/debug@4.3.4",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/vite@5.0.10",
+      "name": "vite",
+      "version": "5.0.10",
+      "purl": "pkg:npm/vite@5.0.10",
+      "scope": "optional",
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/vitest@1.2.0",
+      "name": "vitest",
+      "version": "1.2.0",
+      "purl": "pkg:npm/vitest@1.2.0",
+      "scope": "optional",
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/esbuild@0.19.11",
+      "name": "esbuild",
+      "version": "0.19.11",
+      "purl": "pkg:npm/esbuild@0.19.11",
+      "scope": "optional",
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40babel/core@7.22.5",
+      "name": "core",
+      "version": "7.22.5",
+      "purl": "pkg:npm/%40babel/core@7.22.5",
+      "scope": "optional",
+      "group": "@babel",
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40babel/traverse@7.22.5",
+      "name": "traverse",
+      "version": "7.22.5",
+      "purl": "pkg:npm/%40babel/traverse@7.22.5",
+      "scope": "optional",
+      "group": "@babel",
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/cross-spawn@7.0.3",
+      "name": "cross-spawn",
+      "version": "7.0.3",
+      "purl": "pkg:npm/cross-spawn@7.0.3",
+      "scope": "optional",
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/ts-node@10.9.2",
+      "name": "ts-node",
+      "version": "10.9.2",
+      "purl": "pkg:npm/ts-node@10.9.2",
+      "scope": "optional",
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "pkg:npm/%40hanbit/settlement-batch-console@4.2.0",
+      "dependsOn": [
+        "pkg:npm/koa@2.13.1",
+        "pkg:npm/systeminformation@5.3.0",
+        "pkg:npm/sharp@0.32.0",
+        "pkg:npm/jsonpath-plus@7.2.0",
+        "pkg:npm/xlsx@0.18.5",
+        "pkg:npm/nodemailer@6.4.10",
+        "pkg:npm/node-fetch@2.6.1",
+        "pkg:npm/got@11.8.2",
+        "pkg:npm/underscore@1.12.0",
+        "pkg:npm/sequelize@6.6.2",
+        "pkg:npm/ssh2@0.8.9",
+        "pkg:npm/simple-git@3.14.1",
+        "pkg:npm/js-yaml@3.13.0",
+        "pkg:npm/crypto-js@4.1.1",
+        "pkg:npm/jszip@3.7.1",
+        "pkg:npm/shelljs@0.8.4",
+        "pkg:npm/pg@8.7.1",
+        "pkg:npm/ioredis@5.3.2",
+        "pkg:npm/commander@11.1.0",
+        "pkg:npm/winston@3.11.0",
+        "pkg:npm/node-cron@3.0.3",
+        "pkg:npm/date-fns@3.6.0",
+        "pkg:npm/bull@4.12.2",
+        "pkg:npm/vite@5.0.10",
+        "pkg:npm/vitest@1.2.0",
+        "pkg:npm/%40babel/core@7.22.5",
+        "pkg:npm/ts-node@10.9.2"
+      ]
+    },
+    {
+      "ref": "pkg:npm/koa@2.13.1",
+      "dependsOn": [
+        "pkg:npm/debug@4.3.4"
+      ]
+    },
+    {
+      "ref": "pkg:npm/systeminformation@5.3.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/sharp@0.32.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/jsonpath-plus@7.2.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/xlsx@0.18.5",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/nodemailer@6.4.10",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/node-fetch@2.6.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/got@11.8.2",
+      "dependsOn": [
+        "pkg:npm/cacheable-request@7.0.2"
+      ]
+    },
+    {
+      "ref": "pkg:npm/underscore@1.12.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/sequelize@6.6.2",
+      "dependsOn": [
+        "pkg:npm/validator@13.6.0",
+        "pkg:npm/dottie@2.0.2",
+        "pkg:npm/inflection@1.13.1",
+        "pkg:npm/debug@4.3.4"
+      ]
+    },
+    {
+      "ref": "pkg:npm/ssh2@0.8.9",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/simple-git@3.14.1",
+      "dependsOn": [
+        "pkg:npm/debug@4.3.4"
+      ]
+    },
+    {
+      "ref": "pkg:npm/js-yaml@3.13.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/crypto-js@4.1.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/jszip@3.7.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/shelljs@0.8.4",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/pg@8.7.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/ioredis@5.3.2",
+      "dependsOn": [
+        "pkg:npm/debug@4.3.4"
+      ]
+    },
+    {
+      "ref": "pkg:npm/commander@11.1.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/winston@3.11.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/node-cron@3.0.3",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/date-fns@3.6.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/bull@4.12.2",
+      "dependsOn": [
+        "pkg:npm/cron-parser@4.9.0",
+        "pkg:npm/msgpackr@1.10.1",
+        "pkg:npm/ioredis@5.3.2",
+        "pkg:npm/debug@4.3.4"
+      ]
+    },
+    {
+      "ref": "pkg:npm/validator@13.6.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/dottie@2.0.2",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/inflection@1.13.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/cacheable-request@7.0.2",
+      "dependsOn": [
+        "pkg:npm/http-cache-semantics@4.1.0"
+      ]
+    },
+    {
+      "ref": "pkg:npm/http-cache-semantics@4.1.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/cron-parser@4.9.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/msgpackr@1.10.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/debug@4.3.4",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/vite@5.0.10",
+      "dependsOn": [
+        "pkg:npm/esbuild@0.19.11"
+      ]
+    },
+    {
+      "ref": "pkg:npm/vitest@1.2.0",
+      "dependsOn": [
+        "pkg:npm/vite@5.0.10",
+        "pkg:npm/cross-spawn@7.0.3",
+        "pkg:npm/debug@4.3.4"
+      ]
+    },
+    {
+      "ref": "pkg:npm/esbuild@0.19.11",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/%40babel/core@7.22.5",
+      "dependsOn": [
+        "pkg:npm/%40babel/traverse@7.22.5",
+        "pkg:npm/debug@4.3.4"
+      ]
+    },
+    {
+      "ref": "pkg:npm/%40babel/traverse@7.22.5",
+      "dependsOn": [
+        "pkg:npm/debug@4.3.4"
+      ]
+    },
+    {
+      "ref": "pkg:npm/cross-spawn@7.0.3",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/ts-node@10.9.2",
+      "dependsOn": []
+    }
+  ]
+}

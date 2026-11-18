@@ -1,0 +1,48 @@
+sbom,package,version,cve,ghsa,label,reason
+sbom-a,ejs,3.1.6,CVE-2022-29078,GHSA-phwq-j96m-2c2q,NOW,인터넷에 노출된 서비스의 직접 런타임 템플릿 엔진에서 원격 코드 실행이 가능한 치명적 취약점이고 공개 익스플로잇과 높은 EPSS(약 33%)가 있어 이번 주에 3.1.7 이상으로 올려야 한다.
+sbom-a,jquery,3.4.1,CVE-2020-11023,GHSA-jpcq-cgw6-v4j6,NOW,CISA KEV에 등재되어 실제 악용이 확인됐고 EPSS도 약 85%이며 관리 화면에서 브라우저로 내려가는 직접 의존성이라 즉시 3.5.0 이상으로 올린다.
+sbom-a,jquery,3.4.1,CVE-2020-11022,GHSA-gxr4-xjj5-5px2,NOW,심각도는 중간이지만 EPSS가 약 99%로 악용 시도가 매우 활발하고 KEV 항목과 같은 3.5.0 업그레이드로 함께 해결되므로 바로 조치한다.
+sbom-a,qs,6.7.0,CVE-2022-24999,GHSA-hrpp-h998-j3pp,NOW,express가 모든 요청의 쿼리 문자열을 이 전이 의존성으로 파싱하므로 인증 없이 요청 한 번으로 프로세스를 멈출 수 있고 EPSS도 약 16%라 인터넷 노출 서비스에서는 바로 고쳐야 한다.
+sbom-a,mysql2,3.9.3,CVE-2024-21508,GHSA-fpw7-j2hg-69v5,NEXT,직접 런타임 DB 드라이버의 치명적 원격 코드 실행이지만 공격자가 연결 옵션 값을 조작할 수 있어야 하고 EPSS가 약 3%로 낮아 다음 스프린트의 패치 버전 업그레이드로 처리한다.
+sbom-a,lodash,4.17.20,CVE-2021-23337,GHSA-35jh-r3h4-6jhm,NEXT,EPSS는 약 20%로 높지만 높은 권한과 template 함수에 신뢰할 수 없는 옵션을 넘기는 사용 방식이 전제라 긴급은 아니며 패치 버전 업그레이드를 다음 스프린트에 넣는다.
+sbom-a,jsonwebtoken,8.5.1,CVE-2022-23540,GHSA-qwph-4952-7xr6,NEXT,인증을 담당하는 직접 런타임 의존성의 서명 검증 우회지만 알고리즘 미지정과 빈 키라는 조건이 겹쳐야 하고 악용 근거가 없으며 메이저 업그레이드가 필요해 계획을 잡아 처리한다.
+sbom-a,body-parser,1.19.0,CVE-2024-45590,GHSA-qwcr-r2fm-qrc7,NEXT,인증 없이 서비스 거부를 일으킬 수 있는 높은 심각도 취약점이 인터넷 노출 경로에 있지만 악용 근거가 없고 EPSS가 1% 미만이라 다음 스프린트에 express와 함께 올린다.
+sbom-a,ws,7.4.5,CVE-2024-37890,GHSA-3h5v-q93c-6h6q,NEXT,헤더 수가 많은 요청으로 웹소켓 서버를 죽일 수 있는 직접 런타임 서비스 거부 취약점이지만 악용 근거가 없고 EPSS가 약 1%라 다음 스프린트 대상이다.
+sbom-a,dicer,0.2.5,CVE-2022-24434,GHSA-wm7h-9275-46v2,NEXT,수정 버전이 없는 전이 의존성으로 조작된 업로드 폼 하나로 서버가 죽을 수 있어 multer를 dicer를 쓰지 않는 버전으로 교체하는 작업을 다음 스프린트에 계획해야 한다.
+sbom-a,request,2.88.2,CVE-2023-28155,GHSA-p8p7-x288-28g6,NEXT,유지보수가 끝나 수정 버전이 없는 직접 런타임 패키지의 SSRF 방어 우회로 심각도는 중간이고 악용 근거는 없으나 패키지 교체가 유일한 해결책이라 일정을 잡아야 한다.
+sbom-a,moment,2.29.1,CVE-2022-24785,GHSA-8hfj-j24r-96c4,NEXT,EPSS는 약 14%로 높은 편이지만 사용자 입력을 로케일 이름으로 그대로 넘길 때만 경로 탐색이 성립하므로 긴급은 아니고 패치 버전 업그레이드를 다음 스프린트에 한다.
+sbom-a,passport,0.4.1,CVE-2022-25896,GHSA-v923-w3x8-wh69,NEXT,로그인 시 세션이 재발급되지 않는 세션 고정 문제로 인터넷 노출 서비스의 인증 흐름에 걸리지만 공격 조건이 까다롭고 EPSS가 약 1%라 다음 스프린트에 올린다.
+sbom-a,minimist,1.2.5,CVE-2021-44906,GHSA-xvch-5gv4-984h,MONITOR,점수는 치명적이지만 multer와 mkdirp를 거친 전이 의존성이고 명령줄 인자 파싱에만 쓰여 외부 입력이 닿지 않으므로 지켜보다가 정기 업데이트 때 올린다.
+sbom-a,loader-utils,2.0.2,CVE-2022-37601,GHSA-76p3-8jx3-jpfq,MONITOR,점수는 치명적이지만 빌드 때만 쓰는 개발 전이 의존성이라 운영 서비스에는 실리지 않으므로 관찰 대상으로 둔다.
+sbom-a,webpack-dev-middleware,5.3.3,CVE-2024-29180,GHSA-wr3j-pwj9-hqq6,MONITOR,심각도는 높지만 개발 서버에서만 동작하는 개발 의존성이라 운영 환경에는 배포되지 않으므로 관찰 대상이다.
+sbom-a,json5,2.2.1,CVE-2022-46175,GHSA-9c47-m6qq-7p4h,MONITOR,빌드 도구 아래의 개발 전이 의존성이며 신뢰할 수 있는 설정 파일만 파싱하므로 높은 점수와 약 10%의 EPSS에도 실제 위험은 낮다.
+sbom-a,semver,5.7.1,CVE-2022-25883,GHSA-c2qf-rxjj-qqgw,MONITOR,nodemon을 통해 들어온 개발 전이 의존성의 정규식 서비스 거부로 운영 서비스에 영향이 없어 관찰만 한다.
+sbom-a,express,4.17.1,CVE-2024-43796,GHSA-qw6h-vgh9-j6wx,MONITOR,낮은 심각도의 XSS로 리다이렉트 대상에 사용자 입력을 그대로 넣고 사용자 상호작용까지 있어야 하므로 다른 express 업그레이드에 묶어 처리하면 충분하다.
+sbom-a,cookie,0.4.0,CVE-2024-47764,GHSA-pxg6-pf52-xh8x,MONITOR,쿠키 이름이나 경로에 사용자 입력을 쓸 때만 성립하는 낮은 심각도의 전이 의존성 문제라 관찰 대상이다.
+sbom-a,send,0.17.1,CVE-2024-43799,GHSA-m6fv-jmcg-4jfg,MONITOR,낮은 심각도이고 신뢰할 수 없는 입력을 리다이렉트에 넘기는 특수한 경우에만 성립하는 전이 의존성 문제라 관찰만 한다.
+sbom-a,tough-cookie,2.5.0,CVE-2023-26136,GHSA-72xf-g2v4-qvf3,MONITOR,기본값이 아닌 rejectPublicSuffixes=false 설정에서만 성립하는 전이 의존성의 프로토타입 오염이고 악용 근거가 없어 관찰 대상이다.
+sbom-a,webpack,5.88.2,CVE-2024-43788,GHSA-4vvj-4cpr-p986,MONITOR,빌드 도구의 중간 심각도 DOM 클로버링 문제로 공격자가 페이지에 HTML을 미리 심을 수 있어야 하므로 개발 의존성 정기 업데이트 때 올리면 된다.
+sbom-b,pillow,9.5.0,CVE-2023-4863,GHSA-j7hp-h8jx-5ppr,NOW,CISA KEV에 등재되고 EPSS가 거의 100%인 libwebp 힙 오버플로가 번들에 포함돼 있고 이 서비스가 업로드된 이미지를 직접 처리하므로 사내망 전용이어도 즉시 10.0.1 이상으로 올린다.
+sbom-b,django,4.2.10,CVE-2025-64459,GHSA-frmv-pr5f-9mcr,NOW,핵심 웹 프레임워크의 치명적 SQL 인젝션이고 EPSS가 약 19%로 높으며 같은 4.2 계열 패치 업그레이드로 해결되므로 사내망 서비스라도 이번 주에 조치한다.
+sbom-b,django,4.2.10,CVE-2025-57833,GHSA-6w2r-r2m5-xq5w,NOW,낮은 권한 사용자가 시도할 수 있는 높은 심각도의 SQL 인젝션으로 EPSS가 약 28%이고 위 치명적 항목과 같은 패치 업그레이드에 포함되므로 함께 즉시 처리한다.
+sbom-b,pyyaml,5.3.1,CVE-2020-14343,GHSA-8q59-q68h-6hv4,NEXT,업로드된 YAML을 full_load로 읽으면 코드 실행이 되는 치명적 취약점이지만 인증된 사내 사용자만 접근하고 EPSS가 약 6%라 다음 스프린트에 5.4 이상으로 올린다.
+sbom-b,reportlab,3.6.12,CVE-2023-33733,GHSA-9q9m-c65c-37pq,NEXT,공개 PoC가 있는 코드 실행 취약점이 PDF 생성 경로에 있지만 조작된 입력을 사내 사용자가 넣어야 하고 EPSS가 약 2%라 다음 스프린트의 패치 업그레이드로 처리한다.
+sbom-b,pillow,9.5.0,CVE-2023-50447,GHSA-3f63-hfp8-52jq,NEXT,점수는 치명적이지만 ImageMath.eval에 공격자가 제어하는 값을 넘길 때만 성립하고 EPSS가 약 2%라 긴급은 아니며 다음 스프린트에 10.2.0 이상으로 올린다.
+sbom-b,django,4.2.10,CVE-2024-39614,GHSA-f6f8-9mx6-9mx2,NEXT,EPSS는 약 29%로 높지만 영향이 서비스 거부에 그치고 사내망 전용 서비스라 긴급도는 한 단계 낮춰 다음 스프린트 대상으로 둔다.
+sbom-b,gunicorn,20.1.0,CVE-2024-1135,GHSA-w3h3-4rj7-4ph4,NEXT,직접 런타임 WSGI 서버의 요청 스머글링으로 접근 제한을 우회할 수 있지만 사내망 전용이고 악용 근거가 없어 메이저 업그레이드를 다음 스프린트에 계획한다.
+sbom-b,python-jose,3.3.0,CVE-2024-33663,GHSA-6c5p-j8vq-pqhj,NEXT,토큰 검증을 맡는 직접 런타임 의존성의 알고리즘 혼동 취약점이지만 특정 키 형식 조건이 필요하고 EPSS가 1% 미만이라 다음 스프린트에 3.4.0으로 올린다.
+sbom-b,cryptography,39.0.0,CVE-2023-0286,GHSA-x4qr-2fvf-3mr5,NEXT,EPSS는 약 68%로 높지만 내장 OpenSSL의 CRL 검증 경로에서만 성립하는 전이 의존성 문제라 즉시 조치 대상은 아니고 패치 업그레이드를 다음 스프린트에 넣는다.
+sbom-b,paramiko,2.11.0,CVE-2023-48795,GHSA-45x7-px36-x8w8,NEXT,EPSS는 약 94%로 매우 높지만 사내망에서 중간자 위치를 차지해야 하는 중간 심각도의 무결성 약화라 긴급은 아니며 메이저 업그레이드를 계획해 처리한다.
+sbom-b,certifi,2022.12.7,CVE-2023-37920,GHSA-xqr8-7jwr-rhp7,MONITOR,점수는 높지만 신뢰가 철회된 루트 인증서를 목록에서 빼는 변경일 뿐이고 전이 의존성이며 악용 근거가 없어 정기 업데이트로 충분하다.
+sbom-b,ecdsa,0.18.0,CVE-2024-23342,GHSA-wj6h-64fc-37mp,MONITOR,수정 버전이 없는 전이 의존성의 타이밍 부채널로 서명 시간을 정밀하게 측정해야 하고 사내망 전용 서비스라 관찰하면서 백엔드 교체 여부만 검토한다.
+sbom-b,setuptools,65.5.0,CVE-2024-6345,GHSA-cx63-2mw6-8hw5,MONITOR,심각도는 높지만 빌드 때만 쓰이는 도구이고 신뢰할 수 없는 URL에서 패키지를 내려받을 때만 성립하므로 운영 위험은 낮다.
+sbom-b,wheel,0.37.1,CVE-2022-40898,GHSA-qwmp-2cf2-g9g6,MONITOR,빌드 전용 도구의 정규식 서비스 거부로 운영 서비스에는 영향이 없어 관찰 대상이다.
+sbom-b,black,23.12.1,CVE-2024-21503,GHSA-fj7x-q9j7-g6q6,MONITOR,개발 전용 포매터의 정규식 서비스 거부로 신뢰할 수 없는 코드를 포매팅할 때만 문제가 되어 관찰만 한다.
+sbom-b,pytest,7.1.3,CVE-2025-71176,GHSA-6w46-j5rx-g56g,MONITOR,테스트 전용 의존성의 임시 디렉터리 처리 문제로 로컬 공격자가 필요하고 EPSS가 매우 낮아 관찰 대상이다.
+sbom-b,djangorestframework,3.14.0,CVE-2024-21520,GHSA-gw84-84pc-xp82,MONITOR,낮은 심각도의 XSS로 브라우저용 API 화면에서만 성립하고 사내망 전용 서비스라 정기 업데이트로 충분하다.
+sbom-b,numpy,1.21.0,CVE-2021-34141,GHSA-fpfv-jqm9-f5jm,MONITOR,중간 심각도의 문자열 비교 결함으로 실제 공격 경로가 불분명하고 악용 근거가 없어 관찰 대상이다.
+sbom-b,sqlparse,0.4.3,CVE-2024-4340,GHSA-2m57-hf25-phgg,MONITOR,심각도는 높지만 Django를 통해 들어온 전이 의존성이고 사용자 입력이 직접 닿는 요청 경로에서 쓰이지 않아 관찰만 한다.
+sbom-b,sentry-sdk,1.14.0,CVE-2024-40647,GHSA-g92j-qhmh-64v2,MONITOR,하위 프로세스에 환경 변수가 넘어가는 낮은 심각도 문제로 EPSS도 매우 낮아 관찰 대상이다.
+sbom-b,celery,5.2.1,CVE-2021-23727,GHSA-q4xr-rc97-m4xx,MONITOR,심각도는 높지만 공격자가 결과 저장소를 먼저 조작할 수 있어야 하는 저장형 명령 주입이라 사내망 전용 서비스에서는 관찰하다 정기 패치로 올린다.
+sbom-b,idna,2.10,CVE-2024-3651,GHSA-jjg7-2v4v-x38h,MONITOR,requests를 통해 들어온 전이 의존성의 서비스 거부로 조작된 도메인 이름을 인코딩할 때만 성립하고 악용 근거가 없어 관찰 대상이다.
+sbom-b,requests,2.25.1,CVE-2023-32681,GHSA-j8r2-6x86-q33q,MONITOR,인증 정보가 든 프록시를 거쳐 HTTPS로 리다이렉트될 때만 프록시 인증 헤더가 새는 중간 심각도 문제로 이 서비스 구성에서는 위험이 낮다.

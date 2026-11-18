@@ -1,0 +1,46 @@
+sbom,package,version,cve,ghsa,label,reason
+sbom-c,systeminformation,5.3.0,CVE-2021-21315,GHSA-2m8v-572m-ff2v,NOW,CISA KEV에 등재되어 실제 악용이 확인됐고 EPSS가 약 91%인 명령 주입이 직접 런타임 의존성에 있으며 패치 버전 하나로 해결되므로 사내망 전용이어도 즉시 5.3.1 이상으로 올린다.
+sbom-c,sharp,0.32.0,,GHSA-54xq-cgqr-rpm3,NOW,어드바이저리에 CVE 별칭은 없지만 내용은 KEV에 등재된 libwebp 힙 오버플로(CVE-2023-4863)이고 이 도구가 업로드된 이미지를 직접 디코딩하므로 사내망 전용이어도 즉시 0.32.6 이상으로 올린다.
+sbom-c,vite,5.0.10,CVE-2025-31125,GHSA-4r4m-qw57-chr8,NEXT,CISA KEV에 등재되고 EPSS가 약 75%이지만 개발 서버를 네트워크에 노출했을 때만 성립하는 개발 전용 의존성이라 운영 긴급 건은 아니며 다음 스프린트에 수정 버전으로 올린다.
+sbom-c,jsonpath-plus,7.2.0,CVE-2024-21534,GHSA-pppg-cpfq-h7wr,NEXT,직접 런타임 의존성의 치명적 원격 코드 실행이고 EPSS가 약 9%이지만 신뢰할 수 없는 JSONPath 식을 평가할 때만 성립하고 사내 사용자만 접근하므로 메이저 업그레이드를 다음 스프린트에 계획한다.
+sbom-c,xlsx,0.18.5,CVE-2023-30533,GHSA-4r6h-8v6p-xvw6,NEXT,npm에 수정 버전이 없는 직접 런타임 의존성으로 직원이 올린 스프레드시트를 읽는 경로에서 프로토타입 오염이 가능하므로 배포처 변경이나 패키지 교체를 다음 스프린트에 계획해야 한다.
+sbom-c,nodemailer,6.4.10,CVE-2020-7769,GHSA-48ww-j4fc-435p,NEXT,점수는 치명적이지만 sendmail 전송 방식에 조작된 수신 주소를 넘길 때만 명령 옵션 주입이 성립하고 EPSS가 약 2%이며 사내망 전용이라 다음 스프린트의 패치 업그레이드로 처리한다.
+sbom-c,sequelize,6.6.2,CVE-2023-25813,GHSA-wrh9-cjv3-2hpw,NEXT,데이터 계층을 맡는 직접 런타임 의존성의 치명적 SQL 인젝션이지만 replacements와 where를 함께 쓰는 쿼리에서만 성립하고 EPSS가 약 1%이며 사내 사용자만 접근하므로 다음 스프린트에 올린다.
+sbom-c,simple-git,3.14.1,CVE-2022-25860,GHSA-9w5j-4mwv-2wj8,NEXT,점수는 치명적인 원격 코드 실행이지만 clone이나 pull 인자에 신뢰할 수 없는 값을 넘길 때만 성립하고 EPSS가 약 3%이며 사내망 전용이라 다음 스프린트의 마이너 업그레이드로 처리한다.
+sbom-c,underscore,1.12.0,CVE-2021-23358,GHSA-cf4h-3jhx-xvhq,MONITOR,template 함수의 variable 옵션에 신뢰할 수 없는 값을 넘길 때만 코드 실행이 성립하고 높은 권한이 필요하며 사내망 전용이라 정기 패치 때 올리면 충분하다.
+sbom-c,got,11.8.2,CVE-2022-33987,GHSA-pfrx-2q88-qq97,MONITOR,응답 서버가 유닉스 소켓으로 리다이렉트를 유도해야 하는 중간 심각도 문제로 이 도구는 정해진 사내 API만 호출하므로 관찰 대상이다.
+sbom-c,ssh2,0.8.9,CVE-2020-26301,GHSA-652h-xwhf-q4h6,MONITOR,심각도는 높지만 윈도우에서만 성립하는 명령 주입이고 이 배치 도구는 리눅스 컨테이너에서 동작하므로 관찰만 한다.
+sbom-c,shelljs,0.8.4,CVE-2022-0144,GHSA-4rq4-32rv-6wp6,MONITOR,같은 호스트의 로컬 사용자가 임시 파일을 읽을 수 있는 권한 관리 문제로 원격 공격 경로가 없고 EPSS가 1% 미만이라 관찰 대상이다.
+sbom-c,crypto-js,4.1.1,CVE-2023-46233,GHSA-xwcq-pm8m-c4vf,MONITOR,점수는 치명적이지만 PBKDF2 기본값이 약하다는 문제로 이 도구는 내보내기 파일의 HMAC 서명에만 쓰므로 해당 경로가 없고 EPSS도 1% 미만이다.
+sbom-c,jszip,3.7.1,CVE-2022-48285,GHSA-36fh-84j7-cv5h,MONITOR,조작된 압축 파일의 경로 탐색이 가능한 중간 심각도 문제지만 인증된 사내 사용자의 업로드에서만 닿고 악용 근거가 없어 정기 업데이트로 충분하다.
+sbom-c,koa,2.13.1,CVE-2025-25200,GHSA-593f-38f6-jp5m,MONITOR,점수는 치명적으로 표시되지만 영향이 정규식 서비스 거부에 그치고 사내망 전용이며 EPSS가 1% 미만이라 정기 업데이트 때 올린다.
+sbom-c,validator,13.6.0,CVE-2021-3765,GHSA-qgmg-gppg-76g5,MONITOR,sequelize를 통해 들어온 전이 의존성의 중간 심각도 정규식 서비스 거부로 사내망 전용 도구에서는 관찰 대상이다.
+sbom-c,dottie,2.0.2,CVE-2023-26132,GHSA-4gxf-g5gf-22h4,MONITOR,sequelize 내부에서만 쓰이는 전이 의존성의 프로토타입 오염으로 공격자 입력이 경로 키로 직접 닿지 않고 악용 근거가 없어 관찰만 한다.
+sbom-c,http-cache-semantics,4.1.0,CVE-2022-25881,GHSA-rc47-6667-2j5j,MONITOR,응답 서버가 악의적인 헤더를 보내야 성립하는 전이 의존성의 정규식 서비스 거부로 정해진 사내 API만 호출하는 이 도구에서는 위험이 낮다.
+sbom-c,vitest,1.2.0,CVE-2025-24964,GHSA-9crc-q9x8-hgqq,MONITOR,점수는 치명적이지만 개발자가 API 서버를 켠 채 악성 사이트를 방문해야 하는 테스트 전용 의존성 문제이고 KEV 등재도 없어 운영 위험은 없다.
+sbom-c,@babel/traverse,7.22.5,CVE-2023-45133,GHSA-67hx-6x53-jw92,MONITOR,점수는 치명적이지만 공격자가 만든 코드를 컴파일할 때만 성립하는 빌드 전용 전이 의존성이라 자체 코드만 빌드하는 이 도구에서는 관찰 대상이다.
+sbom-c,cross-spawn,7.0.3,CVE-2024-21538,GHSA-3xgq-45jj-v275,MONITOR,테스트 도구 아래의 개발 전이 의존성에 있는 정규식 서비스 거부로 운영 서비스에 영향이 없어 관찰만 한다.
+sbom-d,org.apache.logging.log4j:log4j-core,2.14.1,CVE-2021-44228,GHSA-jfh8-c2jp-5v3q,NOW,CISA KEV에 등재되고 EPSS가 사실상 100%인 인증 없는 원격 코드 실행이 인터넷 노출 서비스의 직접 런타임 의존성에 있어 즉시 올려야 한다.
+sbom-d,org.apache.logging.log4j:log4j-core,2.14.1,CVE-2021-45046,GHSA-7rjr-3q55-vv33,NOW,Log4Shell의 불완전한 수정으로 CISA KEV에 등재되어 있고 EPSS도 거의 100%이므로 같은 업그레이드로 함께 즉시 처리한다.
+sbom-d,org.springframework:spring-beans,5.3.15,CVE-2022-22965,GHSA-36p3-wjmg-h94x,NOW,CISA KEV에 등재되고 EPSS가 약 99.6%인 Spring4Shell로 인터넷 노출 서비스의 핵심 프레임워크에 있으며 패치 버전 업그레이드로 해결되므로 배포 형태와 무관하게 이번 주에 조치한다.
+sbom-d,org.apache.tomcat.embed:tomcat-embed-core,9.0.56,CVE-2025-24813,GHSA-83qj-6fr2-vhqg,NOW,CISA KEV에 등재되고 EPSS가 약 99.9%인 원격 코드 실행으로 기본 서블릿 쓰기 설정이 전제이긴 하나 인터넷에 직접 노출된 내장 서버이므로 낮추지 않고 즉시 올린다.
+sbom-d,com.thoughtworks.xstream:xstream,1.4.17,CVE-2021-39144,GHSA-j9h8-phrw-h4fh,NOW,CISA KEV에 등재되고 EPSS가 약 98%인 원격 명령 실행이 외부 XML을 역직렬화하는 직접 런타임 의존성에 있어 즉시 1.4.18 이상으로 올린다.
+sbom-d,org.apache.commons:commons-text,1.9,CVE-2022-42889,GHSA-599f-7c49-w659,NOW,KEV 등재는 없지만 공개 익스플로잇이 널리 퍼져 EPSS가 약 99.9%인 치명적 코드 실행이 인터넷 노출 서비스의 직접 런타임 의존성에 있고 1.10.0 마이너 업그레이드로 해결되므로 바로 조치한다.
+sbom-d,commons-fileupload:commons-fileupload,1.4,CVE-2023-24998,GHSA-hfrx-6qgj-fp6c,NOW,인증 없이 업로드 요청만으로 서비스를 멈출 수 있는 높은 심각도 취약점이 인터넷 노출 경로의 직접 의존성에 있고 EPSS가 약 49%로 높아 바로 1.5로 올린다.
+sbom-d,org.springframework.security:spring-security-web,5.6.1,CVE-2022-22978,GHSA-hh32-7344-cg2f,NEXT,치명적인 인가 우회이고 EPSS가 약 12%이지만 점이 들어간 정규식으로 RegexRequestMatcher를 쓸 때만 성립하므로 설정을 확인하면서 다음 스프린트에 패치 버전으로 올린다.
+sbom-d,org.springframework:spring-webmvc,5.3.15,CVE-2023-20860,GHSA-7phw-cxx7-q9vq,NEXT,보안 설정에서 mvcRequestMatcher에 이중 와일드카드 패턴을 쓸 때 인가가 어긋나는 높은 심각도 문제로 조건부이고 EPSS가 약 4%라 다음 스프린트의 패치 업그레이드로 처리한다.
+sbom-d,com.fasterxml.jackson.core:jackson-databind,2.13.1,CVE-2020-36518,GHSA-57j2-w4cx-62h2,NEXT,깊게 중첩된 JSON 본문으로 인증 없이 서비스 거부를 일으킬 수 있는 높은 심각도 문제가 인터넷 노출 경로에 있지만 EPSS가 약 5%이고 악용 근거가 없어 다음 스프린트 대상이다.
+sbom-d,org.postgresql:postgresql,42.3.1,CVE-2024-1597,GHSA-24rp-q3w6-vc56,NEXT,직접 런타임 DB 드라이버의 치명적 SQL 인젝션이지만 기본값이 아닌 preferQueryMode=simple 설정에서만 성립하고 EPSS가 약 5%라 다음 스프린트의 패치 업그레이드로 처리한다.
+sbom-d,org.codehaus.jackson:jackson-mapper-asl,1.9.13,CVE-2019-10172,GHSA-r6j9-8759-g62w,NEXT,지원이 끝나 수정 버전이 없는 직접 런타임 의존성의 XXE이고 EPSS가 약 17%라 인터넷 노출 서비스에서는 패키지 교체 작업을 다음 스프린트에 계획해야 한다.
+sbom-d,org.yaml:snakeyaml,1.29,CVE-2022-1471,GHSA-mjmj-j48q-9wg2,NEXT,EPSS는 약 99.5%로 매우 높지만 신뢰할 수 없는 YAML을 기본 생성자로 읽을 때만 성립하고 이 서비스에서는 설정 파일만 읽는 전이 의존성이라 즉시 대상은 아니며 메이저 업그레이드를 계획해 처리한다.
+sbom-d,org.springframework:spring-web,5.3.15,CVE-2016-1000027,GHSA-4wrc-f8pq-fpqp,MONITOR,점수는 치명적이고 EPSS도 약 33%이지만 HTTP Invoker로 역직렬화 엔드포인트를 직접 노출할 때만 성립하고 수정에는 메이저 전환이 필요해 해당 기능을 쓰지 않는 이 서비스에서는 관찰 대상이다.
+sbom-d,com.h2database:h2,1.4.200,CVE-2021-42392,GHSA-h376-j262-vhq6,MONITOR,점수는 치명적이고 EPSS도 약 83%이지만 테스트에서만 쓰는 의존성이라 운영 배포본에 실리지 않고 H2 콘솔도 노출되지 않으므로 관찰 대상이다.
+sbom-d,junit:junit,4.12,CVE-2020-15250,GHSA-269g-pwp5-87pp,MONITOR,테스트 전용 의존성의 임시 폴더 정보 노출로 로컬 공격자가 필요하고 운영 서비스에는 영향이 없다.
+sbom-d,org.assertj:assertj-core,3.21.0,CVE-2026-24400,GHSA-rqfh-9r24-8c9r,MONITOR,심각도는 높지만 테스트 코드에서 신뢰할 수 없는 XML을 비교할 때만 성립하는 테스트 전용 의존성의 XXE라 운영 위험이 없다.
+sbom-d,org.springframework.boot:spring-boot-devtools,2.6.3,CVE-2026-40972,GHSA-56v8-86gj-66jp,MONITOR,심각도는 높지만 개발 전용 의존성이고 원격 devtools를 켠 채 같은 네트워크의 공격자가 타이밍 공격을 해야 하므로 운영 서비스에서는 관찰 대상이다.
+sbom-d,commons-io:commons-io,2.6,CVE-2021-29425,GHSA-gwrp-pvrq-jmwv,MONITOR,EPSS는 약 11%이지만 FileNameUtils.normalize에 조작된 경로를 넘길 때만 상위 디렉터리 한 단계에 접근하는 제한적인 중간 심각도 문제이고 전이 의존성이라 정기 업데이트로 충분하다.
+sbom-d,com.google.guava:guava,30.1-jre,CVE-2020-8908,GHSA-5mg8-w23w-74h3,MONITOR,낮은 심각도의 임시 디렉터리 권한 문제로 같은 호스트의 로컬 사용자가 필요하고 EPSS가 1% 미만이라 관찰만 한다.
+sbom-d,org.apache.httpcomponents:httpclient,4.5.12,CVE-2020-13956,GHSA-7r82-7xv7-xcpj,MONITOR,조작된 URI 문자열을 그대로 요청에 넘길 때만 엉뚱한 호스트로 나가는 중간 심각도 문제로 이 서비스는 고정된 제휴사 주소만 호출하므로 관찰 대상이다.
+sbom-d,org.apache.poi:poi-ooxml,5.2.0,CVE-2025-31672,GHSA-gmg8-593g-7mv3,MONITOR,중복된 압축 항목 이름으로 파서마다 다른 내용을 읽게 하는 중간 심각도 문제로 직접적인 침해로 이어지지 않고 EPSS가 약 1%라 정기 업데이트로 충분하다.
+sbom-d,org.apache.commons:commons-compress,1.21,CVE-2024-25710,GHSA-4g9r-vxhx-9pgx,MONITOR,조작된 DUMP 형식 파일에서만 무한 루프가 생기는 전이 의존성 문제로 이 서비스는 엑셀 파일만 다루므로 해당 경로가 닿지 않아 관찰 대상이다.
+sbom-d,org.apache.commons:commons-lang3,3.12.0,CVE-2025-48924,GHSA-j288-q9x7-2f5v,MONITOR,아주 긴 클래스 이름을 ClassUtils.getClass에 넘길 때만 스택 오버플로가 나는 중간 심각도 문제로 외부 입력이 닿는 경로가 아니어서 관찰만 한다.
