@@ -50,6 +50,12 @@ class Run:
     def save_triage(self, items: list[Triage]) -> None:
         self.write("triage.json", [t.model_dump() for t in items])
 
+    def set_context(self, context: ServiceContext) -> None:
+        """Owner-stated values replace earlier ones; fields left out keep what the run already has."""
+        meta = self.meta
+        meta["context"] = {**(meta.get("context") or {}), **context.model_dump(exclude_none=True)}
+        self.write("meta.json", meta)
+
     def repo(self) -> pathlib.Path | None:
         p = self.meta.get("repo")
         return pathlib.Path(p) if p and pathlib.Path(p).is_dir() else None
@@ -121,7 +127,7 @@ def agent(run: Run, limit: int | None = None, writer: str | None = None, code_re
     info = _llm_meta(llm, code_llm)
     run.emit({"type": "stage", "stage": "agent", "status": "start", "tag": tag, **info})
     triage = agent_run.run(findings, run.repo(), llm, run.dir, limit=limit, emit=run.emit, code_llm=code_llm, tag=tag,
-                           only=only)
+                           only=only, context=run.meta.get("context"))
     if tag:
         run.write(f"triage.{tag}.json", [t.model_dump() for t in triage])
         run.emit({"type": "stage", "stage": "agent", "status": "done", "tag": tag, **summarize(findings, triage)})
@@ -200,8 +206,8 @@ def compare(run: Run, names: list[str], golden: dict[str, str], limit: int | Non
     return result
 
 
-def verify(run: Run, setup_cmd: str | None = None) -> Run:
-    """⑥ NOW items only. Skipped in replay mode (recorded results stay)."""
+def verify(run: Run, setup_cmd: str | None = None, buckets: tuple[str, ...] = ("NOW",)) -> Run:
+    """⑥ NOW items by default. Skipped in replay mode (recorded results stay)."""
     findings, triage, repo = run.findings(), run.triage(), run.repo()
     if cache.replay_mode():
         run.emit({"type": "stage", "stage": "verify", "status": "skipped", "why": "replay mode"})
@@ -218,7 +224,7 @@ def verify(run: Run, setup_cmd: str | None = None) -> Run:
             fh.write(json.dumps(event, ensure_ascii=False, default=str) + "\n")
 
     revise = (lambda f, prev, steps: agent_run.revise(llm, f, prev, steps, agent_log)) if llm else None
-    triage = verify_run.run(repo, findings, triage, run.dir, setup_cmd, revise, run.emit)
+    triage = verify_run.run(repo, findings, triage, run.dir, setup_cmd, revise, run.emit, buckets)
     run.save_triage(triage)
     meta = run.meta
     meta["summary"] = summarize(findings, triage)

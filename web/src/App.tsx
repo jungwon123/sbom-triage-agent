@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import Detail from "./components/Detail";
 import ItemList from "./components/ItemList";
 import Overview from "./components/Overview";
-import { getRun, listRuns, type RunDetail, type RunListItem } from "./lib/api";
+import Decisions from "./components/Decisions";
+import { getProposals, getRun, listRuns, type RunDetail, type RunListItem } from "./lib/api";
+import type { Proposal } from "./lib/types";
 import { byCvss, byPriority } from "./lib/format";
 
 export type SortMode = "priority" | "cvss";
@@ -18,6 +20,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<SortMode>("priority");
   const [selected, setSelected] = useState<string | null>(null);
+  const [proposals, setProposals] = useState<Proposal[]>([]);
 
   useEffect(() => {
     listRuns()
@@ -31,6 +34,8 @@ export default function App() {
   useEffect(() => {
     if (!runId) return;
     setRun(null);
+    setProposals([]);
+    getProposals(runId).then(setProposals).catch(() => setProposals([]));
     getRun(runId)
       .then((r) => {
         setRun(r);
@@ -43,6 +48,8 @@ export default function App() {
 
   const items = useMemo(() => (run ? [...run.items].sort(mode === "priority" ? byPriority : byCvss) : []), [run, mode]);
   const current = items.find((i) => i.finding.id === selected) ?? null;
+  const proposal = current ? (proposals.find((p) => p.finding_ids.includes(current.finding.id)) ?? null) : null;
+  const reloadProposals = () => (runId ? getProposals(runId).then(setProposals) : Promise.resolve());
 
   function pickRun(id: string) {
     const url = new URL(window.location.href);
@@ -90,10 +97,13 @@ export default function App() {
       {run && (
         <>
           <Overview run={run} items={items} mode={mode} onMode={setMode} selected={selected} onSelect={setSelected} />
+          <Decisions runId={run.id} proposals={proposals} onSelect={setSelected} />
           <main className="mt-8 grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(420px,520px)]">
             <ItemList items={items} mode={mode} selected={selected} onSelect={setSelected} />
             <aside className="order-first lg:sticky lg:top-4 lg:order-none lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
-              {current ? <Detail item={current} /> : <p className="text-dim">목록에서 항목을 고르면 근거와 조치안이 표시됩니다.</p>}
+              {current ? (
+                <Detail item={current} runId={run.id} proposal={proposal} onDecided={reloadProposals} />
+              ) : <p className="text-dim">목록에서 항목을 고르면 근거와 조치안이 표시됩니다.</p>}
             </aside>
           </main>
         </>

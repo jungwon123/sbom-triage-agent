@@ -5,6 +5,7 @@ The target counts as resolved only if the rescan no longer reports it (F8-14).
 """
 from __future__ import annotations
 
+import difflib
 import json
 import pathlib
 from collections.abc import Callable
@@ -66,14 +67,24 @@ def rescan(repo: pathlib.Path, lockfile: str) -> dict[str, tuple[Finding, str]]:
     return {f.id: (f, score.score(f).bucket) for f in findings}
 
 
+def diff(repo: pathlib.Path, name: str, after: str | None) -> list[str]:
+    """Unified diff of one file between the original repo and the sandbox copy (git apply format)."""
+    path = repo / name
+    before = path.read_text(errors="ignore") if path.is_file() else ""
+    if after is None or after == before:
+        return []
+    return list(difflib.unified_diff(before.splitlines(), after.splitlines(), f"a/{name}", f"b/{name}", lineterm=""))
+
+
 def verify_one(repo: pathlib.Path, r: Remediation, targets: list[str], before: set[str],
-               baseline: list[VerifyStep], setup_cmd: str | None, attempt: int) -> Verification:
+               baseline: list[VerifyStep], setup_cmd: str | None, attempt: int) -> tuple[Verification, str]:
+    """-> (verification, patch text). The patch is empty when nothing was applied."""
     cmd = apply.sandbox_command(r)
     if cmd is None:
         v, why, reg = verdict([], baseline, False, False, mitigation_only=True)
         return Verification(finding_id=targets[0], attempt=attempt, remediation_applied=r, steps=[],
                             target_resolved=False, new_findings=[], new_now_findings=[], regressions=reg,
-                            tests_run=0, verdict=v, reason=why)
+                            tests_run=0, verdict=v, reason=why), ""
     res = sandbox.run(repo, cmd, setup_cmd)
     steps = list(res.steps)
     left, added, new_now = True, [], []
@@ -88,17 +99,21 @@ def verify_one(repo: pathlib.Path, r: Remediation, targets: list[str], before: s
             steps.append(VerifyStep(name="rescan", status="failed", duration_ms=0, log_tail=str(e)[:300]))
     v, why, reg = verdict(steps, baseline, left, bool(new_now))
     t = res.step("test")
+    pkg_diff, lock_diff = diff(repo, "package.json", res.package_json), diff(repo, "package-lock.json", res.lockfile)
+    changed = sum(1 for line in lock_diff if line[:1] in "+-" and line[:3] not in ("+++", "---"))
+    patch = "".join(line + "\n" for line in pkg_diff + lock_diff)
     return Verification(finding_id=targets[0], attempt=attempt, remediation_applied=r, steps=steps,
                         target_resolved=not left, new_findings=added, new_now_findings=new_now, regressions=reg,
-                        tests_run=t.tests_run if t else 0, verdict=v, reason=why)
+                        tests_run=t.tests_run if t else 0, verdict=v, reason=why,
+                        package_json_diff="\n".join(pkg_diff) or None, lockfile_lines_changed=changed), patch
 
 
 def run(repo: pathlib.Path, findings: list[Finding], triage: list[Triage], run_dir: pathlib.Path,
         setup_cmd: str | None = None,
         revise: Callable[[Finding, dict, list[dict]], object] | None = None,
-        emit: Callable[[dict], None] = lambda e: None) -> list[Triage]:
+        emit: Callable[[dict], None] = lambda e: None, buckets: tuple[str, ...] = ("NOW",)) -> list[Triage]:
     by_id = {f.id: f for f in findings}
-    now = [t for t in triage if t.final_bucket == "NOW" and by_id[t.finding_id].ecosystem == "npm"]
+    now = [t for t in triage if t.final_bucket in buckets and by_id[t.finding_id].ecosystem == "npm"]
     if not now:
         return triage
     out_dir = run_dir / "verify"
@@ -122,7 +137,7 @@ def run(repo: pathlib.Path, findings: list[Finding], triage: list[Triage], run_d
         for attempt in range(1, MAX_ATTEMPTS + 1):
             emit({"type": "verify_start", "package": pkg, "version": ver, "attempt": attempt,
                   "to_version": remediation.to_version})
-            result = verify_one(repo, remediation, targets, before, base.steps, setup_cmd, attempt)
+            result, patch = verify_one(repo, remediation, targets, before, base.steps, setup_cmd, attempt)
             emit({"type": "verify_done", "package": pkg, "verdict": result.verdict, "reason": result.reason})
             if result.verdict != "failed" or attempt == MAX_ATTEMPTS or revise is None:
                 break
@@ -131,6 +146,9 @@ def run(repo: pathlib.Path, findings: list[Finding], triage: list[Triage], run_d
                 break
             remediation = apply.build(proposal, f)   # already passed apply.violations in revise
         safe = pkg.replace("/", "_")
+        if patch:
+            result.patch_file = f"{safe}@{ver}.patch"
+            (out_dir / result.patch_file).write_text(patch)
         (out_dir / f"{safe}@{ver}.json").write_text(result.model_dump_json(indent=1))
         for t in items:
             t.verification = result.model_copy(update={"finding_id": t.finding_id})

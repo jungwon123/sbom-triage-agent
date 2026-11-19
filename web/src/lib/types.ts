@@ -20,6 +20,7 @@ export interface Component {
 export interface ServiceContext {
   service_criticality?: "high" | "medium" | "low" | null;
   internet_facing?: boolean | null;
+  note?: string | null;
 }
 
 export interface Finding {
@@ -95,6 +96,9 @@ export interface Verification {
   tests_run: number;
   verdict: "verified" | "failed" | "inconclusive";
   reason: string;
+  patch_file?: string | null;
+  package_json_diff?: string | null;
+  lockfile_lines_changed?: number;
 }
 
 export interface Triage {
@@ -113,4 +117,25 @@ export interface Triage {
   decided_by?: "rule" | "agent" | "agent_fallback";
   evidence_files?: string[];
   code_read_by?: "rule" | "agent" | "local_agent";
+}
+
+export interface Decision {
+  target: string;
+  status: "approved" | "rejected" | "held";
+  by: string;
+  reason?: string;
+  at: string;
+  to_version?: string | null;
+  verdict?: "verified" | "failed" | "inconclusive" | null;
+}
+
+export interface Proposal {
+  target: string;
+  package: string;
+  from_version: string;
+  finding_ids: string[];
+  bucket: "NOW" | "NEXT" | "MONITOR";
+  remediation: Remediation;
+  verification: Verification | null;
+  decision: Decision | null;
 }

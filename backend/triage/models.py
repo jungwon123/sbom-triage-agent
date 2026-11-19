@@ -40,9 +40,10 @@ class Component(Strict):
 
 
 class ServiceContext(Strict):
-    """Display only, never scored (F1-5, F7-8)."""
+    """Never scored (F1-5, F7-8). The agent may use it for its one-step adjustment (D40)."""
     service_criticality: Literal["high", "medium", "low"] | None = None
     internet_facing: bool | None = None
+    note: str | None = Field(default=None, max_length=600)   # owner's words: what the service does, who reaches it
 
 
 class Finding(Strict):
@@ -127,6 +128,33 @@ class Verification(Strict):
     tests_run: int
     verdict: Literal["verified", "failed", "inconclusive"]
     reason: str
+    # the change itself, taken from the sandbox copy after the commands ran (never written by the LLM)
+    patch_file: str | None = None            # file name under out/<run>/verify/
+    package_json_diff: str | None = None     # unified diff, small enough to show inline
+    lockfile_lines_changed: int = 0
+
+
+class Decision(Strict):
+    """The owner's call on one proposed change (package@version). Append-only log; the latest entry wins."""
+    target: str                              # "<package>@<version>"
+    status: Literal["approved", "rejected", "held"]
+    by: str = Field(min_length=1, max_length=60)
+    reason: str = Field(default="", max_length=600)
+    at: str                                  # ISO 8601, set by the server
+    to_version: str | None = None            # what was on screen when the call was made
+    verdict: Literal["verified", "failed", "inconclusive"] | None = None
+
+
+class Proposal(Strict):
+    """One change set shown to the owner: every finding of a package@version shares it."""
+    target: str
+    package: str
+    from_version: str
+    finding_ids: list[str]
+    bucket: Bucket                           # highest final bucket among the findings
+    remediation: Remediation
+    verification: Verification | None
+    decision: Decision | None
 
 
 class Triage(Strict):
@@ -148,5 +176,5 @@ class Triage(Strict):
 
 
 def schema_json() -> str:
-    models = [Component, Finding, AgentVerdict, Remediation, Verification, Triage, ServiceContext]
+    models = [Component, Finding, AgentVerdict, Remediation, Verification, Triage, ServiceContext, Decision, Proposal]
     return json.dumps({m.__name__: m.model_json_schema() for m in models}, ensure_ascii=False, indent=1)

@@ -11,7 +11,8 @@ from triage import models
 
 OUT = pathlib.Path(__file__).resolve().parents[1] / "web/src/lib/types.ts"
 ROOTS = [models.CodeRef, models.Component, models.ServiceContext, models.Finding, models.RemediationProposal,
-         models.AgentVerdict, models.Remediation, models.VerifyStep, models.Verification, models.Triage]
+         models.AgentVerdict, models.Remediation, models.VerifyStep, models.Verification, models.Triage,
+         models.Decision, models.Proposal]
 
 
 def ts(s: dict) -> str:

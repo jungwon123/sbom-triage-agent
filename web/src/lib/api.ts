@@ -1,4 +1,4 @@
-import type { Finding, ServiceContext, Triage } from "./types";
+import type { Decision, Finding, Proposal, ServiceContext, Triage } from "./types";
 
 export type Bucket = Triage["final_bucket"];
 export type Counts = Record<Bucket, number>;
@@ -49,5 +49,31 @@ async function get<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+async function post<T>(path: string, body?: unknown): Promise<T> {
+  const res = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const detail = await res.json().then((d) => d?.detail).catch(() => null);
+    throw new Error(typeof detail === "string" ? detail : `${res.status} ${res.statusText}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+export interface ExportResult {
+  approved: string[];
+  files: string[];
+  dir: string;
+  pr_draft: string | null;
+}
+
+const base = (id: string) => `/api/runs/${encodeURIComponent(id)}`;
+export const getProposals = (id: string) => get<Proposal[]>(`${base(id)}/proposals`);
+export const patchUrl = (id: string, target: string) => `${base(id)}/patch?target=${encodeURIComponent(target)}`;
+export const decide = (id: string, body: { target: string; status: Decision["status"]; by: string; reason: string }) =>
+  post<Decision>(`${base(id)}/decisions`, body);
+export const exportApproved = (id: string) => post<ExportResult>(`${base(id)}/export`);
 export const listRuns = () => get<RunListItem[]>("/api/runs");
 export const getRun = (id: string) => get<RunDetail>(`/api/runs/${encodeURIComponent(id)}`);

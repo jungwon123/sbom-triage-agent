@@ -23,6 +23,18 @@ def load_env(path: pathlib.Path = ROOT / ".env") -> None:
                 os.environ.setdefault(k.strip(), v.strip().strip("'\""))
 
 
+def context_args(p: argparse.ArgumentParser) -> None:
+    p.add_argument("--criticality", choices=["high", "medium", "low"])
+    p.add_argument("--internet-facing", choices=["yes", "no"])
+    p.add_argument("--service-note", help="a few words on what the service does and who can reach it")
+
+
+def context_of(a: argparse.Namespace):
+    from .models import ServiceContext
+    return ServiceContext(service_criticality=a.criticality, note=a.service_note,
+                          internet_facing={"yes": True, "no": False}.get(a.internet_facing))
+
+
 def main(argv: list[str] | None = None) -> int:
     load_env()
     from . import doctor, eval as eval_mod, models, runner
@@ -35,15 +47,23 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("target", type=pathlib.Path, help="repo directory or SBOM file (CycloneDX/SPDX JSON)")
         p.add_argument("--name")
         p.add_argument("--no-syft", action="store_true")
-        p.add_argument("--criticality", choices=["high", "medium", "low"])
-        p.add_argument("--internet-facing", choices=["yes", "no"])
+        context_args(p)
         if name == "run":
             p.add_argument("--limit", type=int, help="max findings sent to the LLM")
             p.add_argument("--setup", help="extra setup command in the sandbox, e.g. 'npx prisma generate'")
             p.add_argument("--no-verify", action="store_true")
     p = sub.add_parser("agent"); p.add_argument("run_dir", type=pathlib.Path); p.add_argument("--limit", type=int)
     p.add_argument("--labeled", action="store_true", help="judge only the findings that have a golden label")
+    p.add_argument("--retry-failed", action="store_true", help="judge only the findings whose last LLM call failed")
+    context_args(p)
     p = sub.add_parser("verify"); p.add_argument("run_dir", type=pathlib.Path); p.add_argument("--setup")
+    p.add_argument("--buckets", default="NOW", help="comma list of buckets to verify, e.g. NOW,NEXT")
+    p = sub.add_parser("decide", help="record the owner's call on one proposed change")
+    p.add_argument("run_dir", type=pathlib.Path); p.add_argument("target", help="<package>@<version>")
+    p.add_argument("status", choices=["approved", "rejected", "held"])
+    p.add_argument("--by", required=True); p.add_argument("--reason", default="")
+    p = sub.add_parser("export", help="write patches and a PR draft for the approved changes (nothing is pushed)")
+    p.add_argument("run_dir", type=pathlib.Path)
     p = sub.add_parser("notify", help="send the run summary to Slack (SLACK_WEBHOOK_URL)")
     p.add_argument("run_dir", type=pathlib.Path)
     p.add_argument("--dry-run", action="store_true", help="print the message instead of sending it")
@@ -64,9 +84,7 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd == "schema":
         print(models.schema_json()); return 0
     if a.cmd in ("scan", "run"):
-        ctx = ServiceContext(service_criticality=a.criticality,
-                             internet_facing={"yes": True, "no": False}.get(a.internet_facing))
-        run = runner.scan(a.target, a.name, ctx, use_syft=not a.no_syft)
+        run = runner.scan(a.target, a.name, context_of(a), use_syft=not a.no_syft)
         if a.cmd == "run":
             runner.agent(run, a.limit)
             if not a.no_verify:
@@ -83,13 +101,30 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if sent or a.dry_run else 1
     elif a.cmd == "agent":
         run = runner.Run(a.run_dir)
+        if context_of(a).model_dump(exclude_none=True):
+            run.set_context(context_of(a))
         only = None
         if a.labeled:
             sheet = next((p for p in (ROOT / "fixtures/golden.yaml", ROOT / "fixtures/golden-sheet.csv") if p.exists()), None)
             only = set(eval_mod.load_golden(sheet, run.meta.get("name"))) if sheet else set()
+        if a.retry_failed:
+            failed = {t.finding_id for t in run.triage() if t.decided_by == "agent_fallback"}
+            only = failed if only is None else only & failed
         run = runner.agent(run, a.limit, only=only)
     elif a.cmd == "verify":
-        run = runner.verify(runner.Run(a.run_dir), a.setup)
+        buckets = tuple(b.strip().upper() for b in a.buckets.split(",") if b.strip())
+        run = runner.verify(runner.Run(a.run_dir), a.setup, buckets)
+    elif a.cmd == "decide":
+        from . import decide
+        try:
+            d = decide.record(runner.Run(a.run_dir), a.target, a.status, a.by, a.reason)
+        except decide.DecisionError as e:
+            print(f"거절: {e}"); return 1
+        print(d.model_dump_json(indent=1)); return 0
+    elif a.cmd == "export":
+        from . import decide
+        out = decide.export(runner.Run(a.run_dir))
+        print(json.dumps(out, ensure_ascii=False, indent=1)); return 0
     else:  # eval, compare
         run = runner.Run(a.run_dir)
         golden = a.golden or next((p for p in (ROOT / "fixtures/golden.yaml", ROOT / "fixtures/golden-sheet.csv") if p.exists()), None)
