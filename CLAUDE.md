@@ -18,7 +18,7 @@ npm 레포의 취약점을 CVSS 목록이 아니라 **NOW / NEXT / MONITOR** 3�
 | 외부 데이터 | Syft, OSV API, FIRST EPSS API, CISA KEV JSON |
 | 검증 샌드박스 | Docker (일회용 컨테이너) |
 | 대시보드 | React (Vite) + TypeScript + Tailwind. 빌드 결과물을 FastAPI가 정적 서빙 (운영에 Node 서버 없음) |
-| 저장소 | 프로토타입은 파일(`out/<run_id>/`). DB 없음, 운영 설계는 PostgreSQL (HANDOFF D32) |
+| 저장소 | 저장 계층(`store/`) 뒤에 구현 두 개. `file`(기본, `out/<run_id>/`와 `fixtures/cache`의 JSON)은 오프라인 시연과 테스트용, `postgres`는 운영용. `TRIAGE_STORE`와 `DATABASE_URL`로 고른다. SBOM, 로그, 패치 같은 큰 산출물은 두 모드 모두 `out/<run_id>/`에 둔다 (HANDOFF D45) |
 | 테스트 | pytest (백엔드), 타입체크 `tsc --noEmit` (프론트) |
 
 ## 3. 디렉터리
@@ -36,7 +36,8 @@ sbom-triage/
 │     ├─ agent/          # ⑤ llm.py(인터페이스), llm_anthropic.py, llm_openai.py, llm_replay.py, tools.py, prompts.py, run.py
 │     ├─ verify/         # ⑥ sandbox.py(Docker), apply.py(명령 조립), run.py(판정)
 │     ├─ models.py       # Finding, Triage, Remediation, Verification (단일 진실 원천)
-│     ├─ cache.py        # 외부 응답 디스크 캐시
+│     ├─ store/          # 저장 계층: base.py(인터페이스), files.py, postgres.py, schema.sql, migrate.py(파일 → DB 가져오기)
+│     ├─ cache.py        # 외부 응답 캐시 (저장 계층 경유)
 │     ├─ runner.py       # 단계 호출 순서와 이벤트 기록 (CLI·API 공용)
 │     ├─ eval.py         # golden 일치율, NOW 누락
 │     ├─ decide.py       # 수정안 목록, 담당자 결정 기록, 승인분 내보내기 (원본 레포는 건드리지 않음)
@@ -45,6 +46,7 @@ sbom-triage/
 │     ├─ doctor.py       # 환경 점검
 │     └─ api.py          # FastAPI
 ├─ web/                  # ⑦ React(Vite) 대시보드
+├─ deploy/               # docker-compose.yml (PostgreSQL)
 ├─ kit/                  # 본선용 하네스 키트 (절차서, 문서 틀, 점검 스크립트). kit/README.md 참고
 ├─ scripts/gen_types.py  # 스키마에서 프론트 타입 생성
 ├─ fixtures/
@@ -66,6 +68,7 @@ sbom-triage/
 6. **외부 조회는 전부 `cache.py` 경유.** 외부로 보내는 것은 LLM 어댑터와 `notify.py`(알림)뿐이다. 알림은 소스코드를 싣지 않는다. LLM 어댑터는 단일 모드에서 에이전트가 읽은 코드 조각을 싣고, 2단계 모드(규칙 9)에서는 코드, 파일 이름, 빌드와 테스트 로그를 싣지 않는다. 에이전트는 `.env` 같은 자격 증명 파일을 읽지 못한다. 데모는 `DEMO_MODE=replay`에서 네트워크와 Docker 없이 돌아가야 한다.
 7. **비밀값은 `.env`.** 코드·로그·`out/`에 API 키를 남기지 않고, 샌드박스 컨테이너에도 전달하지 않는다.
 8. **P0 먼저.** REQUIREMENTS의 P0가 전부 끝나기 전에는 P1을 시작하지 않는다.
+10. **두 저장 모드가 같은 동작을 해야 한다.** 기록(실행 정보, Finding, Triage, 결정, 이벤트, 캐시)은 `store/`의 인터페이스로만 읽고 쓴다. 저장 방식을 바꾸는 변경은 `tests/test_store.py`에서 파일과 PostgreSQL 양쪽으로 확인한다. 시연은 파일 모드에서 네트워크, Docker, DB 없이 돌아가야 한다 (HANDOFF D45).
 9. **코드 판독 모델과 작성 모델의 경계.** `LLM_CODE_PROVIDER`가 설정되면(2단계 모드) 소스코드와 파일 이름은 그 모델에만 전달한다. 작성 모델의 프롬프트는 `prompts.writer_prompt`로만 만들고 도구를 주지 않는다 (HANDOFF D35, `tests/test_two_stage.py`).
 
 ## 5. 코드 컨벤션
@@ -83,6 +86,9 @@ uv run python -m triage scan fixtures/demo-repo        # ①~④ (레포 디렉�
 uv run python -m triage scan path/to/bom.cdx.json      # ①~④ (SBOM 파일: CycloneDX 또는 SPDX JSON)
 uv run python -m triage run fixtures/demo-repo --setup "npx prisma generate"   # ①~⑥ 한 번에
 uv run python -m triage agent out/<run_id>             # ⑤
+docker compose -f deploy/docker-compose.yml up -d postgres   # 운영 저장소 띄우기 (로컬은 127.0.0.1:54329)
+uv run python -m triage db init                        # 테이블 생성 (DATABASE_URL 필요, 여러 번 실행해도 안전)
+uv run python -m triage db import --cache              # 파일로 쌓인 실행과 캐시를 DB로 복사 (db status로 건수 확인)
 uv run python -m triage rescore out/<run_id>           # 규칙이나 검사를 바꾼 뒤 저장된 실행을 현재 코드에 맞춤 (모델 호출 없음)
 uv run python -m triage verify out/<run_id>            # ⑥ NOW 항목 샌드박스 검증 (--buckets NOW,NEXT로 범위 확대)
 uv run python -m triage decide out/<run_id> body-parser@1.20.2 approved --by 홍길동   # 담당자 결정 기록 (rejected, held는 --reason 필수)
