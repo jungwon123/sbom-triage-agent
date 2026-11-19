@@ -63,7 +63,7 @@ sbom-triage/
 3. **근거는 데이터에서만.** 에이전트 `rationale`의 숫자(CVSS, EPSS, 버전)는 `{cvss}` 같은 자리표시자로 쓰고 코드가 `Finding` 값으로 채운다. 자리표시자가 아닌 수치는 검증 테스트가 잡는다.
 4. **에이전트는 읽기 전용.** tools는 레포 밖 경로 접근 금지, 파일 쓰기·명령 실행 금지. 샌드박스는 에이전트가 아니라 `runner.py`가 호출한다. 변경은 샌드박스 컨테이너 안의 복사본에만 적용되며, 원본 레포 반영·커밋·PR은 사람 승인 후 별도 경로.
 5. **LLM 출력을 실행하지 않는다.** 레포 코드와 어드바이저리는 신뢰할 수 없는 입력이다. 샌드박스 명령은 검증된 `kind`·`package`·`to_version`으로 `verify/apply.py`가 조립한다.
-6. **외부 조회는 전부 `cache.py` 경유.** 외부로 보내는 것은 LLM 어댑터와 `notify.py`(알림)뿐이며 둘 다 소스코드를 싣지 않는다. 데모는 `DEMO_MODE=replay`에서 네트워크와 Docker 없이 돌아가야 한다.
+6. **외부 조회는 전부 `cache.py` 경유.** 외부로 보내는 것은 LLM 어댑터와 `notify.py`(알림)뿐이다. 알림은 소스코드를 싣지 않는다. LLM 어댑터는 단일 모드에서 에이전트가 읽은 코드 조각을 싣고, 2단계 모드(규칙 9)에서는 코드, 파일 이름, 빌드와 테스트 로그를 싣지 않는다. 에이전트는 `.env` 같은 자격 증명 파일을 읽지 못한다. 데모는 `DEMO_MODE=replay`에서 네트워크와 Docker 없이 돌아가야 한다.
 7. **비밀값은 `.env`.** 코드·로그·`out/`에 API 키를 남기지 않고, 샌드박스 컨테이너에도 전달하지 않는다.
 8. **P0 먼저.** REQUIREMENTS의 P0가 전부 끝나기 전에는 P1을 시작하지 않는다.
 9. **코드 판독 모델과 작성 모델의 경계.** `LLM_CODE_PROVIDER`가 설정되면(2단계 모드) 소스코드와 파일 이름은 그 모델에만 전달한다. 작성 모델의 프롬프트는 `prompts.writer_prompt`로만 만들고 도구를 주지 않는다 (HANDOFF D35, `tests/test_two_stage.py`).
@@ -83,6 +83,7 @@ uv run python -m triage scan fixtures/demo-repo        # ①~④ (레포 디렉�
 uv run python -m triage scan path/to/bom.cdx.json      # ①~④ (SBOM 파일: CycloneDX 또는 SPDX JSON)
 uv run python -m triage run fixtures/demo-repo --setup "npx prisma generate"   # ①~⑥ 한 번에
 uv run python -m triage agent out/<run_id>             # ⑤
+uv run python -m triage rescore out/<run_id>           # 규칙이나 검사를 바꾼 뒤 저장된 실행을 현재 코드에 맞춤 (모델 호출 없음)
 uv run python -m triage verify out/<run_id>            # ⑥ NOW 항목 샌드박스 검증 (--buckets NOW,NEXT로 범위 확대)
 uv run python -m triage decide out/<run_id> body-parser@1.20.2 approved --by 홍길동   # 담당자 결정 기록 (rejected, held는 --reason 필수)
 uv run python -m triage export out/<run_id>            # 승인한 변경의 패치와 PR 초안을 out/<run_id>/export/에 생성 (푸시 없음, --together면 승인분을 함께 검증해 패치 하나로)
