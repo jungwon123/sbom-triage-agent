@@ -13,7 +13,7 @@ from fastapi.responses import PlainTextResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from fastapi.staticfiles import StaticFiles
 
-from . import decide, jobs, runner
+from . import decide, jobs, runner, store
 from .__main__ import load_env
 
 load_env()
@@ -23,18 +23,14 @@ RUN_ID = re.compile(r"^[A-Za-z0-9_.-]+$")
 
 def _run(run_id: str) -> runner.Run:
     path = runner.OUT / run_id
-    if not RUN_ID.match(run_id) or not (path / "meta.json").exists():
+    if not RUN_ID.match(run_id) or not store.get().has_run(path):
         raise HTTPException(404, "run not found")
     return runner.Run(path)
 
 
 @app.get("/api/runs")
 def runs() -> list[dict]:
-    out = []
-    for p in sorted(runner.OUT.glob("*/meta.json"), reverse=True):
-        meta = json.loads(p.read_text())
-        out.append({"id": p.parent.name, "name": meta["name"], "summary": meta["summary"], "stages": meta["stages"]})
-    return out
+    return store.get().list_runs(runner.OUT)
 
 
 @app.get("/api/runs/{run_id}")
@@ -47,17 +43,16 @@ def run_detail(run_id: str) -> dict:
 
 @app.get("/api/runs/{run_id}/events")
 async def events(run_id: str, speed: float = 20.0) -> StreamingResponse:
-    run = _run(run_id)
-    path = run.dir / "events.jsonl"
+    rows = _run(run_id).events()
 
     async def stream():
         prev = None
-        for line in path.read_text().splitlines() if path.exists() else []:
-            ts = json.loads(line).get("ts")
+        for event in rows:
+            ts = event.get("ts")
             if prev is not None and ts is not None:
                 await asyncio.sleep(min(max(ts - prev, 0) / max(speed, 0.1), 1.0))
             prev = ts
-            yield f"data: {line}\n\n"
+            yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
         yield "event: end\ndata: {}\n\n"
 
     return StreamingResponse(stream(), media_type="text/event-stream")
@@ -124,6 +119,19 @@ def job(run_id: str, job_id: str) -> dict:
     if found is None:
         raise HTTPException(404, "job not found")
     return found.model_dump()
+
+
+@app.get("/api/search")
+def search(package: str | None = None, vuln_id: str | None = None) -> list[dict]:
+    """Which services carry this package or this vulnerability, by the latest run of each."""
+    if not package and not vuln_id:
+        raise HTTPException(422, "give package or vuln_id")
+    return store.get().search(runner.OUT, package, vuln_id)
+
+
+@app.get("/api/health")
+def health() -> dict:
+    return {"ok": True, "store": store.get().name}
 
 
 _dist = runner.ROOT / "web" / "dist"

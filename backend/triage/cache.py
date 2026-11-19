@@ -35,11 +35,13 @@ DAY = 86_400.0
 def fetch_json(url: str, data: Any = None, timeout: float = 60, max_age: float | None = None) -> Any | None:
     """max_age (seconds) is for feeds that change daily (KEV, EPSS): an older copy is fetched again in
     live mode. If that fetch fails the old copy is still returned, with a warning. Replay never refetches."""
-    path = CACHE_DIR / f"{key(url, data)}.json"
+    from . import store          # late import: the file store reads CACHE_DIR from this module
+    st, k = store.get(), key(url, data)
     stale = None
-    if path.exists():
-        body = json.loads(path.read_text())
-        if replay_mode() or max_age is None or time.time() - path.stat().st_mtime <= max_age:
+    hit = st.cache_get(k)
+    if hit is not None:
+        body, fetched_at = hit
+        if replay_mode() or max_age is None or time.time() - fetched_at <= max_age:
             return body
         stale = body
     if replay_mode():
@@ -53,6 +55,5 @@ def fetch_json(url: str, data: Any = None, timeout: float = 60, max_age: float |
     except (httpx.HTTPError, ValueError) as e:
         log.warning("fetch failed %s: %s%s", url[:120], e, " (using the older cached copy)" if stale is not None else "")
         return stale
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(body))
+    st.cache_put(k, url, body)
     return body

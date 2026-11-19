@@ -1,0 +1,24 @@
+# Operating store for SBOM Triage. Start with:
+#   docker compose -f deploy/docker-compose.yml up -d postgres
+# The password below is a local development default. Set POSTGRES_PASSWORD (and DATABASE_URL to
+# match) for anything that is not a laptop.
+name: sbom-triage
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: triage
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-triage_dev}
+      POSTGRES_DB: triage
+    ports:
+      - "127.0.0.1:54329:5432"        # loopback only: not reachable from other machines
+    volumes:
+      - triage-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U triage -d triage"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+volumes:
+  triage-pg:

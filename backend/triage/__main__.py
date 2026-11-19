@@ -35,6 +35,31 @@ def context_of(a: argparse.Namespace):
                           internet_facing={"yes": True, "no": False}.get(a.internet_facing))
 
 
+def db_command(a: argparse.Namespace) -> int:
+    from . import runner
+    from .store import migrate
+    from .store.files import FileStore
+    from .store.postgres import PostgresStore
+    url = os.environ.get("DATABASE_URL")
+    if not url:
+        print("DATABASE_URL이 없습니다. .env에 넣거나 deploy/docker-compose.yml의 예시를 참고하세요."); return 1
+    pg = PostgresStore(url)
+    if a.action == "init":
+        print(json.dumps({"schema_version": pg.init()})); return 0
+    if a.action == "status":
+        conn = pg._conn()
+        counts = {t: conn.execute(f"SELECT count(*) AS n FROM {t}").fetchone()["n"]
+                  for t in ("runs", "findings", "triage", "events", "decisions", "http_cache")}
+        print(json.dumps(counts, indent=1)); return 0
+    pg.init()
+    src = FileStore()
+    dirs = a.run_dirs or [p.parent for p in sorted(runner.OUT.glob("*/meta.json"))]
+    out = {d.name: migrate.import_run(src, pg, d.resolve()) for d in dirs}
+    if a.cache:
+        out["http_cache"] = migrate.import_cache(pg)
+    print(json.dumps(out, ensure_ascii=False, indent=1)); return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     load_env()
     from . import doctor, eval as eval_mod, models, runner
@@ -56,6 +81,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--labeled", action="store_true", help="judge only the findings that have a golden label")
     p.add_argument("--retry-failed", action="store_true", help="judge only the findings whose last LLM call failed")
     context_args(p)
+    p = sub.add_parser("db", help="operating store (PostgreSQL): create tables, import file runs")
+    p.add_argument("action", choices=["init", "import", "status"])
+    p.add_argument("run_dirs", nargs="*", type=pathlib.Path, help="for import: run directories (default: every run under out/)")
+    p.add_argument("--cache", action="store_true", help="for import: also copy fixtures/cache into the database")
     p = sub.add_parser("rescore", help="re-apply the current rules and checks to a stored run (no model calls)")
     p.add_argument("run_dir", type=pathlib.Path)
     p = sub.add_parser("verify"); p.add_argument("run_dir", type=pathlib.Path); p.add_argument("--setup")
@@ -83,6 +112,8 @@ def main(argv: list[str] | None = None) -> int:
     a = ap.parse_args(argv)
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
 
+    if a.cmd == "db":
+        return db_command(a)
     if a.cmd == "doctor":
         return doctor.main(a.llm)
     if a.cmd == "schema":

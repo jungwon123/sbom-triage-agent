@@ -12,7 +12,7 @@ import json
 import pathlib
 import re
 
-from . import cache
+from . import cache, store
 from .models import BUCKET_ORDER, CombinedCheck, Decision, Finding, Proposal, Triage, VerifyStep
 from .verify import run as verify_run, sandbox
 
@@ -31,19 +31,15 @@ def target_of(f: Finding) -> str:
 
 def decisions(run_dir: pathlib.Path) -> dict[str, Decision]:
     """Latest decision per target."""
-    path = run_dir / LOG
     out: dict[str, Decision] = {}
-    for line in path.read_text().splitlines() if path.exists() else []:
-        if line.strip():
-            d = Decision.model_validate_json(line)
-            out[d.target] = d
+    for row in store.get().decisions(run_dir):
+        d = Decision.model_validate(row)
+        out[d.target] = d
     return out
 
 
 def history(run_dir: pathlib.Path, target: str) -> list[Decision]:
-    path = run_dir / LOG
-    rows = [Decision.model_validate_json(x) for x in path.read_text().splitlines() if x.strip()] if path.exists() else []
-    return [d for d in rows if d.target == target]
+    return [d for d in map(Decision.model_validate, store.get().decisions(run_dir)) if d.target == target]
 
 
 def proposals(run) -> list[Proposal]:
@@ -89,8 +85,7 @@ def record(run, target: str, status: str, by: str, reason: str = "") -> Decision
     d = Decision(target=target, status=status, by=by, reason=reason,
                  at=dt.datetime.now(dt.timezone.utc).astimezone().isoformat(timespec="seconds"),
                  to_version=p.remediation.to_version, verdict=v.verdict if v else None)
-    with (run.dir / LOG).open("a") as fh:
-        fh.write(d.model_dump_json() + "\n")
+    store.get().append_decision(run.dir, d.model_dump())
     run.emit({"type": "decision", "target": target, "status": status, "by": by})
     return d
 

@@ -38,6 +38,15 @@ def checks(test_llm: bool = False) -> list[tuple[str, str, str]]:
     n = len(list(cache.CACHE_DIR.glob("*.json"))) if cache.CACHE_DIR.exists() else 0
     rows.append(("response cache", "ok" if n else "warn", f"{n}개 ({cache.CACHE_DIR.name})"))
     rows.append(("DEMO_MODE", "ok", os.environ.get("DEMO_MODE", "live")))
+    from . import store
+    if store.kind() == "postgres":
+        try:
+            store.get().list_runs(cache.ROOT / "out")
+            rows.append(("TRIAGE_STORE", "ok", "postgres (연결됨)"))
+        except Exception as e:  # connection or schema problem: say how to fix it
+            rows.append(("TRIAGE_STORE", "fail", f"postgres 연결 실패: {str(e)[:80]} (compose 실행과 `triage db init` 확인)"))
+    else:
+        rows.append(("TRIAGE_STORE", "ok", f"{store.kind()} (out/과 fixtures/cache의 JSON 파일)"))
     p = llm_mod.provider()
     key = {"anthropic": "ANTHROPIC_API_KEY", "openai": "OPENAI_API_KEY"}.get(p)
     has_key = bool(key and os.environ.get(key))

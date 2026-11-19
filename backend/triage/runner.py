@@ -11,7 +11,7 @@ import pathlib
 import re
 import time
 
-from . import cache, sbom, scan as scan_mod, score
+from . import cache, sbom, scan as scan_mod, score, store
 from .agent import llm as llm_mod, run as agent_run
 from .enrich import kev as kev_mod
 from .models import Finding, ServiceContext, Triage
@@ -27,15 +27,29 @@ class Run:
         self.dir = run_dir.resolve()
         self.dir.mkdir(parents=True, exist_ok=True)
 
+    @property
+    def id(self) -> str:
+        return self.dir.name
+
     def emit(self, event: dict) -> None:
-        event = {"ts": round(time.time(), 3), **event}
-        with (self.dir / "events.jsonl").open("a") as fh:
-            fh.write(json.dumps(event, ensure_ascii=False, default=str) + "\n")
+        event = json.loads(json.dumps({"ts": round(time.time(), 3), **event}, ensure_ascii=False, default=str))
+        store.get().append_event(self.dir, event)
+
+    def events(self) -> list[dict]:
+        return store.get().events(self.dir)
 
     def write(self, name: str, data) -> None:
-        (self.dir / name).write_text(json.dumps(data, ensure_ascii=False, indent=1, default=str))
+        """meta, findings and triage are records and go to the store; anything else is an artifact file."""
+        doc = name.removesuffix(".json")
+        if doc in store.base.DOCS:
+            store.get().put_doc(self.dir, doc, json.loads(json.dumps(data, ensure_ascii=False, default=str)))
+        else:
+            (self.dir / name).write_text(json.dumps(data, ensure_ascii=False, indent=1, default=str))
 
     def read(self, name: str):
+        doc = name.removesuffix(".json")
+        if doc in store.base.DOCS:
+            return store.get().get_doc(self.dir, doc)
         return json.loads((self.dir / name).read_text())
 
     @property
