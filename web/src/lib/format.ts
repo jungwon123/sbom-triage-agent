@@ -45,6 +45,7 @@ export const reasonLabel: Record<string, string> = {
   mitigation_only: "적용할 수정 버전이 없어 검증하지 않았습니다.",
   baseline_test_uncomparable: "조치 전 테스트 결과에서 테스트 이름을 얻지 못해 비교할 수 없습니다.",
   baseline_build_failed: "조치 전에도 빌드가 실패하던 상태입니다.",
+  fewer_tests_ran: "조치 후 실행된 테스트가 조치 전보다 적어서 통과로 볼 수 없습니다.",
 };
 
 export const stepLabel: Record<string, string> = {

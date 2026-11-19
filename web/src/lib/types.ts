@@ -139,3 +139,31 @@ export interface Proposal {
   verification: Verification | null;
   decision: Decision | null;
 }
+
+export interface CombinedCheck {
+  targets: string[];
+  finding_ids: string[];
+  steps: VerifyStep[];
+  remaining: string[];
+  new_findings: string[];
+  regressions: string[];
+  tests_run: number;
+  verdict: "verified" | "failed" | "inconclusive";
+  reason: string;
+  patch_file?: string | null;
+  package_json_diff?: string | null;
+  lockfile_lines_changed?: number;
+}
+
+export interface Job {
+  id: string;
+  kind: "export_together";
+  status: "queued" | "running" | "done" | "failed" | "interrupted";
+  created_at: string;
+  started_at?: string | null;
+  finished_at?: string | null;
+  position?: number;
+  result?: Record<string, unknown> | null;
+  error?: string | null;
+  boot?: string;
+}

@@ -229,6 +229,7 @@ def verify(run: Run, setup_cmd: str | None = None, buckets: tuple[str, ...] = ("
     meta = run.meta
     meta["summary"] = summarize(findings, triage)
     meta["stages"] = sorted(set(meta["stages"]) | {"verify"})
+    meta["verify_setup"] = setup_cmd   # the combined check on export reuses it
     run.write("meta.json", meta)
     run.emit({"type": "stage", "stage": "verify", "status": "done", **meta["summary"]})
     return run

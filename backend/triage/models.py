@@ -145,6 +145,36 @@ class Decision(Strict):
     verdict: Literal["verified", "failed", "inconclusive"] | None = None
 
 
+class CombinedCheck(Strict):
+    """Every approved change applied together in one sandbox pass, and the single patch that results."""
+    targets: list[str]                       # proposal targets that went in
+    finding_ids: list[str]                   # findings the changes are meant to remove
+    steps: list[VerifyStep]
+    remaining: list[str]                     # target findings still reported after the change
+    new_findings: list[str]
+    regressions: list[str]
+    tests_run: int
+    verdict: Literal["verified", "failed", "inconclusive"]
+    reason: str
+    patch_file: str | None = None            # file name under out/<run>/export/
+    package_json_diff: str | None = None
+    lockfile_lines_changed: int = 0
+
+
+class Job(Strict):
+    """One queued piece of slow work (a sandbox pass). State lives in out/<run>/jobs/<id>.json."""
+    id: str
+    kind: Literal["export_together"]
+    status: Literal["queued", "running", "done", "failed", "interrupted"]
+    created_at: str
+    started_at: str | None = None
+    finished_at: str | None = None
+    position: int = 0                        # jobs ahead of this one when it was queued
+    result: dict | None = None
+    error: str | None = None
+    boot: str = ""                           # server process that owns it; a different one means it was cut off
+
+
 class Proposal(Strict):
     """One change set shown to the owner: every finding of a package@version shares it."""
     target: str
@@ -176,5 +206,5 @@ class Triage(Strict):
 
 
 def schema_json() -> str:
-    models = [Component, Finding, AgentVerdict, Remediation, Verification, Triage, ServiceContext, Decision, Proposal]
+    models = [Component, Finding, AgentVerdict, Remediation, Verification, Triage, ServiceContext, Decision, Proposal, CombinedCheck, Job]
     return json.dumps({m.__name__: m.model_json_schema() for m in models}, ensure_ascii=False, indent=1)

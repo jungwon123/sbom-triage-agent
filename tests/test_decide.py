@@ -106,3 +106,97 @@ def test_api_records_decisions(run, monkeypatch):
     assert ok.status_code == 200 and ok.json()["status"] == "approved"
     assert "PR_DRAFT.md" in c.post(f"/api/runs/{rid}/export").json()["files"]
     assert c.get(f"/api/runs/{rid}/patch", params={"target": "lib@1.0.0"}).text.startswith("--- a/package.json")
+
+
+def step(name, status="passed", **kw):
+    from triage.models import VerifyStep
+    return VerifyStep(name=name, status=status, duration_ms=1, log_tail="", **kw)
+
+
+def test_fewer_tests_than_the_baseline_is_not_verified():
+    base = [step("test", "failed", failed_tests=["a › b"], tests_run=27)]
+    died = [step("install"), step("test", "failed", failed_tests=[], tests_run=0), step("rescan")]
+    assert verify_run.verdict(died, base, False, False)[:2] == ("inconclusive", "fewer_tests_ran")
+    same = [step("install"), step("test", "failed", failed_tests=["a › b"], tests_run=27), step("rescan")]
+    assert verify_run.verdict(same, base, False, False)[:2] == ("verified", "ok")
+
+
+def test_export_together_writes_one_patch_from_one_sandbox_pass(run, monkeypatch):
+    from triage.models import CombinedCheck
+    r = run()
+    decide.record(r, "lib@1.0.0", "approved", "kim")
+    seen = {}
+
+    def fake(run_, approved, setup_cmd):
+        seen["targets"], seen["setup"] = [p.target for p in approved], setup_cmd
+        check = CombinedCheck(targets=seen["targets"], finding_ids=approved[0].finding_ids, steps=[], remaining=[],
+                              new_findings=[], regressions=[], tests_run=27, verdict="verified", reason="ok",
+                              lockfile_lines_changed=8)
+        return check, "--- a/package.json\n+++ b/package.json\n", None
+
+    monkeypatch.setattr(decide, "check_together", fake)
+    out = decide.export(r, together=True, setup_cmd="npx prisma generate")
+    assert seen == {"targets": ["lib@1.0.0"], "setup": "npx prisma generate"}
+    assert sorted(out["files"]) == ["PR_DRAFT.md", "combined.json", "combined.patch"]
+    assert out["combined"]["verdict"] == "verified"
+    assert "함께 적용한 결과" in (r.dir / "export" / "PR_DRAFT.md").read_text()
+
+
+def test_export_together_falls_back_to_single_patches_when_the_sandbox_cannot_run(run, monkeypatch):
+    r = run()
+    decide.record(r, "lib@1.0.0", "approved", "kim")
+    monkeypatch.setattr(decide, "check_together", lambda *a: (None, "", "Docker를 사용할 수 없습니다."))
+    out = decide.export(r, together=True)
+    assert sorted(out["files"]) == ["PR_DRAFT.md", "lib@1.0.0.patch"] and out["combined_skipped"]
+
+
+def test_combined_command_orders_direct_upgrades_before_overrides(monkeypatch, tmp_path):
+    from triage.verify import sandbox
+    seen = {}
+
+    def fake_run(repo, cmd, setup, scale=1.0):
+        seen["cmd"] = cmd
+        return sandbox.Result()
+
+    monkeypatch.setattr(sandbox, "run", fake_run)
+    over = remediation().model_copy(update={"kind": "override_transitive", "package": "aaa"})
+    check, patch = verify_run.verify_together(tmp_path, [("aaa@1.0.0", over, ["x"]), ("lib@1.0.0", remediation(), ["y"])],
+                                              set(), [], None)
+    assert seen["cmd"].index("npm install lib@1.0.1") < seen["cmd"].index("aaa@1.0.0")
+    assert check.targets == ["lib@1.0.0", "aaa@1.0.0"] and check.remaining == ["y", "x"] and patch == ""
+
+
+def test_same_package_at_two_versions_becomes_one_command():
+    from triage.verify import apply
+    direct = remediation("1.0.9")
+    other = remediation("1.0.5").model_copy(update={"kind": "override_transitive", "from_version": "0.9.0"})
+    cmd = apply.same_package_command(direct, [other])
+    assert cmd.startswith("npm install lib@1.0.9 ") and "'lib':'\\$lib'" in cmd
+    assert "version==='1.0.0'" in cmd and "version==='0.9.0'" in cmd
+    with pytest.raises(ValueError):
+        apply.same_package_command(direct, [other.model_copy(update={"package": "x; rm -rf /"})])
+    with pytest.raises(ValueError):
+        apply.same_package_command(direct, [other.model_copy(update={"package": "lib", "to_version": "1.0.5 && curl"})])
+
+
+def test_api_queues_the_combined_export_and_reports_the_job(run, monkeypatch):
+    import time
+    from fastapi.testclient import TestClient
+    from triage import api
+    r = run()
+    decide.record(r, "lib@1.0.0", "approved", "kim")
+    monkeypatch.setattr(runner, "OUT", r.dir.parent)
+    monkeypatch.setattr(decide, "check_together", lambda *a: (None, "", "Docker를 사용할 수 없습니다."))
+    c, rid = TestClient(api.app), r.dir.name
+    assert c.get(f"/api/runs/{rid}/jobs/latest").json() is None
+    res = c.post(f"/api/runs/{rid}/export/together")
+    assert res.status_code == 202 and res.json()["status"] in ("queued", "running", "done")
+    job_id = res.json()["id"]
+    for _ in range(100):
+        job = c.get(f"/api/runs/{rid}/jobs/{job_id}").json()
+        if job["status"] == "done":
+            break
+        time.sleep(0.05)
+    assert job["status"] == "done" and job["result"]["combined_skipped"] and "PR_DRAFT.md" in job["result"]["files"]
+    assert c.get(f"/api/runs/{rid}/jobs/latest").json()["id"] == job_id
+    assert c.get(f"/api/runs/{rid}/jobs/zzz").status_code == 404

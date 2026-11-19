@@ -13,7 +13,7 @@ from fastapi.responses import PlainTextResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from fastapi.staticfiles import StaticFiles
 
-from . import decide, runner
+from . import decide, jobs, runner
 from .__main__ import load_env
 
 load_env()
@@ -91,13 +91,39 @@ def decide_one(run_id: str, body: DecisionIn) -> dict:
         raise HTTPException(422, str(e)) from e
 
 
-@app.post("/api/runs/{run_id}/export")
-def export(run_id: str) -> dict:
-    run = _run(run_id)
-    out = decide.export(run)
+def _export(run: runner.Run, run_id: str, together: bool) -> dict:
+    out = decide.export(run, together)
     draft = run.dir / "export" / "PR_DRAFT.md"
     return {"approved": out["approved"], "files": out["files"], "dir": f"out/{run_id}/export",
+            "combined": out["combined"], "combined_skipped": out["combined_skipped"],
             "pr_draft": draft.read_text() if draft.exists() else None}
+
+
+@app.post("/api/runs/{run_id}/export")
+def export(run_id: str) -> dict:
+    """Per-change patches and the PR draft, written at once."""
+    return _export(_run(run_id), run_id, together=False)
+
+
+@app.post("/api/runs/{run_id}/export/together", status_code=202)
+def export_together(run_id: str) -> dict:
+    """Queue one sandbox pass with every approved change. Poll the returned job for the result."""
+    run = _run(run_id)
+    return jobs.submit(run.dir, "export_together", lambda: _export(run, run_id, together=True)).model_dump()
+
+
+@app.get("/api/runs/{run_id}/jobs/latest")
+def latest_job(run_id: str, kind: str = "export_together") -> dict | None:
+    job = jobs.latest(_run(run_id).dir, kind)
+    return job.model_dump() if job else None
+
+
+@app.get("/api/runs/{run_id}/jobs/{job_id}")
+def job(run_id: str, job_id: str) -> dict:
+    found = jobs.get(_run(run_id).dir, job_id)
+    if found is None:
+        raise HTTPException(404, "job not found")
+    return found.model_dump()
 
 
 _dist = runner.ROOT / "web" / "dist"

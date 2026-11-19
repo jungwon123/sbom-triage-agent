@@ -64,6 +64,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--by", required=True); p.add_argument("--reason", default="")
     p = sub.add_parser("export", help="write patches and a PR draft for the approved changes (nothing is pushed)")
     p.add_argument("run_dir", type=pathlib.Path)
+    p.add_argument("--together", action="store_true", help="apply every approved change in one sandbox pass and export one patch")
+    p.add_argument("--setup", help="setup command for the sandbox; defaults to the one used by verify")
     p = sub.add_parser("notify", help="send the run summary to Slack (SLACK_WEBHOOK_URL)")
     p.add_argument("run_dir", type=pathlib.Path)
     p.add_argument("--dry-run", action="store_true", help="print the message instead of sending it")
@@ -123,7 +125,7 @@ def main(argv: list[str] | None = None) -> int:
         print(d.model_dump_json(indent=1)); return 0
     elif a.cmd == "export":
         from . import decide
-        out = decide.export(runner.Run(a.run_dir))
+        out = decide.export(runner.Run(a.run_dir), a.together, a.setup)
         print(json.dumps(out, ensure_ascii=False, indent=1)); return 0
     else:  # eval, compare
         run = runner.Run(a.run_dir)

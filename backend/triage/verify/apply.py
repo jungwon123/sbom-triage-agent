@@ -83,6 +83,33 @@ def build(p: RemediationProposal, f: Finding) -> Remediation:
                        breaking_risk=p.breaking_risk, notes=p.notes)
 
 
+def _prune(pkg: str, old: str) -> str:
+    return ("const s=require('fs'),l=JSON.parse(s.readFileSync('package-lock.json'));"
+            f"for(const k of Object.keys(l.packages||{{}}))if(k.endsWith('node_modules/{pkg}')&&l.packages[k].version==='{old}')delete l.packages[k];"
+            "delete l.dependencies;s.writeFileSync('package-lock.json',JSON.stringify(l,null,2))")
+
+
+def same_package_command(direct: Remediation, others: list[Remediation]) -> str:
+    """One package that is both a direct dependency and pulled in at other versions by other packages.
+
+    Separate commands do not compose here: npm ignores a versioned override once the direct dependency
+    moves. The form npm documents for this case is an override that follows the direct dependency
+    ("pkg": "$pkg"), so every copy resolves to the version the project itself declares.
+    """
+    group = [direct, *others]
+    if any(r.package != direct.package or r.kind == "mitigation_only" or not r.to_version for r in group):
+        raise ValueError("same_package_command needs remediations of one package with a target version")
+    if not NPM_NAME.match(direct.package) or not all(VERSION.match(r.to_version) and VERSION.match(r.from_version) for r in group):
+        raise ValueError("unsafe remediation values")
+    pkg = direct.package
+    new = max((r.to_version for r in group), key=semver.parse)
+    # \$ keeps the shell from expanding the npm reference inside the double-quoted node -e argument
+    js = ("const f='package.json',s=require('fs'),p=JSON.parse(s.readFileSync(f));"
+          f"p.overrides={{...p.overrides,'{pkg}':'\\${pkg}'}};s.writeFileSync(f,JSON.stringify(p,null,2))")
+    prunes = " && ".join(f'node -e "{_prune(pkg, r.from_version)}"' for r in group)
+    return f'npm install {pkg}@{new} {NPM_FLAGS} && node -e "{js}" && {prunes} && npm install {NPM_FLAGS}'
+
+
 def sandbox_command(r: Remediation) -> str | None:
     """Shell command run inside the container copy. Every interpolated value was pattern-checked."""
     if r.kind == "mitigation_only" or not r.to_version:

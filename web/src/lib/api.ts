@@ -1,4 +1,4 @@
-import type { Decision, Finding, Proposal, ServiceContext, Triage } from "./types";
+import type { CombinedCheck, Decision, Finding, Job, Proposal, ServiceContext, Triage } from "./types";
 
 export type Bucket = Triage["final_bucket"];
 export type Counts = Record<Bucket, number>;
@@ -67,6 +67,8 @@ export interface ExportResult {
   files: string[];
   dir: string;
   pr_draft: string | null;
+  combined: CombinedCheck | null;
+  combined_skipped: string | null;
 }
 
 const base = (id: string) => `/api/runs/${encodeURIComponent(id)}`;
@@ -75,5 +77,9 @@ export const patchUrl = (id: string, target: string) => `${base(id)}/patch?targe
 export const decide = (id: string, body: { target: string; status: Decision["status"]; by: string; reason: string }) =>
   post<Decision>(`${base(id)}/decisions`, body);
 export const exportApproved = (id: string) => post<ExportResult>(`${base(id)}/export`);
+export type ExportJob = Omit<Job, "result"> & { result?: ExportResult | null };
+export const startExportTogether = (id: string) => post<ExportJob>(`${base(id)}/export/together`);
+export const getJob = (id: string, jobId: string) => get<ExportJob>(`${base(id)}/jobs/${encodeURIComponent(jobId)}`);
+export const latestExportJob = (id: string) => get<ExportJob | null>(`${base(id)}/jobs/latest?kind=export_together`);
 export const listRuns = () => get<RunListItem[]>("/api/runs");
 export const getRun = (id: string) => get<RunDetail>(`/api/runs/${encodeURIComponent(id)}`);

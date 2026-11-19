@@ -11,7 +11,7 @@ import pathlib
 from collections.abc import Callable
 
 from .. import sbom, scan, score
-from ..models import Finding, Remediation, Triage, Verification, VerifyStep
+from ..models import CombinedCheck, Finding, Remediation, Triage, Verification, VerifyStep
 from . import apply, sandbox
 
 MAX_ATTEMPTS = 3
@@ -53,6 +53,9 @@ def verdict(steps: list[VerifyStep], base: list[VerifyStep], target_left: bool, 
         return "failed", "regression", regressions
     if timed_out:
         return "inconclusive", "timeout", []
+    if t0 and t1 and t1.tests_run < t0.tests_run:
+        # the suite stopped early or did not load: "no new failing test name" proves nothing then
+        return "inconclusive", "fewer_tests_ran", []
     if uncomparable:
         return "inconclusive", "baseline_test_uncomparable", []
     if b0 and b0.status == "failed":
@@ -99,13 +102,58 @@ def verify_one(repo: pathlib.Path, r: Remediation, targets: list[str], before: s
             steps.append(VerifyStep(name="rescan", status="failed", duration_ms=0, log_tail=str(e)[:300]))
     v, why, reg = verdict(steps, baseline, left, bool(new_now))
     t = res.step("test")
-    pkg_diff, lock_diff = diff(repo, "package.json", res.package_json), diff(repo, "package-lock.json", res.lockfile)
-    changed = sum(1 for line in lock_diff if line[:1] in "+-" and line[:3] not in ("+++", "---"))
-    patch = "".join(line + "\n" for line in pkg_diff + lock_diff)
+    patch, pkg_diff_text, changed = changes(repo, res)
     return Verification(finding_id=targets[0], attempt=attempt, remediation_applied=r, steps=steps,
                         target_resolved=not left, new_findings=added, new_now_findings=new_now, regressions=reg,
                         tests_run=t.tests_run if t else 0, verdict=v, reason=why,
-                        package_json_diff="\n".join(pkg_diff) or None, lockfile_lines_changed=changed), patch
+                        package_json_diff=pkg_diff_text, lockfile_lines_changed=changed), patch
+
+
+def changes(repo: pathlib.Path, res: sandbox.Result) -> tuple[str, str | None, int]:
+    """-> (patch text, package.json diff or None, lockfile lines changed) from one sandbox pass."""
+    pkg_diff, lock_diff = diff(repo, "package.json", res.package_json), diff(repo, "package-lock.json", res.lockfile)
+    changed = sum(1 for line in lock_diff if line[:1] in "+-" and line[:3] not in ("+++", "---"))
+    return "".join(line + "\n" for line in pkg_diff + lock_diff), "\n".join(pkg_diff) or None, changed
+
+
+def verify_together(repo: pathlib.Path, items: list[tuple[str, Remediation, list[str]]], before: set[str],
+                    baseline: list[VerifyStep], setup_cmd: str | None) -> tuple[CombinedCheck, str]:
+    """Apply several approved remediations in one sandbox pass. items: (target, remediation, finding ids).
+
+    Direct upgrades go first, then overrides. A package approved at several versions is handled as one
+    change (apply.same_package_command); every command is assembled by apply.py from checked values.
+    """
+    ordered = sorted(items, key=lambda x: (x[1].kind != "upgrade_direct", x[0]))
+    by_pkg: dict[str, list[Remediation]] = {}
+    for _, r, _ in ordered:
+        if r.kind != "mitigation_only":
+            by_pkg.setdefault(r.package, []).append(r)
+    cmds = []
+    for group in by_pkg.values():
+        direct = next((r for r in group if r.kind == "upgrade_direct"), None)
+        if direct is not None and len(group) > 1:   # same package, direct and transitive copies
+            cmds.append(apply.same_package_command(direct, [r for r in group if r is not direct]))
+        else:
+            cmds += [c for c in (apply.sandbox_command(r) for r in group) if c]
+    wanted = [fid for _, _, ids in ordered for fid in ids]
+    res = sandbox.run(repo, " && ".join(cmds), setup_cmd, scale=min(4.0, max(1.0, float(len(cmds)))))
+    steps = list(res.steps)
+    left, added, new_now = list(wanted), [], False
+    if res.lockfile and res.step("install") and res.step("install").status == "passed":
+        try:
+            after = rescan(repo, res.lockfile)
+            left = [t for t in wanted if t in after]
+            added = sorted(k for k in after if k not in before)
+            new_now = any(after[k][1] == "NOW" for k in added)
+            steps.append(VerifyStep(name="rescan", status="passed", duration_ms=0, log_tail=f"{len(after)} findings"))
+        except Exception as e:  # rescan must not crash the export
+            steps.append(VerifyStep(name="rescan", status="failed", duration_ms=0, log_tail=str(e)[:300]))
+    v, why, reg = verdict(steps, baseline, bool(left), new_now)
+    patch, pkg_diff, changed = changes(repo, res)
+    t = res.step("test")
+    return CombinedCheck(targets=[x[0] for x in ordered], finding_ids=wanted, steps=steps, remaining=left,
+                         new_findings=added, regressions=reg, tests_run=t.tests_run if t else 0, verdict=v,
+                         reason=why, package_json_diff=pkg_diff, lockfile_lines_changed=changed), patch
 
 
 def run(repo: pathlib.Path, findings: list[Finding], triage: list[Triage], run_dir: pathlib.Path,
