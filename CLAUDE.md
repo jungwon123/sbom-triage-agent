@@ -14,7 +14,7 @@ npm 레포의 취약점을 CVSS 목록이 아니라 **NOW / NEXT / MONITOR** 3�
 |---|---|
 | 파이프라인·에이전트 | Python 3.12, uv, Pydantic v2, httpx |
 | API | FastAPI (SSE로 진행 로그 스트리밍) |
-| LLM | Anthropic API (tool use), 기본 모델 **Claude Fable 5.2 (`claude-fable-5-2`)**. `.env`의 `LLM_PROVIDER`·`LLM_MODEL`로 주입하고 코드에 하드코딩하지 않는다. 본선 대비로 OpenAI 어댑터도 둔다 (HANDOFF D34) |
+| LLM | Anthropic API (tool use), 기본 모델 **Claude Opus 5.5 (`claude-opus-5-5`)**. `.env`의 `LLM_PROVIDER`·`LLM_MODEL`로 주입하고 코드에 하드코딩하지 않는다. 본선 대비로 OpenAI 어댑터도 둔다 (HANDOFF D34) |
 | 외부 데이터 | Syft, OSV API, FIRST EPSS API, CISA KEV JSON |
 | 검증 샌드박스 | Docker (일회용 컨테이너) |
 | 대시보드 | React (Vite) + TypeScript + Tailwind. 빌드 결과물을 FastAPI가 정적 서빙 (운영에 Node 서버 없음) |
@@ -39,6 +39,7 @@ sbom-triage/
 │     ├─ cache.py        # 외부 응답 디스크 캐시
 │     ├─ runner.py       # 단계 호출 순서와 이벤트 기록 (CLI·API 공용)
 │     ├─ eval.py         # golden 일치율, NOW 누락
+│     ├─ decide.py       # 수정안 목록, 담당자 결정 기록, 승인분 내보내기 (원본 레포는 건드리지 않음)
 │     ├─ notify.py       # Slack 호환 웹훅 알림 (코드 없이 요약만)
 │     ├─ doctor.py       # 환경 점검
 │     └─ api.py          # FastAPI
@@ -51,7 +52,7 @@ sbom-triage/
 │  ├─ eval-repos.ref     # 평가용 공개 레포 URL과 고정 커밋
 │  ├─ golden.yaml        # 사람이 라벨링한 정답 버킷
 │  └─ cache/             # 외부 API 응답 스냅샷 (리플레이용)
-└─ out/<run_id>/         # sbom.cdx.json, findings.json, triage.json, agent_log.jsonl, events.jsonl, verify/
+└─ out/<run_id>/         # sbom.cdx.json, findings.json, triage.json, agent_log.jsonl, events.jsonl, verify/(*.patch 포함), decisions.jsonl, export/
 ```
 
 ## 4. 절대 규칙
@@ -81,7 +82,9 @@ uv run python -m triage scan fixtures/demo-repo        # ①~④ (레포 디렉�
 uv run python -m triage scan path/to/bom.cdx.json      # ①~④ (SBOM 파일: CycloneDX 또는 SPDX JSON)
 uv run python -m triage run fixtures/demo-repo --setup "npx prisma generate"   # ①~⑥ 한 번에
 uv run python -m triage agent out/<run_id>             # ⑤
-uv run python -m triage verify out/<run_id>            # ⑥ NOW 항목 샌드박스 검증
+uv run python -m triage verify out/<run_id>            # ⑥ NOW 항목 샌드박스 검증 (--buckets NOW,NEXT로 범위 확대)
+uv run python -m triage decide out/<run_id> body-parser@1.20.2 approved --by 홍길동   # 담당자 결정 기록 (rejected, held는 --reason 필수)
+uv run python -m triage export out/<run_id>            # 승인한 변경의 패치와 PR 초안을 out/<run_id>/export/에 생성 (푸시 없음)
 uv run python -m triage eval out/<run_id>              # golden 일치율
 uv run python -m triage compare out/<run_id> --configs rule,api,local,split   # LLM 구성별 비교
 uv run python -m triage notify out/<run_id> --dry-run   # Slack 알림 미리 보기 (--dry-run 빼면 전송)

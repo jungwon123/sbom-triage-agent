@@ -86,11 +86,14 @@
 | D31 | 대시보드를 Next.js에서 Vite + React로 변경, FastAPI가 정적 서빙 | 채택 | SSR·서버 기능이 불필요, 사내망에 Node 서버를 두지 않음 |
 | D32 | 프로토타입 저장소는 파일 유지(DB 없음). 운영 설계는 PostgreSQL, 대규모 대응은 작업 큐와 워커 분리 | 채택 | 단일 사용자 시연에 DB 불필요. 병목은 DB가 아니라 샌드박스와 LLM 호출 |
 | D33 | 운영 큐는 PostgreSQL `SKIP LOCKED` + lease + fencing, 샌드박스는 서버당 동시 실행 제한(측정 환경 4개), 확장은 서버 추가 | 채택 (설계) | 운영 PoC: 동시 4개에서 처리량 최고, 큐 유실 0 (`docs/poc-results.md`) |
-| D34 | 기본 LLM은 Claude Fable 5.2 (`claude-fable-5-2`). 사고는 항상 켜져 있어 `thinking` 파라미터를 보내지 않고 깊이는 `LLM_EFFORT`(기본 high)로 조절. 강제 `tool_choice`는 400이므로 `auto` + 프롬프트로 유도. 거절 대비 서버측 fallback(`fallbacks: "default"`) 사용. 본선(2026-11-24~25)에서 OpenAI 도구가 제공될 수 있어 `LLM_PROVIDER=openai` 어댑터를 별도 파일로 둔다 | 채택 | 사용자 지정 (2026-11-18) |
+| D34 | 기본 LLM은 Claude Opus 5.5 (`claude-opus-5-5`). 2026-11-19에 비용을 이유로 Claude Fable 5.2에서 변경했고 Fable도 `LLM_MODEL`만 바꾸면 그대로 동작한다. `thinking` 파라미터는 보내지 않고 깊이는 `LLM_EFFORT`(기본 high)로 조절. 강제 `tool_choice`는 400이므로 `auto` + 프롬프트로 유도. 거절 대비 서버측 fallback(`fallbacks: "default"`) 사용. 본선(2026-11-24~25)에서 OpenAI 도구가 제공될 수 있어 `LLM_PROVIDER=openai` 어댑터를 별도 파일로 둔다 | 채택 | 사용자 지정 (2026-11-18, 모델 변경 2026-11-19) |
 | D35 | LLM 2단계 분리(선택): `LLM_CODE_PROVIDER=local`이면 사내 모델만 소스코드를 읽어 도달성을 판정하고, 외부 모델(`LLM_PROVIDER`)은 코드와 파일 이름 없이 사실 값만 받아 등급 제안, 근거, 조치안을 쓴다. 도달성은 항상 사내 모델 값을 쓴다 | 채택 (구현, 실호출 미검증) | 소스코드를 외부로 보내지 않기 위함. 규칙과 계약 검사가 있어 약한 로컬 모델도 안전하게 쓸 수 있음. 정확도는 `triage compare`로 측정 예정 |
 | D36 | Slack 알림(`triage notify`): 등급 요약, NOW 항목, 검증 판정, 대시보드 링크를 웹훅으로 보낸다. 코드, 파일 이름, LLM이 쓴 문장은 넣지 않는다. 리플레이 모드에서는 보내지 않는다. 승인 버튼은 넣지 않고 대시보드로 연결한다 | 채택 (구현, 실제 전송 미검증) | 사내 메신저의 Slack 호환 웹훅으로도 바꿀 수 있음. 승인까지 Slack에서 받으려면 외부에서 접근 가능한 수신 주소가 필요해 사내망 설계와 맞지 않음 |
 | D37 | 하향 안전장치 확대: EPSS 백분위 0.9 이상이고 규칙 버킷이 NOW이면 import가 없어도 AI가 내리지 못한다 | 채택 | 라벨 20건 측정에서 AI가 EPSS 상위 10% 안의 NOW 2건(minimist, systeminformation)을 "import 없음"만으로 NEXT로 내렸음. 같은 20건을 보고 정한 기준이라 다른 자료에서 다시 확인해야 함 |
 | D38 | 점수 조정: EPSS는 백분위 0.8 초과분만 반영하고, 소스가 없어 판독할 수 없는 항목의 노출 가중치를 0.6에서 0.4로 낮춘다 | 채택 | 블라인드 SBOM 2개(47건)에서 규칙이 14건만 맞았고 틀린 33건이 모두 과대평가였음. 286건 중 MONITOR가 3건뿐이라 목록을 줄이지 못했음. 블라인드 47건과 기존 20건을 보고 정한 값이므로 새 블라인드 세트(`fixtures/blind2/`)로 확인한다. 가드 임계값 0.9(D37)는 그대로 |
+| D39 | 소스가 없는 항목(`missing`에 `source`)은 전용 판단 단계를 쓴다. 도구 없이 1회 호출하고 어드바이저리 본문으로 버킷을 한 단계까지 조정한다. 도달성은 코드가 `unknown`으로 고정하고 2단계 모드의 코드 판독 모델은 부르지 않는다. 블라인드 라벨 92건에서 일치 56 → 66건, NOW 누락 0건. 한 단계 과소평가가 1 → 4건으로 늘어난 것은 알려진 비용이다 | 채택 | 사용자 요청 (2026-11-19) |
+| D40 | 서비스 맥락(`service_criticality`, `internet_facing`, 새 필드 `note`)을 AI 지시문에 전달한다. 점수에는 넣지 않는다. `agent --criticality --internet-facing --service-note`로 기존 실행에도 지정할 수 있다. 블라인드 92건에서 일치 66 → 63건으로 개선이 확인되지 않았다(한 번씩만 실행해 실행 간 편차와 구분되지 않음). 과소평가는 4 → 6건 | 연결만 유지, 효과 미확인 | 사용자 요청 (2026-11-19) |
+| D41 | 에이전트는 수정안까지 제안하고 반영 여부는 담당자가 결정한다. 수정안의 범위는 의존성 변경(package.json, lockfile)이며, diff는 AI가 쓰지 않고 샌드박스 사본에서 조치 후 실제로 바뀐 내용을 뜬다(`verify/*.patch`). 결정은 `decisions.jsonl`에 추가 전용으로 남기고(승인, 반려, 보류, 이름, 사유, 시각), 승인은 샌드박스 diff가 있을 때만 가능하며 검증 미통과 건의 승인과 모든 반려, 보류에는 사유가 필요하다. 내보내기는 `out/<run>/export/`에 패치와 PR 초안만 쓰고 원본 레포 반영과 푸시는 하지 않는다. 소스코드 수정안은 범위 밖 | 채택 | 사용자 지정 (2026-11-19) |
 | D21 | 서비스 맥락(`service_criticality`, `internet_facing`)을 입력받되 근거·표시 전용 | 채택 (T1 반영) | 서비스 관점 영향도 보강, 점수 결정성과 D13 유지 |
 
 ---
@@ -328,7 +331,7 @@ for t in final_triage where final_bucket == NOW:
 
 ### 6.7 LLM / 에이전트
 
-- Anthropic API tool use, 모델명은 `.env`의 `LLM_MODEL`로 주입 (하드코딩 금지). 기본값 `claude-fable-5-2` (D34)
+- Anthropic API tool use, 모델명은 `.env`의 `LLM_MODEL`로 주입 (하드코딩 금지). 기본값 `claude-opus-5-5` (D34)
 - 항목당 tool call 최대 6회, 출력은 Pydantic 검증 → 실패 시 오류 메시지 붙여 1회 재시도 → 재실패 시 규칙 결과 fallback
 - **근거 사실성 검증**: `rationale`에서 숫자(CVSS, EPSS, 버전 문자열)를 추출해 `Finding` 값과 대조하는 테스트 필수
 - LLM 호출은 어댑터(`agent/llm.py`)로 분리 — 온프레미스 시 사내 LLM 교체 대비 (5.8)
