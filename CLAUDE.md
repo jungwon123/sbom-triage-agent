@@ -40,6 +40,7 @@ sbom-triage/
 │     ├─ runner.py       # 단계 호출 순서와 이벤트 기록 (CLI·API 공용)
 │     ├─ eval.py         # golden 일치율, NOW 누락
 │     ├─ decide.py       # 수정안 목록, 담당자 결정 기록, 승인분 내보내기 (원본 레포는 건드리지 않음)
+│     ├─ jobs.py         # 화면에서 시작하는 느린 작업의 큐 (작업자 1개, 상태는 out/<run>/jobs/)
 │     ├─ notify.py       # Slack 호환 웹훅 알림 (코드 없이 요약만)
 │     ├─ doctor.py       # 환경 점검
 │     └─ api.py          # FastAPI
@@ -84,7 +85,7 @@ uv run python -m triage run fixtures/demo-repo --setup "npx prisma generate"   #
 uv run python -m triage agent out/<run_id>             # ⑤
 uv run python -m triage verify out/<run_id>            # ⑥ NOW 항목 샌드박스 검증 (--buckets NOW,NEXT로 범위 확대)
 uv run python -m triage decide out/<run_id> body-parser@1.20.2 approved --by 홍길동   # 담당자 결정 기록 (rejected, held는 --reason 필수)
-uv run python -m triage export out/<run_id>            # 승인한 변경의 패치와 PR 초안을 out/<run_id>/export/에 생성 (푸시 없음)
+uv run python -m triage export out/<run_id>            # 승인한 변경의 패치와 PR 초안을 out/<run_id>/export/에 생성 (푸시 없음, --together면 승인분을 함께 검증해 패치 하나로)
 uv run python -m triage eval out/<run_id>              # golden 일치율
 uv run python -m triage compare out/<run_id> --configs rule,api,local,split   # LLM 구성별 비교
 uv run python -m triage notify out/<run_id> --dry-run   # Slack 알림 미리 보기 (--dry-run 빼면 전송)
