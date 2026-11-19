@@ -46,6 +46,13 @@ class ToolError(Exception):
     pass
 
 
+# Files that hold credentials. The agent has no reason to read them, and whatever it reads goes to
+# the LLM and into agent_log.jsonl (CLAUDE.md rule 7).
+SECRET_FILE = re.compile(r"(?i)^(\.env(\..*)?|\.npmrc|\.pypirc|\.netrc|\.htpasswd|id_(rsa|dsa|ecdsa|ed25519)(\.pub)?|"
+                         r".*\.(pem|key|p12|pfx|jks|keystore)|credentials(\..*)?|secrets?(\..*)?)$")
+SECRET_DIR = {".git", ".ssh", ".aws", ".gnupg"}
+
+
 def safe_path(repo: pathlib.Path, rel: str) -> pathlib.Path:
     """Resolve rel inside repo; reject absolute paths, '..' and symlink escapes."""
     if not rel or os.path.isabs(rel) or "\x00" in rel:
@@ -56,6 +63,9 @@ def safe_path(repo: pathlib.Path, rel: str) -> pathlib.Path:
         raise ToolError("path is outside the repository")
     if not target.is_file():
         raise ToolError("file not found")
+    inside = target.relative_to(root)
+    if SECRET_FILE.match(inside.name) or SECRET_DIR & set(inside.parts[:-1]):
+        raise ToolError("this file may hold credentials and is not readable by the agent")
     return target
 
 

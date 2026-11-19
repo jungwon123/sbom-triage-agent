@@ -95,7 +95,7 @@ def merge(f: Finding, r: score.RuleResult, v: AgentVerdict | None, decided_by: s
     final, reason, held = r.bucket, None, False
     if v is not None:
         down = BUCKET_ORDER.index(v.proposed_bucket) < BUCKET_ORDER.index(r.bucket)
-        if down and review:
+        if down and (review or (v.proposed_bucket == "MONITOR" and score.blocks_monitor(f))):
             held = True   # F6-9: keep the rule bucket, mark for the owner
         else:
             final = v.proposed_bucket
@@ -302,7 +302,7 @@ def run(findings: list[Finding], repo: pathlib.Path | None, llm: LLM | None, run
 
 
 def revise(llm: LLM, f: Finding, previous: dict, failure: list[dict],
-           log: Callable[[dict], None]) -> RemediationProposal | None:
+           log: Callable[[dict], None], with_logs: bool = True) -> RemediationProposal | None:
     """F8-5: ask for another remediation after a failed verification."""
     from ..enrich import semver
     from .. import cache
@@ -310,13 +310,15 @@ def revise(llm: LLM, f: Finding, previous: dict, failure: list[dict],
     fixes = sorted({x for x in semver.fixes_for(d, f.ecosystem, f.package) if semver.lt(f.version, x)}, key=semver.parse)
     candidates = fixes or [x for x in (f.fixed_in, f.fixed_max) if x]
     try:
-        session = llm.start(prompts.REVISE_SYSTEM, prompts.revise_prompt(f, previous, failure, candidates),
+        session = llm.start(prompts.REVISE_SYSTEM, prompts.revise_prompt(f, previous, failure, candidates, with_logs),
                             [], prompts.REMEDIATION_SCHEMA, 0, log, f"revise:{f.id}")
         p = RemediationProposal.model_validate_json(_json_part(session.run(lambda n, a: ("no tools", True))))
     except (LLMError, ValidationError) as e:
         log({"type": "revise_error", "key": f.id, "error": str(e)[:300]})
         return None
     problems = apply.violations(p, f)
+    if p.kind != "mitigation_only" and p.to_version not in candidates:
+        problems.append("to_version is not one of the listed fixed versions")
     if problems:
         log({"type": "contract_violation", "key": f"revise:{f.id}", "problems": problems})
         return None

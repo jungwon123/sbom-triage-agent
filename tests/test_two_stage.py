@@ -93,3 +93,12 @@ def test_reader_that_never_looks_is_rejected(make_finding, runtime_site, tmp_pat
     lazy = Recorder("local", [CODE, CODE], looks=False)
     [t] = agent_run.run([f], tmp_path, None, tmp_path, code_llm=lazy)
     assert t.decided_by == "agent_fallback" and t.code_read_by == "rule"
+
+
+def test_revise_sends_no_logs_outside_in_two_stage_mode(make_finding):
+    from triage.agent import prompts
+    steps = [{"name": "test", "status": "failed", "log_tail": f"at src/pay/card.ts:12 {SECRET}"}]
+    f = make_finding()
+    assert SECRET in prompts.revise_prompt(f, {}, steps, ["1.0.1"])
+    quiet = prompts.revise_prompt(f, {}, steps, ["1.0.1"], with_logs=False)
+    assert SECRET not in quiet and "card.ts" not in quiet and '"status": "failed"' in quiet

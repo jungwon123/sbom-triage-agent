@@ -30,9 +30,17 @@ def test_uses_advisory_prompt_without_tools(make_finding, tmp_path):
 def test_can_step_down_from_advisory_but_reachability_stays_unknown(make_finding, tmp_path):
     answer = verdict(proposed_bucket="MONITOR", override_reason="기본 설정에서는 영향이 없습니다.",
                      reachability="unused").model_dump_json()
-    [t] = agent_run.run([sbom_finding(make_finding)], None, Recorder("anthropic", [answer], looks=False), tmp_path)
+    f = sbom_finding(make_finding, epss_percentile=0.85)
+    [t] = agent_run.run([f], None, Recorder("anthropic", [answer], looks=False), tmp_path)
     assert (t.rule_bucket, t.final_bucket) == ("NEXT", "MONITOR")
     assert t.reachability == "unknown" and t.code_read_by == "rule"
+
+
+def test_very_high_epss_is_not_moved_to_monitor_without_source(make_finding, tmp_path):
+    answer = verdict(proposed_bucket="MONITOR", override_reason="기본 설정에서는 영향이 없습니다.").model_dump_json()
+    f = sbom_finding(make_finding, epss_percentile=0.99, cvss=5.0)     # NEXT by rule, no import evidence
+    [t] = agent_run.run([f], None, Recorder("anthropic", [answer], looks=False), tmp_path)
+    assert (t.rule_bucket, t.final_bucket, t.needs_review) == ("NEXT", "NEXT", True)
 
 
 def test_two_step_jump_still_rejected(make_finding, tmp_path):

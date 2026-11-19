@@ -54,3 +54,18 @@ def test_sandbox_command_refuses_unsafe(make_finding):
     r = apply.build(prop(), make_finding()).model_copy(update={"to_version": "1.2.0;id"})
     with pytest.raises(ValueError):
         apply.sandbox_command(r)
+
+
+def test_version_above_the_highest_known_fix_is_rejected(make_finding):
+    from triage.models import RemediationProposal
+    from triage.verify import apply
+    f = make_finding()                                    # fixed_in 1.0.1, fixed_max 1.2.0
+    p = lambda v: RemediationProposal(kind="upgrade_direct", to_version=v, mitigation=None, breaking_risk="low", notes=None)  # noqa: E731
+    assert apply.violations(p("1.0.1"), f) == [] and apply.violations(p("1.2.0"), f) == []
+    assert apply.violations(p("99.0.0"), f) == ["to_version is above the highest known fixed version"]
+
+
+def test_malicious_package_default_is_removal_not_upgrade(make_finding):
+    from triage.verify import apply
+    p = apply.default_proposal(make_finding(vuln_id="MAL-2024-1"))
+    assert p.kind == "mitigation_only" and "제거" in p.mitigation

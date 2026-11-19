@@ -44,6 +44,9 @@ def violations(p: RemediationProposal, f: Finding) -> list[str]:
         out.append("no fixed version exists; use mitigation_only")
     elif semver.lt(p.to_version, f.fixed_in):
         out.append("to_version is below fixed_in")
+    elif semver.lt(f.fixed_max or f.fixed_in, p.to_version):
+        # the model picks among known fixes; a higher version is an upgrade nobody asked for
+        out.append("to_version is above the highest known fixed version")
     if p.kind == "upgrade_direct" and not f.direct:
         out.append("upgrade_direct on a transitive dependency")
     if p.kind == "override_transitive" and f.direct:
@@ -54,6 +57,10 @@ def violations(p: RemediationProposal, f: Finding) -> list[str]:
 def default_proposal(f: Finding) -> RemediationProposal:
     """Rule fallback: highest fixed version (D29)."""
     target = f.fixed_max or f.fixed_in
+    if any(i.startswith("MAL-") for i in (f.vuln_id, *f.aliases)):
+        return RemediationProposal(kind="mitigation_only", to_version=None,
+                                   mitigation="악성 패키지로 보고된 항목입니다. 버전을 올리지 말고 의존성에서 제거한 뒤, 설치된 환경의 자격 증명 교체와 침해 여부 확인을 진행합니다.",
+                                   breaking_risk="high", notes=None)
     if not target or not safe_version(target, f.ecosystem) or not safe_version(f.version, f.ecosystem):
         return RemediationProposal(kind="mitigation_only", to_version=None,
                                    mitigation="수정 버전이 없습니다. 해당 기능 사용을 줄이거나 입력 검증을 추가하고 어드바이저리를 추적합니다.",

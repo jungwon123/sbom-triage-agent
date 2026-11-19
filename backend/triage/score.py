@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .models import Bucket, Finding, Reachability
+from .models import BUCKET_ORDER, Bucket, Finding, Reachability
 
 NOW_AT = 60
 NEXT_AT = 30
@@ -61,6 +61,34 @@ def bucket(risk: float, eff: str) -> Bucket:
     return "NEXT" if risk >= NEXT_AT else "MONITOR"
 
 
+def is_malicious(f: Finding) -> bool:
+    """OSV malicious-package advisories (MAL-...): the package itself is the attack, not a flaw in it."""
+    return any(i.startswith("MAL-") for i in (f.vuln_id, *f.aliases))
+
+
+def floor(f: Finding) -> Bucket | None:
+    """Lowest bucket the facts allow, whatever the score says (D44).
+
+    A malicious package, or a known-exploited flaw in something that ships to production, is urgent even
+    with no fixed version: "no patch" makes it harder, not less pressing. Known-exploited in a dev-only
+    dependency is at least NEXT.
+    """
+    if is_malicious(f):
+        return "NOW"
+    if f.kev:
+        return "NOW" if f.scope == "prod" else "NEXT"
+    return None
+
+
+def blocks_monitor(f: Finding, guards: Guards = Guards()) -> bool:
+    """The agent may not move an item with very high EPSS down to MONITOR on its own (F6-9, D44).
+
+    Without source code there is no import evidence either way, so the import-based guard never fires;
+    this one depends on the exploitation signal alone.
+    """
+    return (f.epss_percentile or 0) >= guards.epss_review_percentile
+
+
 def needs_review(f: Finding, rule_bucket: Bucket | None = None, guards: Guards = Guards()) -> bool:
     """Items the agent must not downgrade on its own (F6-9).
 
@@ -69,7 +97,7 @@ def needs_review(f: Finding, rule_bucket: Bucket | None = None, guards: Guards =
     """
     runtime = any(s.kind == "runtime" for s in f.import_sites)
     hot = (f.epss_percentile or 0) >= guards.epss_review_percentile
-    return f.kev or (hot and (runtime or rule_bucket == "NOW"))
+    return f.kev or is_malicious(f) or (hot and (runtime or rule_bucket == "NOW"))
 
 
 @dataclass(frozen=True)
@@ -87,7 +115,10 @@ def score(f: Finding) -> RuleResult:
     parts = breakdown(f, reach)
     risk = sum(parts.values())
     eff = effort(f)
-    return RuleResult(f.id, round(risk, 2), parts, eff, reach, bucket(risk, eff))
+    b, least = bucket(risk, eff), floor(f)
+    if least is not None and BUCKET_ORDER.index(b) < BUCKET_ORDER.index(least):
+        b = least
+    return RuleResult(f.id, round(risk, 2), parts, eff, reach, b)
 
 
 def cvss_bucket(f: Finding) -> Bucket:

@@ -81,3 +81,24 @@ def test_sbom_only_exposure_is_lower_than_transitive_with_source(make_finding):
     no_source = score.score(make_finding(missing=["source"])).risk_breakdown["exposure"]
     transitive = score.score(make_finding(direct=False)).risk_breakdown["exposure"]
     assert no_source == 20 and transitive == 21      # 0.4 * 50 direct, 0.7 * 0.6 * 50 transitive
+
+
+def test_kev_in_production_is_now_even_without_a_fix(make_finding):
+    f = make_finding(kev=True, cvss=9.8, bump="none", fixed_in=None, fixed_max=None)
+    assert score.effort(f) == "high" and score.score(f).bucket == "NOW"
+    low = make_finding(kev=True, cvss=7.5, direct=False, missing=["source"])       # scores under 60
+    assert score.score(low).risk < 60 and score.score(low).bucket == "NOW"
+    assert score.score(make_finding(kev=True, scope="dev", cvss=4.0)).bucket == "NEXT"
+
+
+def test_malicious_package_is_now_and_cannot_be_downgraded(make_finding):
+    f = make_finding(id="MAL-2024-1@lib@1.0.0", vuln_id="MAL-2024-1", cvss=None, epss=None, epss_percentile=None,
+                     bump="none", fixed_in=None, fixed_max=None, scope="dev")
+    assert score.score(f).bucket == "NOW" and score.needs_review(f)
+    alias = make_finding(aliases=["MAL-2024-9"], cvss=3.0, epss_percentile=0.1)
+    assert score.score(alias).bucket == "NOW"
+
+
+def test_floor_never_lowers_a_bucket(make_finding, runtime_site):
+    f = make_finding(cvss=10.0, epss_percentile=1.0, import_sites=[runtime_site])
+    assert score.floor(f) is None and score.score(f).bucket == "NOW"

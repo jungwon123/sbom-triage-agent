@@ -46,3 +46,17 @@ def test_unknown_tool_and_bad_symbol(repo):
 def test_no_write_or_exec_tools():
     from triage.agent.tools import SPECS
     assert {s["name"] for s in SPECS} == {"get_finding", "search_usages", "read_file", "get_advisory"}
+
+
+def test_credential_files_are_not_readable(tmp_path):
+    import pytest
+    from triage.agent.tools import RepoTools, ToolError
+    for name in (".env", ".env.production", ".npmrc", "server.pem", "config/secrets.yml", ".git/config", "id_rsa"):
+        path = tmp_path / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("TOKEN=abc")
+        with pytest.raises(ToolError):
+            RepoTools(tmp_path, {}).read_file(name)
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "environment.ts").write_text("export const x = 1")
+    assert "export const x" in RepoTools(tmp_path, {}).read_file("src/environment.ts")
