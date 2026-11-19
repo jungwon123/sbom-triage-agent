@@ -2,7 +2,7 @@
  "schema_version": 1,
  "diagram_type": "architecture",
  "meta": {
-  "title": "SBOM 트리아지 에이전트 아키텍처 (구현 기준)",
+  "title": "SBOM 트리아지 에이전트 아키텍처 (2026-11-19 구현 기준)",
   "locale": "ko",
   "output": "docs/architecture/sbom-triage-architecture.html",
   "quality_profile": "showcase"
@@ -40,7 +40,7 @@
    "id": "llm",
    "type": "external",
    "label": "LLM API",
-   "sublabel": "Fable 5.2 · OpenAI 교체 가능",
+   "sublabel": "Opus 5.5 · OpenAI 교체 가능",
    "pos": [
     1215,
     40
@@ -54,7 +54,7 @@
    "id": "cache",
    "type": "database",
    "label": "응답 캐시",
-   "sublabel": "fixtures/cache · replay",
+   "sublabel": "KEV · EPSS 하루 만료",
    "pos": [
     750,
     180
@@ -68,7 +68,7 @@
    "id": "user",
    "type": "external",
    "label": "보안·개발 담당자",
-   "sublabel": "검토 후 승인",
+   "sublabel": "승인 · 보류 · 반려",
    "pos": [
     40,
     330
@@ -82,7 +82,7 @@
    "id": "web",
    "type": "frontend",
    "label": "React 대시보드",
-   "sublabel": "분포 띠 · 근거 · 검증 결과",
+   "sublabel": "React · Vite · Tailwind",
    "pos": [
     270,
     330
@@ -96,7 +96,7 @@
    "id": "api",
    "type": "backend",
    "label": "FastAPI + 오케스트레이터",
-   "sublabel": "runner.py · 이벤트 기록",
+   "sublabel": "runner · decide · jobs 큐",
    "pos": [
     490,
     330
@@ -110,7 +110,7 @@
    "id": "pipeline",
    "type": "backend",
    "label": "SBOM·스캔·보강",
-   "sublabel": "npm · Maven · SBOM 파일",
+   "sublabel": "Syft · CycloneDX · SPDX",
    "pos": [
     750,
     330
@@ -124,7 +124,7 @@
    "id": "score",
    "type": "backend",
    "label": "규칙 점수 엔진",
-   "sublabel": "25 / 25 / 50 → 1차 버킷",
+   "sublabel": "순수 함수 · KEV 하한",
    "pos": [
     980,
     330
@@ -153,7 +153,7 @@
    "id": "sandbox",
    "type": "security",
    "label": "검증 샌드박스",
-   "sublabel": "설치 · 빌드 · 테스트 · 재스캔",
+   "sublabel": "Docker · diff 생성",
    "pos": [
     1450,
     330
@@ -167,7 +167,7 @@
    "id": "out",
    "type": "database",
    "label": "실행 결과 저장소",
-   "sublabel": "out/<run> 파일",
+   "sublabel": "out/<run> · 결정 · 패치",
    "pos": [
     505,
     520
@@ -196,7 +196,7 @@
    "id": "local",
    "type": "backend",
    "label": "사내 LLM",
-   "sublabel": "코드 판독 전용 (선택)",
+   "sublabel": "Ollama · 코드 판독 (선택)",
    "pos": [
     1215,
     520
@@ -239,14 +239,14 @@
    "id": "user-web",
    "from": "user",
    "to": "web",
-   "label": "검토·조치 승인",
+   "label": "수정안 검토 · 결정",
    "variant": "emphasis"
   },
   {
    "id": "web-api",
    "from": "web",
    "to": "api",
-   "label": "실행 결과 조회",
+   "label": "결과 조회 · 결정 기록",
    "variant": "emphasis"
   },
   {
@@ -274,7 +274,7 @@
    "id": "api-sandbox",
    "from": "api",
    "to": "sandbox",
-   "label": "NOW 조치안 검증",
+   "label": "조치안 검증 · 승인분 함께 검증",
    "variant": "emphasis"
   },
   {
@@ -287,14 +287,14 @@
    "id": "cache-feeds",
    "from": "cache",
    "to": "feeds",
-   "label": "미스 시 HTTPS",
+   "label": "미스 · 만료 시 HTTPS",
    "variant": "dashed"
   },
   {
    "id": "agent-llm",
    "from": "agent",
    "to": "llm",
-   "label": "코드 없이 사실 값만",
+   "label": "근거 작성 요청",
    "variant": "security"
   },
   {
@@ -340,7 +340,7 @@
    "id": "api-out",
    "from": "api",
    "to": "out",
-   "label": "run 결과 저장·조회"
+   "label": "결과 · 결정 · 패치 저장"
   },
   {
    "id": "agent-local",
@@ -353,38 +353,47 @@
  "cards": [
   {
    "dot": "cyan",
-   "title": "① 파이프라인 (결정론)",
+   "title": "① 수집 (코드, 결정론)",
    "items": [
-    "Syft 또는 lockfile로 CycloneDX SBOM 생성, SBOM 파일도 직접 입력",
-    "OSV 매칭 후 EPSS · KEV · 수정 버전 · import 위치 보강",
-    "외부 응답은 전부 캐시 경유, 네트워크 없이 재생 가능"
+    "Syft나 lockfile로 SBOM을 만들고 CycloneDX, SPDX 파일도 직접 받음",
+    "OSV로 취약점을 찾고 EPSS, KEV, 수정 버전, import 위치를 붙임",
+    "npm, Maven, PyPI, Go 등 8개 생태계 조회. 외부 응답은 전부 캐시 경유"
    ]
   },
   {
    "dot": "violet",
    "title": "② 판단 (규칙 + AI)",
    "items": [
-    "규칙이 위험 점수와 1차 등급을 계산",
-    "2단계 모드: 사내 LLM만 코드를 읽고, 외부 LLM은 사실 값만 받아 근거를 작성",
-    "등급 조정은 한 단계까지, KEV 하향 금지, 위반 시 규칙 결과 사용"
+    "규칙이 위험 점수와 1차 등급을 계산. KEV와 악성 패키지는 하한 적용",
+    "AI는 코드나 어드바이저리를 읽고 한 단계까지만 조정, 사유 필수",
+    "숫자는 코드가 채우고, 계약을 어긴 답은 규칙 결과로 대체"
    ]
   },
   {
    "dot": "emerald",
-   "title": "③ 조치 · 검증",
+   "title": "③ 수정안 · 검증 · 승인",
    "items": [
-    "실행 명령은 코드가 조립, AI가 쓴 문자열은 실행하지 않음",
-    "일회용 컨테이너에서 기준선과 비교해 판정",
-    "원본 반영은 담당자 승인 후에만"
+    "명령은 코드가 조립. 샌드박스 사본에서 바뀐 내용을 diff로 저장",
+    "담당자가 승인, 보류, 반려를 사유와 함께 기록",
+    "승인분은 작업 큐에서 함께 검증해 패치 하나와 PR 초안으로 내보냄. 푸시 없음"
+   ]
+  },
+  {
+   "dot": "rose",
+   "title": "기술 스택",
+   "items": [
+    "백엔드: Python 3.12, uv, Pydantic v2, httpx, FastAPI, uvicorn",
+    "프론트: React 19, TypeScript, Vite, Tailwind 4. 빌드 결과를 FastAPI가 서빙",
+    "AI: Anthropic API(tool use), OpenAI와 Ollama 어댑터. 검증: Docker. 테스트: pytest"
    ]
   },
   {
    "dot": "amber",
-   "title": "저장소 (현재와 운영 설계)",
+   "title": "저장과 운영 설계",
    "items": [
-    "프로토타입은 실행별 파일 저장, DB 없음",
-    "운영은 PostgreSQL 하나로 결과 저장과 작업 큐를 처리",
-    "분석 전용 DB(ClickHouse 등)는 현재 규모에서 불필요"
+    "프로토타입은 실행별 파일 저장, DB 없음. 작업 큐는 프로세스 안 작업자 1개",
+    "운영은 PostgreSQL과 외부 큐, 작업자는 쿠버네티스 Job으로 교체",
+    "API와 파일 형식은 그대로 두고 뒤쪽만 바꾸는 구조"
    ]
   }
  ]

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="generator" content="archify 3.2.0">
   <meta name="archify-reader-contract" content="declared-wide-v1">
-  <title>SBOM 트리아지 에이전트 아키텍처 (구현 기준) 다이어그램</title>
+  <title>SBOM 트리아지 에이전트 아키텍처 (2026-11-19 구현 기준) 다이어그램</title>
   <script>
     // Resolve the theme before first paint so light-preference users don't
     // see a dark flash. The toolbar script below re-applies with UI state.
@@ -5194,7 +5194,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
            data-preset-badge-blueprint="블루프린트 / 개정 01"
            data-preset-badge-editorial="에디토리얼 / 현장 노트">
         <div class="pulse-dot"></div>
-        <h1>SBOM 트리아지 에이전트 아키텍처 (구현 기준)</h1>
+        <h1>SBOM 트리아지 에이전트 아키텍처 (2026-11-19 구현 기준)</h1>
       </div>
     </div>
 
@@ -5204,7 +5204,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     <div class="diagram-container" data-detail-level="read"
          data-preset-badge-editorial-plate="ARCHIFY / 도판 04">
       <svg viewBox="0 0 1660 676" role="img" lang="ko" aria-labelledby="archify-diagram-title archify-diagram-description" data-animation="trace" data-preset="classic" data-quality-profile="showcase" data-node-ui="" data-reader-fit="intrinsic-height" data-reader-min-text="7.5" data-reader-primary-text="14">
-        <title id="archify-diagram-title">SBOM 트리아지 에이전트 아키텍처 (구현 기준)</title>
+        <title id="archify-diagram-title">SBOM 트리아지 에이전트 아키텍처 (2026-11-19 구현 기준)</title>
         <desc id="archify-diagram-description">Archify로 생성한 아키텍처 다이어그램입니다.</desc>
         <!-- Definitions -->
         <defs>
@@ -5256,12 +5256,12 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
         <!-- Connection paths (before components for correct z-order) -->
         <g data-graph-role="automatic-crossover" style="--step:0">
-          <path data-graph-role="automatic-crossover-underlay" d="M 180 362 L 270 362" fill="none" stroke="var(--mask)" stroke-width="5.8" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="user" data-edge-to="web" data-edge-label="검토·조치 승인" data-edge-key="0" data-edge-id="user-web" data-composition-points="180,362;270,362" data-composition-crossover="halo" data-composition-independent="true" d="M 180 362 L 270 362" class="a-emphasis" data-animate="edge" style="--step:0" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+          <path data-graph-role="automatic-crossover-underlay" d="M 110 394 L 110 410 Q 110 418 118 418 L 332 418 Q 340 418 340 410 L 340 394" fill="none" stroke="var(--mask)" stroke-width="5.8" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="user" data-edge-to="web" data-edge-label="수정안 검토 · 결정" data-edge-key="0" data-edge-id="user-web" data-composition-points="110,394;110,418;340,418;340,394" data-composition-crossover="halo" data-composition-independent="true" d="M 110 394 L 110 410 Q 110 418 118 418 L 332 418 Q 340 418 340 410 L 340 394" class="a-emphasis" data-animate="edge" style="--step:0" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:1">
-          <path data-graph-role="automatic-crossover-underlay" d="M 410 362 L 490 362" fill="none" stroke="var(--mask)" stroke-width="5.8" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="web" data-edge-to="api" data-edge-label="실행 결과 조회" data-edge-key="1" data-edge-id="web-api" data-composition-points="410,362;490,362" data-composition-crossover="halo" data-composition-independent="true" d="M 410 362 L 490 362" class="a-emphasis" data-animate="edge" style="--step:1" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+          <path data-graph-role="automatic-crossover-underlay" d="M 356.1 394 L 356.1 410 Q 356.1 418 364.1 418 L 551.95 418 Q 559.95 418 559.95 410 L 559.95 394" fill="none" stroke="var(--mask)" stroke-width="5.8" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="web" data-edge-to="api" data-edge-label="결과 조회 · 결정 기록" data-edge-key="1" data-edge-id="web-api" data-composition-points="356.1,394;356.1,418;559.95,418;559.95,394" data-composition-crossover="halo" data-composition-independent="true" d="M 356.1 394 L 356.1 410 Q 356.1 418 364.1 418 L 551.95 418 Q 559.95 418 559.95 410 L 559.95 394" class="a-emphasis" data-animate="edge" style="--step:1" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:2">
           <path data-graph-role="automatic-crossover-underlay" d="M 660 352.9 L 750 352.9" fill="none" stroke="var(--mask)" stroke-width="5.8" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
@@ -5276,8 +5276,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <path data-edge-from="score" data-edge-to="agent" data-edge-label="NOW·NEXT 후보" data-edge-key="4" data-edge-id="score-agent" data-composition-points="1120,353.95;1215,353.95" data-composition-crossover="halo" data-composition-independent="true" d="M 1120 353.95 L 1215 353.95" class="a-emphasis" data-animate="edge" style="--step:4" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:5">
-          <path data-graph-role="automatic-crossover-underlay" d="M 590.05 394 L 590.05 410 Q 590.05 418 598.05 418 L 1418 418 Q 1426 418 1426 410 L 1426 363 Q 1426 355 1434 355 L 1450 355" fill="none" stroke="var(--mask)" stroke-width="5.8" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="api" data-edge-to="sandbox" data-edge-label="NOW 조치안 검증" data-edge-key="5" data-edge-id="api-sandbox" data-composition-points="590.05,394;590.05,418;1426,418;1426,355;1450,355" data-composition-crossover="halo" data-composition-independent="true" d="M 590.05 394 L 590.05 410 Q 590.05 418 598.05 418 L 1418 418 Q 1426 418 1426 410 L 1426 363 Q 1426 355 1434 355 L 1450 355" class="a-emphasis" data-animate="edge" style="--step:5" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+          <path data-graph-role="automatic-crossover-underlay" d="M 660 369 L 739 369 Q 747 369 747 377 L 747 414 Q 747 422 755 422 L 958.6 422 Q 966.6 422 966.6 414 L 966.6 237 Q 966.6 229 974.6 229 L 1489.95 229 Q 1497.95 229 1497.95 237 L 1497.95 330" fill="none" stroke="var(--mask)" stroke-width="5.8" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="api" data-edge-to="sandbox" data-edge-label="조치안 검증 · 승인분 함께 검증" data-edge-key="5" data-edge-id="api-sandbox" data-composition-points="660,369;747,369;747,422;966.6,422;966.6,229;1497.95,229;1497.95,330" data-composition-crossover="halo" data-composition-independent="true" d="M 660 369 L 739 369 Q 747 369 747 377 L 747 414 Q 747 422 755 422 L 958.6 422 Q 966.6 422 966.6 414 L 966.6 237 Q 966.6 229 974.6 229 L 1489.95 229 Q 1497.95 229 1497.95 237 L 1497.95 330" class="a-emphasis" data-animate="edge" style="--step:5" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:6">
           <path data-graph-role="automatic-crossover-underlay" d="M 806 330 L 806 244" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
@@ -5285,27 +5285,27 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         </g>
         <g data-graph-role="automatic-crossover" style="--step:7">
           <path data-graph-role="automatic-crossover-underlay" d="M 820 180 L 820 104" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="cache" data-edge-to="feeds" data-edge-label="미스 시 HTTPS" data-edge-key="7" data-edge-id="cache-feeds" data-composition-points="820,180;820,104" data-composition-crossover="halo" data-composition-independent="true" d="M 820 180 L 820 104" class="a-dashed" data-animate="edge" style="--step:7" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
+          <path data-edge-from="cache" data-edge-to="feeds" data-edge-label="미스 · 만료 시 HTTPS" data-edge-key="7" data-edge-id="cache-feeds" data-composition-points="820,180;820,104" data-composition-crossover="halo" data-composition-independent="true" d="M 820 180 L 820 104" class="a-dashed" data-animate="edge" style="--step:7" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:8">
           <path data-graph-role="automatic-crossover-underlay" d="M 1292 330 L 1292 104" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="agent" data-edge-to="llm" data-edge-label="코드 없이 사실 값만" data-edge-key="8" data-edge-id="agent-llm" data-composition-points="1292,330;1292,104" data-composition-crossover="halo" data-composition-independent="true" d="M 1292 330 L 1292 104" class="a-security" data-animate="edge" style="--step:8" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
+          <path data-edge-from="agent" data-edge-to="llm" data-edge-label="근거 작성 요청" data-edge-key="8" data-edge-id="agent-llm" data-composition-points="1292,330;1292,104" data-composition-crossover="halo" data-composition-independent="true" d="M 1292 330 L 1292 104" class="a-security" data-animate="edge" style="--step:8" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:9">
           <path data-graph-role="automatic-crossover-underlay" d="M 820 394 L 820 544 Q 820 552 828 552 L 980 552" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
           <path data-edge-from="pipeline" data-edge-to="repo" data-edge-label="lockfile · import 검색" data-edge-key="9" data-edge-id="pipeline-repo" data-composition-points="820,394;820,552;980,552" data-composition-crossover="halo" data-composition-independent="true" d="M 820 394 L 820 544 Q 820 552 828 552 L 980 552" class="a-default" data-animate="edge" style="--step:9" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:10">
-          <path data-graph-role="automatic-crossover-underlay" d="M 1271 394 L 1271 433 Q 1271 441 1263 441 L 1058 441 Q 1050 441 1050 449 L 1050 520" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="agent" data-edge-to="repo" data-edge-label="읽기 전용 도구 4종" data-edge-key="10" data-edge-id="agent-repo" data-composition-points="1271,394;1271,441;1050,441;1050,520" data-composition-crossover="halo" data-composition-independent="true" d="M 1271 394 L 1271 433 Q 1271 441 1263 441 L 1058 441 Q 1050 441 1050 449 L 1050 520" class="a-security" data-animate="edge" style="--step:10" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
+          <path data-graph-role="automatic-crossover-underlay" d="M 1271 394 L 1271 410 Q 1271 418 1263 418 L 1058 418 Q 1050 418 1050 426 L 1050 520" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="agent" data-edge-to="repo" data-edge-label="읽기 전용 도구 4종" data-edge-key="10" data-edge-id="agent-repo" data-composition-points="1271,394;1271,418;1050,418;1050,520" data-composition-crossover="halo" data-composition-independent="true" d="M 1271 394 L 1271 410 Q 1271 418 1263 418 L 1058 418 Q 1050 418 1050 426 L 1050 520" class="a-security" data-animate="edge" style="--step:10" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:11">
           <path data-graph-role="automatic-crossover-underlay" d="M 1278 330 L 1278 220 Q 1278 212 1270 212 L 890 212" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
           <path data-edge-from="agent" data-edge-to="cache" data-edge-label="어드바이저리 조회" data-edge-key="11" data-edge-id="agent-cache" data-composition-points="1278,330;1278,212;890,212" data-composition-crossover="halo" data-composition-independent="true" d="M 1278 330 L 1278 220 Q 1278 212 1270 212 L 890 212" class="a-default" data-animate="edge" style="--step:11" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:12">
-          <path data-graph-role="automatic-crossover-underlay" d="M 1504.95 394 L 1504.95 600 Q 1504.95 608 1496.95 608 L 1058 608 Q 1050 608 1050 600 L 1050 584" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="sandbox" data-edge-to="repo" data-edge-label="읽기 전용 마운트" data-edge-key="12" data-edge-id="sandbox-repo" data-composition-points="1504.95,394;1504.95,608;1050,608;1050,584" data-composition-crossover="halo" data-composition-independent="true" d="M 1504.95 394 L 1504.95 600 Q 1504.95 608 1496.95 608 L 1058 608 Q 1050 608 1050 600 L 1050 584" class="a-security" data-animate="edge" style="--step:12" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
+          <path data-graph-role="automatic-crossover-underlay" d="M 1520 394 L 1520 600 Q 1520 608 1512 608 L 1058 608 Q 1050 608 1050 600 L 1050 584" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
+          <path data-edge-from="sandbox" data-edge-to="repo" data-edge-label="읽기 전용 마운트" data-edge-key="12" data-edge-id="sandbox-repo" data-composition-points="1520,394;1520,608;1050,608;1050,584" data-composition-crossover="halo" data-composition-independent="true" d="M 1520 394 L 1520 600 Q 1520 608 1512 608 L 1058 608 Q 1050 608 1050 600 L 1050 584" class="a-security" data-animate="edge" style="--step:12" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:13">
           <path data-graph-role="automatic-crossover-underlay" d="M 1527 330 L 1527 104" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
@@ -5317,7 +5317,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         </g>
         <g data-graph-role="automatic-crossover" style="--step:15">
           <path data-graph-role="automatic-crossover-underlay" d="M 575 394 L 575 520" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
-          <path data-edge-from="api" data-edge-to="out" data-edge-label="run 결과 저장·조회" data-edge-key="15" data-edge-id="api-out" data-composition-points="575,394;575,520" data-composition-crossover="halo" data-composition-independent="true" d="M 575 394 L 575 520" class="a-default" data-animate="edge" style="--step:12" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+          <path data-edge-from="api" data-edge-to="out" data-edge-label="결과 · 결정 · 패치 저장" data-edge-key="15" data-edge-id="api-out" data-composition-points="575,394;575,520" data-composition-crossover="halo" data-composition-independent="true" d="M 575 394 L 575 520" class="a-default" data-animate="edge" style="--step:12" stroke-width="1.5" marker-end="url(#arrowhead)"/>
         </g>
         <g data-graph-role="automatic-crossover" style="--step:16">
           <path data-graph-role="automatic-crossover-underlay" d="M 1285 394 L 1285 520" fill="none" stroke="var(--mask)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>
@@ -5349,8 +5349,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <text data-detail="context" x="820" y="86" class="t-muted" font-size="9" text-anchor="middle">OSV · EPSS · CISA KEV</text>
         </g>
 
-        <g id="node-llm" data-node-id="llm" data-node-label="LLM API" tabindex="0" role="button" aria-label="LLM API 포커스, Fable 5.2 · OpenAI 교체 가능, 아키텍처 구성요소" aria-pressed="false" data-node-kind="external" data-node-sublabel="Fable 5.2 · OpenAI 교체 가능" data-node-context="아키텍처 구성요소">
-          <title>LLM API · Fable 5.2 · OpenAI 교체 가능 · 아키텍처 구성요소</title>
+        <g id="node-llm" data-node-id="llm" data-node-label="LLM API" tabindex="0" role="button" aria-label="LLM API 포커스, Opus 5.5 · OpenAI 교체 가능, 아키텍처 구성요소" aria-pressed="false" data-node-kind="external" data-node-sublabel="Opus 5.5 · OpenAI 교체 가능" data-node-context="아키텍처 구성요소">
+          <title>LLM API · Opus 5.5 · OpenAI 교체 가능 · 아키텍처 구성요소</title>
           <rect x="1215" y="40" width="140" height="64" rx="8" class="c-mask"/>
           <rect x="1215" y="40" width="140" height="64" rx="8" class="c-external" data-animate="node" style="--step:9" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(1221 46) scale(0.6875)">
@@ -5358,11 +5358,11 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
             <path d="M8 2.5h5.5V8M13.5 2.5 7.5 8.5"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="1285" y="70" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">LLM API</text>
-        <text data-detail="context" x="1285" y="86" class="t-muted" font-size="7.8" text-anchor="middle">Fable 5.2 · OpenAI 교체 가능</text>
+        <text data-detail="context" x="1285" y="86" class="t-muted" font-size="8.1" text-anchor="middle">Opus 5.5 · OpenAI 교체 가능</text>
         </g>
 
-        <g id="node-cache" data-node-id="cache" data-node-label="응답 캐시" tabindex="0" role="button" aria-label="응답 캐시 포커스, fixtures/cache · replay, 온프레미스 사내망" aria-pressed="false" data-node-kind="database" data-node-sublabel="fixtures/cache · replay" data-node-context="온프레미스 사내망">
-          <title>응답 캐시 · fixtures/cache · replay · 온프레미스 사내망</title>
+        <g id="node-cache" data-node-id="cache" data-node-label="응답 캐시" tabindex="0" role="button" aria-label="응답 캐시 포커스, KEV · EPSS 하루 만료, 온프레미스 사내망" aria-pressed="false" data-node-kind="database" data-node-sublabel="KEV · EPSS 하루 만료" data-node-context="온프레미스 사내망">
+          <title>응답 캐시 · KEV · EPSS 하루 만료 · 온프레미스 사내망</title>
           <rect x="750" y="180" width="140" height="64" rx="8" class="c-mask"/>
           <rect x="750" y="180" width="140" height="64" rx="8" class="c-database" data-animate="node" style="--step:7" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(756 186) scale(0.6875)">
@@ -5370,11 +5370,11 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="820" y="210" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">응답 캐시</text>
-        <text data-detail="context" x="820" y="226" class="t-muted" font-size="9" text-anchor="middle">fixtures/cache · replay</text>
+        <text data-detail="context" x="820" y="226" class="t-muted" font-size="9" text-anchor="middle">KEV · EPSS 하루 만료</text>
         </g>
 
-        <g id="node-user" data-node-id="user" data-node-label="보안·개발 담당자" tabindex="0" role="button" aria-label="보안·개발 담당자 포커스, 검토 후 승인, 아키텍처 구성요소" aria-pressed="false" data-node-kind="external" data-node-sublabel="검토 후 승인" data-node-context="아키텍처 구성요소">
-          <title>보안·개발 담당자 · 검토 후 승인 · 아키텍처 구성요소</title>
+        <g id="node-user" data-node-id="user" data-node-label="보안·개발 담당자" tabindex="0" role="button" aria-label="보안·개발 담당자 포커스, 승인 · 보류 · 반려, 아키텍처 구성요소" aria-pressed="false" data-node-kind="external" data-node-sublabel="승인 · 보류 · 반려" data-node-context="아키텍처 구성요소">
+          <title>보안·개발 담당자 · 승인 · 보류 · 반려 · 아키텍처 구성요소</title>
           <rect x="40" y="330" width="140" height="64" rx="8" class="c-mask"/>
           <rect x="40" y="330" width="140" height="64" rx="8" class="c-external" data-animate="node" style="--step:0" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(46 336) scale(0.6875)">
@@ -5382,11 +5382,11 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
             <path d="M8 2.5h5.5V8M13.5 2.5 7.5 8.5"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="110" y="360" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">보안·개발 담당자</text>
-        <text data-detail="context" x="110" y="376" class="t-muted" font-size="9" text-anchor="middle">검토 후 승인</text>
+        <text data-detail="context" x="110" y="376" class="t-muted" font-size="9" text-anchor="middle">승인 · 보류 · 반려</text>
         </g>
 
-        <g id="node-web" data-node-id="web" data-node-label="React 대시보드" tabindex="0" role="button" aria-label="React 대시보드 포커스, 분포 띠 · 근거 · 검증 결과, 온프레미스 사내망" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="분포 띠 · 근거 · 검증 결과" data-node-context="온프레미스 사내망">
-          <title>React 대시보드 · 분포 띠 · 근거 · 검증 결과 · 온프레미스 사내망</title>
+        <g id="node-web" data-node-id="web" data-node-label="React 대시보드" tabindex="0" role="button" aria-label="React 대시보드 포커스, React · Vite · Tailwind, 온프레미스 사내망" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="React · Vite · Tailwind" data-node-context="온프레미스 사내망">
+          <title>React 대시보드 · React · Vite · Tailwind · 온프레미스 사내망</title>
           <rect x="270" y="330" width="140" height="64" rx="8" class="c-mask"/>
           <rect x="270" y="330" width="140" height="64" rx="8" class="c-frontend" data-animate="node" style="--step:1" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(276 336) scale(0.6875)">
@@ -5396,40 +5396,40 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
             <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="340" y="360" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">React 대시보드</text>
-        <text data-detail="context" x="340" y="376" class="t-muted" font-size="8.4" text-anchor="middle">분포 띠 · 근거 · 검증 결과</text>
+        <text data-detail="context" x="340" y="376" class="t-muted" font-size="9" text-anchor="middle">React · Vite · Tailwind</text>
         </g>
 
-        <g id="node-api" data-node-id="api" data-node-label="FastAPI + 오케스트레이터" tabindex="0" role="button" aria-label="FastAPI + 오케스트레이터 포커스, runner.py · 이벤트 기록, 온프레미스 사내망" aria-pressed="false" data-node-kind="backend" data-node-sublabel="runner.py · 이벤트 기록" data-node-context="온프레미스 사내망">
-          <title>FastAPI + 오케스트레이터 · runner.py · 이벤트 기록 · 온프레미스 사내망</title>
+        <g id="node-api" data-node-id="api" data-node-label="FastAPI + 오케스트레이터" tabindex="0" role="button" aria-label="FastAPI + 오케스트레이터 포커스, runner · decide · jobs 큐, 온프레미스 사내망" aria-pressed="false" data-node-kind="backend" data-node-sublabel="runner · decide · jobs 큐" data-node-context="온프레미스 사내망">
+          <title>FastAPI + 오케스트레이터 · runner · decide · jobs 큐 · 온프레미스 사내망</title>
           <rect x="490" y="330" width="170" height="64" rx="8" class="c-mask"/>
           <rect x="490" y="330" width="170" height="64" rx="8" class="c-backend" data-animate="node" style="--step:2" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(496 336) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="575" y="360" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">FastAPI + 오케스트레이터</text>
-        <text data-detail="context" x="575" y="376" class="t-muted" font-size="9" text-anchor="middle">runner.py · 이벤트 기록</text>
+        <text data-detail="context" x="575" y="376" class="t-muted" font-size="9" text-anchor="middle">runner · decide · jobs 큐</text>
         </g>
 
-        <g id="node-pipeline" data-node-id="pipeline" data-node-label="SBOM·스캔·보강" tabindex="0" role="button" aria-label="SBOM·스캔·보강 포커스, npm · Maven · SBOM 파일, 온프레미스 사내망" aria-pressed="false" data-node-kind="backend" data-node-sublabel="npm · Maven · SBOM 파일" data-node-context="온프레미스 사내망">
-          <title>SBOM·스캔·보강 · npm · Maven · SBOM 파일 · 온프레미스 사내망</title>
+        <g id="node-pipeline" data-node-id="pipeline" data-node-label="SBOM·스캔·보강" tabindex="0" role="button" aria-label="SBOM·스캔·보강 포커스, Syft · CycloneDX · SPDX, 온프레미스 사내망" aria-pressed="false" data-node-kind="backend" data-node-sublabel="Syft · CycloneDX · SPDX" data-node-context="온프레미스 사내망">
+          <title>SBOM·스캔·보강 · Syft · CycloneDX · SPDX · 온프레미스 사내망</title>
           <rect x="750" y="330" width="140" height="64" rx="8" class="c-mask"/>
           <rect x="750" y="330" width="140" height="64" rx="8" class="c-backend" data-animate="node" style="--step:3" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(756 336) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="820" y="360" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">SBOM·스캔·보강</text>
-        <text data-detail="context" x="820" y="376" class="t-muted" font-size="9" text-anchor="middle">npm · Maven · SBOM 파일</text>
+        <text data-detail="context" x="820" y="376" class="t-muted" font-size="9" text-anchor="middle">Syft · CycloneDX · SPDX</text>
         </g>
 
-        <g id="node-score" data-node-id="score" data-node-label="규칙 점수 엔진" tabindex="0" role="button" aria-label="규칙 점수 엔진 포커스, 25 / 25 / 50 → 1차 버킷, 온프레미스 사내망" aria-pressed="false" data-node-kind="backend" data-node-sublabel="25 / 25 / 50 → 1차 버킷" data-node-context="온프레미스 사내망">
-          <title>규칙 점수 엔진 · 25 / 25 / 50 → 1차 버킷 · 온프레미스 사내망</title>
+        <g id="node-score" data-node-id="score" data-node-label="규칙 점수 엔진" tabindex="0" role="button" aria-label="규칙 점수 엔진 포커스, 순수 함수 · KEV 하한, 온프레미스 사내망" aria-pressed="false" data-node-kind="backend" data-node-sublabel="순수 함수 · KEV 하한" data-node-context="온프레미스 사내망">
+          <title>규칙 점수 엔진 · 순수 함수 · KEV 하한 · 온프레미스 사내망</title>
           <rect x="980" y="330" width="140" height="64" rx="8" class="c-mask"/>
           <rect x="980" y="330" width="140" height="64" rx="8" class="c-backend" data-animate="node" style="--step:4" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(986 336) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="1050" y="360" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">규칙 점수 엔진</text>
-        <text data-detail="context" x="1050" y="376" class="t-muted" font-size="9" text-anchor="middle">25 / 25 / 50 → 1차 버킷</text>
+        <text data-detail="context" x="1050" y="376" class="t-muted" font-size="9" text-anchor="middle">순수 함수 · KEV 하한</text>
         </g>
 
         <g id="node-agent" data-node-id="agent" data-node-label="트리아지 에이전트" tabindex="0" role="button" aria-label="트리아지 에이전트 포커스, 계약 검사 · 규칙 대체, 온프레미스 사내망" aria-pressed="false" data-node-kind="backend" data-node-sublabel="계약 검사 · 규칙 대체" data-node-tag="±1 버킷 제약" data-node-context="온프레미스 사내망">
@@ -5444,8 +5444,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <text data-detail="fine" x="1285" y="386" class="t-backend" font-size="7" text-anchor="middle">±1 버킷 제약</text>
         </g>
 
-        <g id="node-sandbox" data-node-id="sandbox" data-node-label="검증 샌드박스" tabindex="0" role="button" aria-label="검증 샌드박스 포커스, 설치 · 빌드 · 테스트 · 재스캔, 온프레미스 사내망 › 격리 컨테이너 · egress 제한" aria-pressed="false" data-node-kind="security" data-node-sublabel="설치 · 빌드 · 테스트 · 재스캔" data-node-context="온프레미스 사내망 › 격리 컨테이너 · egress 제한">
-          <title>검증 샌드박스 · 설치 · 빌드 · 테스트 · 재스캔 · 온프레미스 사내망 › 격리 컨테이너 · egress 제한</title>
+        <g id="node-sandbox" data-node-id="sandbox" data-node-label="검증 샌드박스" tabindex="0" role="button" aria-label="검증 샌드박스 포커스, Docker · diff 생성, 온프레미스 사내망 › 격리 컨테이너 · egress 제한" aria-pressed="false" data-node-kind="security" data-node-sublabel="Docker · diff 생성" data-node-context="온프레미스 사내망 › 격리 컨테이너 · egress 제한">
+          <title>검증 샌드박스 · Docker · diff 생성 · 온프레미스 사내망 › 격리 컨테이너 · egress 제한</title>
           <rect x="1450" y="330" width="140" height="64" rx="8" class="c-mask"/>
           <rect x="1450" y="330" width="140" height="64" rx="8" class="c-security" data-animate="node" style="--step:6" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(1456 336) scale(0.6875)">
@@ -5453,11 +5453,11 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
             <path d="m5.8 8 1.5 1.5 3-3"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="1520" y="360" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">검증 샌드박스</text>
-        <text data-detail="context" x="1520" y="376" class="t-muted" font-size="7.5" text-anchor="middle">설치 · 빌드 · 테스트 · 재스캔</text>
+        <text data-detail="context" x="1520" y="376" class="t-muted" font-size="9" text-anchor="middle">Docker · diff 생성</text>
         </g>
 
-        <g id="node-out" data-node-id="out" data-node-label="실행 결과 저장소" tabindex="0" role="button" aria-label="실행 결과 저장소 포커스, out/&lt;run&gt; 파일, 온프레미스 사내망" aria-pressed="false" data-node-kind="database" data-node-sublabel="out/&lt;run&gt; 파일" data-node-context="온프레미스 사내망">
-          <title>실행 결과 저장소 · out/&lt;run&gt; 파일 · 온프레미스 사내망</title>
+        <g id="node-out" data-node-id="out" data-node-label="실행 결과 저장소" tabindex="0" role="button" aria-label="실행 결과 저장소 포커스, out/&lt;run&gt; · 결정 · 패치, 온프레미스 사내망" aria-pressed="false" data-node-kind="database" data-node-sublabel="out/&lt;run&gt; · 결정 · 패치" data-node-context="온프레미스 사내망">
+          <title>실행 결과 저장소 · out/&lt;run&gt; · 결정 · 패치 · 온프레미스 사내망</title>
           <rect x="505" y="520" width="140" height="64" rx="8" class="c-mask"/>
           <rect x="505" y="520" width="140" height="64" rx="8" class="c-database" data-animate="node" style="--step:12" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(511 526) scale(0.6875)">
@@ -5465,7 +5465,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="575" y="550" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">실행 결과 저장소</text>
-        <text data-detail="context" x="575" y="566" class="t-muted" font-size="9" text-anchor="middle">out/&lt;run&gt; 파일</text>
+        <text data-detail="context" x="575" y="566" class="t-muted" font-size="9" text-anchor="middle">out/&lt;run&gt; · 결정 · 패치</text>
         </g>
 
         <g id="node-repo" data-node-id="repo" data-node-label="대상 레포 · SBOM" tabindex="0" role="button" aria-label="대상 레포 · SBOM 포커스, 계열사 서비스 코드, 온프레미스 사내망" aria-pressed="false" data-node-kind="database" data-node-sublabel="계열사 서비스 코드" data-node-tag="읽기 전용" data-node-context="온프레미스 사내망">
@@ -5481,26 +5481,26 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <text data-detail="fine" x="1050" y="576" class="t-database" font-size="7" text-anchor="middle">읽기 전용</text>
         </g>
 
-        <g id="node-local" data-node-id="local" data-node-label="사내 LLM" tabindex="0" role="button" aria-label="사내 LLM 포커스, 코드 판독 전용 (선택), 온프레미스 사내망" aria-pressed="false" data-node-kind="backend" data-node-sublabel="코드 판독 전용 (선택)" data-node-tag="2단계 모드" data-node-context="온프레미스 사내망">
-          <title>사내 LLM · 코드 판독 전용 (선택) · 온프레미스 사내망 · 2단계 모드</title>
+        <g id="node-local" data-node-id="local" data-node-label="사내 LLM" tabindex="0" role="button" aria-label="사내 LLM 포커스, Ollama · 코드 판독 (선택), 온프레미스 사내망" aria-pressed="false" data-node-kind="backend" data-node-sublabel="Ollama · 코드 판독 (선택)" data-node-tag="2단계 모드" data-node-context="온프레미스 사내망">
+          <title>사내 LLM · Ollama · 코드 판독 (선택) · 온프레미스 사내망 · 2단계 모드</title>
           <rect x="1215" y="520" width="140" height="64" rx="8" class="c-mask"/>
           <rect x="1215" y="520" width="140" height="64" rx="8" class="c-backend" data-animate="node" style="--step:12" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(1221 526) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="1285" y="550" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">사내 LLM</text>
-        <text data-detail="context" x="1285" y="566" class="t-muted" font-size="9" text-anchor="middle">코드 판독 전용 (선택)</text>
+        <text data-detail="context" x="1285" y="566" class="t-muted" font-size="8.8" text-anchor="middle">Ollama · 코드 판독 (선택)</text>
         <text data-detail="fine" x="1285" y="576" class="t-backend" font-size="7" text-anchor="middle">2단계 모드</text>
         </g>
 
         <!-- Connection labels -->
-        <g data-detail="context" data-edge-from="user" data-edge-to="web" data-edge-label="검토·조치 승인" data-edge-key="0" data-edge-id="user-web">
-          <rect x="186.4" y="342" width="77.2" height="14" rx="3" class="c-mask"/>
-          <text x="225" y="352" class="t-edge-emphasis" font-size="8" text-anchor="middle">검토·조치 승인</text>
+        <g data-detail="context" data-edge-from="user" data-edge-to="web" data-edge-label="수정안 검토 · 결정" data-edge-key="0" data-edge-id="user-web">
+          <rect x="176.8" y="398" width="96.39999999999999" height="14" rx="3" class="c-mask"/>
+          <text x="225" y="408" class="t-edge-emphasis" font-size="8" text-anchor="middle">수정안 검토 · 결정</text>
         </g>
-        <g data-detail="context" data-edge-from="web" data-edge-to="api" data-edge-label="실행 결과 조회" data-edge-key="1" data-edge-id="web-api">
-          <rect x="411.4" y="342" width="77.2" height="14" rx="3" class="c-mask"/>
-          <text x="450" y="352" class="t-edge-emphasis" font-size="8" text-anchor="middle">실행 결과 조회</text>
+        <g data-detail="context" data-edge-from="web" data-edge-to="api" data-edge-label="결과 조회 · 결정 기록" data-edge-key="1" data-edge-id="web-api">
+          <rect x="402.62500000000006" y="398" width="110.8" height="14" rx="3" class="c-mask"/>
+          <text x="458.02500000000003" y="408" class="t-edge-emphasis" font-size="8" text-anchor="middle">결과 조회 · 결정 기록</text>
         </g>
         <g data-detail="context" data-edge-from="api" data-edge-to="pipeline" data-edge-label="레포 경로 · SBOM" data-edge-key="2" data-edge-id="api-pipeline">
           <rect x="661.6" y="332.9" width="86.8" height="14" rx="3" class="c-mask"/>
@@ -5514,37 +5514,37 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <rect x="1131.3" y="333.95" width="72.4" height="14" rx="3" class="c-mask"/>
           <text x="1167.5" y="343.95" class="t-edge-emphasis" font-size="8" text-anchor="middle">NOW·NEXT 후보</text>
         </g>
-        <g data-detail="context" data-edge-from="api" data-edge-to="sandbox" data-edge-label="NOW 조치안 검증" data-edge-key="5" data-edge-id="api-sandbox">
-          <rect x="967.025" y="398" width="82" height="14" rx="3" class="c-mask"/>
-          <text x="1008.025" y="408" class="t-edge-emphasis" font-size="8" text-anchor="middle">NOW 조치안 검증</text>
+        <g data-detail="context" data-edge-from="api" data-edge-to="sandbox" data-edge-label="조치안 검증 · 승인분 함께 검증" data-edge-key="5" data-edge-id="api-sandbox">
+          <rect x="587" y="401.75" width="154" height="14" rx="3" class="c-mask"/>
+          <text x="664" y="411.75" class="t-edge-emphasis" font-size="8" text-anchor="middle">조치안 검증 · 승인분 함께 검증</text>
         </g>
         <g data-detail="context" data-edge-from="pipeline" data-edge-to="cache" data-edge-label="보강 데이터 조회" data-edge-key="6" data-edge-id="pipeline-cache">
           <rect x="762.6" y="310" width="86.8" height="14" rx="3" class="c-mask"/>
           <text x="806" y="320" class="t-edge-default" font-size="8" text-anchor="middle">보강 데이터 조회</text>
         </g>
-        <g data-detail="context" data-edge-from="cache" data-edge-to="feeds" data-edge-label="미스 시 HTTPS" data-edge-key="7" data-edge-id="cache-feeds">
-          <rect x="783.8" y="160" width="72.4" height="14" rx="3" class="c-mask"/>
-          <text x="820" y="170" class="t-edge-dashed" font-size="8" text-anchor="middle">미스 시 HTTPS</text>
+        <g data-detail="context" data-edge-from="cache" data-edge-to="feeds" data-edge-label="미스 · 만료 시 HTTPS" data-edge-key="7" data-edge-id="cache-feeds">
+          <rect x="767" y="160" width="106" height="14" rx="3" class="c-mask"/>
+          <text x="820" y="170" class="t-edge-dashed" font-size="8" text-anchor="middle">미스 · 만료 시 HTTPS</text>
         </g>
-        <g data-detail="context" data-edge-from="agent" data-edge-to="llm" data-edge-label="코드 없이 사실 값만" data-edge-key="8" data-edge-id="agent-llm">
-          <rect x="1298" y="210" width="101.2" height="14" rx="3" class="c-mask"/>
-          <text x="1348.6" y="220" class="t-edge-security" font-size="8" text-anchor="middle">코드 없이 사실 값만</text>
+        <g data-detail="context" data-edge-from="agent" data-edge-to="llm" data-edge-label="근거 작성 요청" data-edge-key="8" data-edge-id="agent-llm">
+          <rect x="1298" y="210" width="77.2" height="14" rx="3" class="c-mask"/>
+          <text x="1336.6" y="220" class="t-edge-security" font-size="8" text-anchor="middle">근거 작성 요청</text>
         </g>
         <g data-detail="context" data-edge-from="pipeline" data-edge-to="repo" data-edge-label="lockfile · import 검색" data-edge-key="9" data-edge-id="pipeline-repo">
           <rect x="842.2" y="532" width="115.6" height="14" rx="3" class="c-mask"/>
           <text x="900" y="542" class="t-edge-default" font-size="8" text-anchor="middle">lockfile · import 검색</text>
         </g>
         <g data-detail="context" data-edge-from="agent" data-edge-to="repo" data-edge-label="읽기 전용 도구 4종" data-edge-key="10" data-edge-id="agent-repo">
-          <rect x="1168.6" y="398.75" width="96.39999999999999" height="14" rx="3" class="c-mask"/>
-          <text x="1216.8" y="408.75" class="t-edge-security" font-size="8" text-anchor="middle">읽기 전용 도구 4종</text>
+          <rect x="1112.3" y="398" width="96.39999999999999" height="14" rx="3" class="c-mask"/>
+          <text x="1160.5" y="408" class="t-edge-security" font-size="8" text-anchor="middle">읽기 전용 도구 4종</text>
         </g>
         <g data-detail="context" data-edge-from="agent" data-edge-to="cache" data-edge-label="어드바이저리 조회" data-edge-key="11" data-edge-id="agent-cache">
           <rect x="1038.2" y="192" width="91.6" height="14" rx="3" class="c-mask"/>
           <text x="1084" y="202" class="t-edge-default" font-size="8" text-anchor="middle">어드바이저리 조회</text>
         </g>
         <g data-detail="context" data-edge-from="sandbox" data-edge-to="repo" data-edge-label="읽기 전용 마운트" data-edge-key="12" data-edge-id="sandbox-repo">
-          <rect x="1234.0749999999998" y="588" width="86.8" height="14" rx="3" class="c-mask"/>
-          <text x="1277.475" y="598" class="t-edge-security" font-size="8" text-anchor="middle">읽기 전용 마운트</text>
+          <rect x="1241.6" y="588" width="86.8" height="14" rx="3" class="c-mask"/>
+          <text x="1285" y="598" class="t-edge-security" font-size="8" text-anchor="middle">읽기 전용 마운트</text>
         </g>
         <g data-detail="context" data-edge-from="sandbox" data-edge-to="npm" data-edge-label="스크립트 차단 설치" data-edge-key="13" data-edge-id="sandbox-npm">
           <rect x="1424.6" y="210" width="96.39999999999999" height="14" rx="3" class="c-mask"/>
@@ -5554,9 +5554,9 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <rect x="1127.7" y="286" width="91.6" height="14" rx="3" class="c-mask"/>
           <text x="1173.5" y="296" class="t-edge-default" font-size="8" text-anchor="middle">호스트에서 재스캔</text>
         </g>
-        <g data-detail="context" data-edge-from="api" data-edge-to="out" data-edge-label="run 결과 저장·조회" data-edge-key="15" data-edge-id="api-out">
-          <rect x="472.59999999999997" y="450" width="96.39999999999999" height="14" rx="3" class="c-mask"/>
-          <text x="520.8" y="460" class="t-edge-default" font-size="8" text-anchor="middle">run 결과 저장·조회</text>
+        <g data-detail="context" data-edge-from="api" data-edge-to="out" data-edge-label="결과 · 결정 · 패치 저장" data-edge-key="15" data-edge-id="api-out">
+          <rect x="448.59999999999997" y="450" width="120.39999999999999" height="14" rx="3" class="c-mask"/>
+          <text x="508.79999999999995" y="460" class="t-edge-default" font-size="8" text-anchor="middle">결과 · 결정 · 패치 저장</text>
         </g>
         <g data-detail="context" data-edge-from="agent" data-edge-to="local" data-edge-label="코드 사용 여부 판정" data-edge-key="16" data-edge-id="agent-local">
           <rect x="1177.8000000000002" y="450" width="101.2" height="14" rx="3" class="c-mask"/>
@@ -5778,12 +5778,12 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       <div class="card">
         <div class="card-header">
           <div class="card-dot cyan"></div>
-          <h3>① 파이프라인 (결정론)</h3>
+          <h3>① 수집 (코드, 결정론)</h3>
         </div>
         <ul>
-          <li>Syft 또는 lockfile로 CycloneDX SBOM 생성, SBOM 파일도 직접 입력</li>
-          <li>OSV 매칭 후 EPSS · KEV · 수정 버전 · import 위치 보강</li>
-          <li>외부 응답은 전부 캐시 경유, 네트워크 없이 재생 가능</li>
+          <li>Syft나 lockfile로 SBOM을 만들고 CycloneDX, SPDX 파일도 직접 받음</li>
+          <li>OSV로 취약점을 찾고 EPSS, KEV, 수정 버전, import 위치를 붙임</li>
+          <li>npm, Maven, PyPI, Go 등 8개 생태계 조회. 외부 응답은 전부 캐시 경유</li>
         </ul>
       </div>
 
@@ -5793,33 +5793,45 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <h3>② 판단 (규칙 + AI)</h3>
         </div>
         <ul>
-          <li>규칙이 위험 점수와 1차 등급을 계산</li>
-          <li>2단계 모드: 사내 LLM만 코드를 읽고, 외부 LLM은 사실 값만 받아 근거를 작성</li>
-          <li>등급 조정은 한 단계까지, KEV 하향 금지, 위반 시 규칙 결과 사용</li>
+          <li>규칙이 위험 점수와 1차 등급을 계산. KEV와 악성 패키지는 하한 적용</li>
+          <li>AI는 코드나 어드바이저리를 읽고 한 단계까지만 조정, 사유 필수</li>
+          <li>숫자는 코드가 채우고, 계약을 어긴 답은 규칙 결과로 대체</li>
         </ul>
       </div>
 
       <div class="card">
         <div class="card-header">
           <div class="card-dot emerald"></div>
-          <h3>③ 조치 · 검증</h3>
+          <h3>③ 수정안 · 검증 · 승인</h3>
         </div>
         <ul>
-          <li>실행 명령은 코드가 조립, AI가 쓴 문자열은 실행하지 않음</li>
-          <li>일회용 컨테이너에서 기준선과 비교해 판정</li>
-          <li>원본 반영은 담당자 승인 후에만</li>
+          <li>명령은 코드가 조립. 샌드박스 사본에서 바뀐 내용을 diff로 저장</li>
+          <li>담당자가 승인, 보류, 반려를 사유와 함께 기록</li>
+          <li>승인분은 작업 큐에서 함께 검증해 패치 하나와 PR 초안으로 내보냄. 푸시 없음</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot rose"></div>
+          <h3>기술 스택</h3>
+        </div>
+        <ul>
+          <li>백엔드: Python 3.12, uv, Pydantic v2, httpx, FastAPI, uvicorn</li>
+          <li>프론트: React 19, TypeScript, Vite, Tailwind 4. 빌드 결과를 FastAPI가 서빙</li>
+          <li>AI: Anthropic API(tool use), OpenAI와 Ollama 어댑터. 검증: Docker. 테스트: pytest</li>
         </ul>
       </div>
 
       <div class="card">
         <div class="card-header">
           <div class="card-dot amber"></div>
-          <h3>저장소 (현재와 운영 설계)</h3>
+          <h3>저장과 운영 설계</h3>
         </div>
         <ul>
-          <li>프로토타입은 실행별 파일 저장, DB 없음</li>
-          <li>운영은 PostgreSQL 하나로 결과 저장과 작업 큐를 처리</li>
-          <li>분석 전용 DB(ClickHouse 등)는 현재 규모에서 불필요</li>
+          <li>프로토타입은 실행별 파일 저장, DB 없음. 작업 큐는 프로세스 안 작업자 1개</li>
+          <li>운영은 PostgreSQL과 외부 큐, 작업자는 쿠버네티스 Job으로 교체</li>
+          <li>API와 파일 형식은 그대로 두고 뒤쪽만 바꾸는 구조</li>
         </ul>
       </div>
     </div>
