@@ -42,7 +42,7 @@ def checks(test_llm: bool = False) -> list[tuple[str, str, str]]:
     key = {"anthropic": "ANTHROPIC_API_KEY", "openai": "OPENAI_API_KEY"}.get(p)
     has_key = bool(key and os.environ.get(key))
     model = os.environ.get({"openai": "OPENAI_MODEL", "local": "LOCAL_LLM_MODEL"}.get(p, "LLM_MODEL"),
-                           "claude-fable-5-2" if p == "anthropic" else "")
+                           "claude-opus-5-5" if p == "anthropic" else "")
     rows.append(("LLM_PROVIDER", "ok", f"{p} / model={model or '미설정'}"))
     if key:
         rows.append((key, "ok" if has_key else "warn", "설정됨" if has_key else "없음 (.env에 입력, 없으면 규칙 결과만 사용)"))

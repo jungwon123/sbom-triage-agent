@@ -21,6 +21,9 @@ from .tools import SPECS, RepoTools, ToolError
 
 MAX_TOOL_CALLS = 6
 PLACEHOLDER = re.compile(r"\{(\w+)\}")
+# A digit that starts a number: scores, percentages, versions, CVE ids. Digits inside a name
+# (log4j, SHA256, OAuth2) are not facts the model could get wrong, so they pass.
+STANDALONE_NUMBER = re.compile(r"(?<![A-Za-z0-9])\d")
 
 
 # ---------- rationale ----------
@@ -44,7 +47,7 @@ def rationale_violations(lines: list[str]) -> list[str]:
         unknown = [p for p in PLACEHOLDER.findall(line) if p not in prompts.PLACEHOLDERS]
         if unknown:
             out.append(f"unknown placeholder {unknown}")
-        if re.search(r"\d", PLACEHOLDER.sub("", line)):
+        if STANDALONE_NUMBER.search(PLACEHOLDER.sub("", line)):
             out.append("rationale contains a number outside a placeholder")
     return out
 
@@ -101,6 +104,8 @@ def merge(f: Finding, r: score.RuleResult, v: AgentVerdict | None, decided_by: s
             reason = fill([reason], fill_values(f, r.risk))[0]
     proposal = v.remediation if v is not None else apply.default_proposal(f)
     reach: Reachability = code.reachability if code is not None else v.reachability if v is not None else r.reachability
+    if "source" in f.missing:   # nobody read code, whatever the model answered
+        reach = r.reachability
     return Triage(
         finding_id=f.id, risk=round(r.risk), risk_breakdown=r.risk_breakdown, effort=r.effort,
         rule_bucket=r.bucket, reachability=reach,
@@ -109,7 +114,7 @@ def merge(f: Finding, r: score.RuleResult, v: AgentVerdict | None, decided_by: s
         remediation=apply.build(proposal, f), needs_review=held,
         decided_by=decided_by,
         evidence_files=code.evidence_files[:10] if code is not None else [],
-        code_read_by="local_agent" if code is not None else "agent" if v is not None else "rule",
+        code_read_by="local_agent" if code is not None else "agent" if v is not None and "source" not in f.missing else "rule",
     )
 
 
@@ -160,13 +165,15 @@ def judge_code(llm: LLM, f: Finding, r: score.RuleResult, tools: RepoTools,
 
 
 def judge_one(llm: LLM, f: Finding, r: score.RuleResult, tools: RepoTools | None,
-              log: Callable[[dict], None], code: CodeVerdict | None = None) -> tuple[AgentVerdict | None, list[str]]:
+              log: Callable[[dict], None], code: CodeVerdict | None = None,
+              advisory: str | None = None, context: dict | None = None) -> tuple[AgentVerdict | None, list[str]]:
     """-> (verdict or None, final answers). One retry with the error message, then give up.
 
     With `code` set this is the writer of two-stage mode: no tools, no source code in the prompt.
+    With `advisory` set the input is SBOM-only: no tools, the advisory text is the evidence.
     """
     def call_tool(name: str, args: dict) -> tuple[str, bool]:
-        if code is not None or tools is None:
+        if code is not None or advisory is not None or tools is None:
             return "no tools in this stage", True
         try:
             return tools.call(name, args), False
@@ -175,11 +182,17 @@ def judge_one(llm: LLM, f: Finding, r: score.RuleResult, tools: RepoTools | None
 
     answers: list[str] = []
     try:
-        if code is None:
-            session = llm.start(prompts.SYSTEM, prompts.user_prompt(f, r), SPECS, prompts.VERDICT_SCHEMA,
+        if advisory is not None:
+            session = llm.start(prompts.SBOM_SYSTEM + prompts.SERVICE_CONTEXT, prompts.sbom_prompt(f, r, advisory, context),
+                                [], prompts.VERDICT_SCHEMA,
+                                0, log, f.id)
+        elif code is None:
+            session = llm.start(prompts.SYSTEM + prompts.SERVICE_CONTEXT, prompts.user_prompt(f, r, context), SPECS,
+                                prompts.VERDICT_SCHEMA,
                                 MAX_TOOL_CALLS, log, f.id)
         else:
-            session = llm.start(prompts.SYSTEM + prompts.WRITER_NOTE, prompts.writer_prompt(f, r, code.reachability),
+            session = llm.start(prompts.SYSTEM + prompts.WRITER_NOTE + prompts.SERVICE_CONTEXT,
+                                prompts.writer_prompt(f, r, code.reachability, context),
                                 [], prompts.VERDICT_SCHEMA, 0, log, f.id)
         text = session.run(call_tool)
         for attempt in (1, 2):
@@ -201,6 +214,13 @@ def judge_one(llm: LLM, f: Finding, r: score.RuleResult, tools: RepoTools | None
     return None, answers
 
 
+def _advisory(tools: RepoTools, f: Finding) -> str:
+    try:
+        return tools.get_advisory(f.vuln_id)
+    except ToolError:
+        return "advisory not available"
+
+
 def _json_part(text: str) -> str:
     start, end = text.find("{"), text.rfind("}")
     return text[start:end + 1] if 0 <= start < end else text
@@ -208,7 +228,8 @@ def _json_part(text: str) -> str:
 
 def run(findings: list[Finding], repo: pathlib.Path | None, llm: LLM | None, run_dir: pathlib.Path,
         limit: int | None = None, workers: int = 4, emit: Callable[[dict], None] = lambda e: None,
-        code_llm: LLM | None = None, tag: str = "", only: set[str] | None = None) -> list[Triage]:
+        code_llm: LLM | None = None, tag: str = "", only: set[str] | None = None,
+        context: dict | None = None) -> list[Triage]:
     """llm writes the verdict. code_llm, when given, is the only model that reads source code (two-stage).
 
     `only` narrows the candidates to those finding ids (still NOW/NEXT by rule only).
@@ -238,16 +259,21 @@ def run(findings: list[Finding], repo: pathlib.Path | None, llm: LLM | None, run
 
         def one(f: Finding) -> None:
             code, v = None, None
-            if code_llm is not None:
+            if "source" in f.missing:   # SBOM-only: nothing to read, so no code reader either
+                if llm is not None:
+                    v, raw = judge_one(llm, f, rules[f.id], None, log, advisory=_advisory(tools, f), context=context)
+                    with lock:
+                        answers[f.id] = raw
+            elif code_llm is not None:
                 code, raw_code = judge_code(code_llm, f, rules[f.id], tools, log)
                 with lock:
                     answers[f"code:{f.id}"] = raw_code
                 if code is not None and llm is not None:
-                    v, raw = judge_one(llm, f, rules[f.id], None, log, code=code)
+                    v, raw = judge_one(llm, f, rules[f.id], None, log, code=code, context=context)
                     with lock:
                         answers[f.id] = raw
             elif llm is not None:
-                v, raw = judge_one(llm, f, rules[f.id], tools, log)
+                v, raw = judge_one(llm, f, rules[f.id], tools, log, context=context)
                 with lock:
                     answers[f.id] = raw
             with lock:
@@ -258,7 +284,10 @@ def run(findings: list[Finding], repo: pathlib.Path | None, llm: LLM | None, run
         with cf.ThreadPoolExecutor(workers if code_llm is None else min(workers, 2)) as ex:
             list(ex.map(one, candidates))
         if "replay" not in {getattr(llm, "name", None), getattr(code_llm, "name", None)}:
-            (run_dir / f"agent_answers{suffix}.json").write_text(json.dumps(answers, ensure_ascii=False, indent=1))
+            path = run_dir / f"agent_answers{suffix}.json"
+            if only is not None and path.exists():   # partial run: keep the recorded answers of the other items
+                answers = {**json.loads(path.read_text()), **answers}
+            path.write_text(json.dumps(answers, ensure_ascii=False, indent=1))
 
     out = []
     for f in findings:

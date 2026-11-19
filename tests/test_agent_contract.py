@@ -134,3 +134,18 @@ def test_override_reason_placeholders_filled(make_finding):
     down = {"NOW": "NEXT", "NEXT": "MONITOR"}[r.bucket]
     t = agent_run.merge(f, r, verdict(proposed_bucket=down, override_reason="{package}를 쓰지 않습니다"), "agent")
     assert t.override_reason == "lodash를 쓰지 않습니다"
+
+
+def test_partial_run_keeps_recorded_answers_of_other_items(make_finding, tmp_path):
+    a, b = make_finding(id="a"), make_finding(id="b")
+    agent_run.run([a, b], None, FakeLLM([GOOD, LLMError("no credit")]), tmp_path, workers=1)
+    agent_run.run([a, b], None, FakeLLM([GOOD]), tmp_path, only={b.id})
+    saved = json.loads((tmp_path / "agent_answers.json").read_text())
+    assert saved[a.id] == [GOOD] and saved[b.id] == [GOOD]
+
+
+def test_digits_inside_a_name_are_not_numbers():
+    ok = agent_run.rationale_violations(["log4j의 JNDI 조회와 SHA256 서명 경로를 확인하세요."])
+    assert ok == []
+    for bad in ("CVSS 9.8입니다.", "EPSS 상위 3%입니다.", "버전 2.14.1을 씁니다.", "CVE-2021-44228입니다.", "v2.0 이상으로 올리세요."):
+        assert agent_run.rationale_violations([bad]) == ["rationale contains a number outside a placeholder"], bad

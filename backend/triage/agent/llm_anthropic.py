@@ -1,6 +1,7 @@
-"""Anthropic adapter: manual tool-use loop on the Messages API (default model claude-fable-5-2, D34).
+"""Anthropic adapter: manual tool-use loop on the Messages API (default model claude-opus-5-5, D34).
 
-- Fable 5.2 always thinks: no `thinking` parameter; depth via output_config.effort (LLM_EFFORT).
+- No `thinking` parameter is sent (Fable 5.2 always thinks, Opus 5.5 answers without it); depth via
+  output_config.effort (LLM_EFFORT).
 - Forced tool_choice is rejected on this model, so tools stay on `auto`.
 - Server-side refusal fallback is on for models that support it.
 - The conversation is append-only: assistant content goes back unchanged.
@@ -93,7 +94,7 @@ class AnthropicLLM:
     name = "anthropic"
 
     def __init__(self) -> None:
-        self.model = os.environ.get("LLM_MODEL", "claude-fable-5-2")
+        self.model = os.environ.get("LLM_MODEL", "claude-opus-5-5")
         self.effort = os.environ.get("LLM_EFFORT", "high")
         self.use_format = True
         self.client = anthropic.Anthropic(max_retries=3)

@@ -12,13 +12,15 @@ from ..models import Finding, Remediation, RemediationProposal
 
 NPM_NAME = re.compile(r"^(@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]*$")
 MAVEN_NAME = re.compile(r"^[A-Za-z0-9._-]+:[A-Za-z0-9._-]+$")
+OTHER_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]*$")   # PyPI, Go, crates.io, NuGet, RubyGems, Packagist
 VERSION = re.compile(r"^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$")
 MAVEN_VERSION = re.compile(r"^\d+(\.\d+){0,3}([.-][0-9A-Za-z.-]+)?$")
 NPM_FLAGS = "--package-lock-only --ignore-scripts --no-audit --no-fund"
 
 
 def safe_name(f: Finding) -> bool:
-    return bool((NPM_NAME if f.ecosystem == "npm" else MAVEN_NAME).match(f.package))
+    pattern = {"npm": NPM_NAME, "Maven": MAVEN_NAME}.get(f.ecosystem, OTHER_NAME)
+    return bool(pattern.match(f.package))
 
 
 def safe_version(v: str | None, ecosystem: str) -> bool:
@@ -72,8 +74,10 @@ def build(p: RemediationProposal, f: Finding) -> Remediation:
             else:
                 patch = {"overrides": {f.package: p.to_version}}
                 commands = ["npm install"]
-        else:
+        elif f.ecosystem == "Maven":
             commands = [f"pom.xml: {f.package} 버전을 {p.to_version}(으)로 변경 후 mvn -q verify"]
+        else:   # no sandbox for these ecosystems yet: a note for the owner, never executed
+            commands = [f"의존성 선언에서 {f.package} 버전을 {p.to_version}(으)로 변경 후 잠금 파일 갱신"]
     return Remediation(kind=p.kind, package=f.package, from_version=f.version, to_version=p.to_version,
                        commands=commands, package_json_patch=patch, mitigation=p.mitigation,
                        breaking_risk=p.breaking_risk, notes=p.notes)
