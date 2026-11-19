@@ -10,6 +10,7 @@ import json
 import logging
 import os
 import pathlib
+import time
 from typing import Any
 
 import httpx
@@ -28,10 +29,19 @@ def key(url: str, data: Any = None) -> str:
     return hashlib.sha256((url + json.dumps(data)).encode()).hexdigest()
 
 
-def fetch_json(url: str, data: Any = None, timeout: float = 60) -> Any | None:
+DAY = 86_400.0
+
+
+def fetch_json(url: str, data: Any = None, timeout: float = 60, max_age: float | None = None) -> Any | None:
+    """max_age (seconds) is for feeds that change daily (KEV, EPSS): an older copy is fetched again in
+    live mode. If that fetch fails the old copy is still returned, with a warning. Replay never refetches."""
     path = CACHE_DIR / f"{key(url, data)}.json"
+    stale = None
     if path.exists():
-        return json.loads(path.read_text())
+        body = json.loads(path.read_text())
+        if replay_mode() or max_age is None or time.time() - path.stat().st_mtime <= max_age:
+            return body
+        stale = body
     if replay_mode():
         log.warning("replay cache miss: %s", url[:120])
         return None
@@ -41,8 +51,8 @@ def fetch_json(url: str, data: Any = None, timeout: float = 60) -> Any | None:
             res.raise_for_status()
             body = res.json()
     except (httpx.HTTPError, ValueError) as e:
-        log.warning("fetch failed %s: %s", url[:120], e)
-        return None
+        log.warning("fetch failed %s: %s%s", url[:120], e, " (using the older cached copy)" if stale is not None else "")
+        return stale
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(body))
     return body

@@ -56,6 +56,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--labeled", action="store_true", help="judge only the findings that have a golden label")
     p.add_argument("--retry-failed", action="store_true", help="judge only the findings whose last LLM call failed")
     context_args(p)
+    p = sub.add_parser("rescore", help="re-apply the current rules and checks to a stored run (no model calls)")
+    p.add_argument("run_dir", type=pathlib.Path)
     p = sub.add_parser("verify"); p.add_argument("run_dir", type=pathlib.Path); p.add_argument("--setup")
     p.add_argument("--buckets", default="NOW", help="comma list of buckets to verify, e.g. NOW,NEXT")
     p = sub.add_parser("decide", help="record the owner's call on one proposed change")
@@ -113,6 +115,8 @@ def main(argv: list[str] | None = None) -> int:
             failed = {t.finding_id for t in run.triage() if t.decided_by == "agent_fallback"}
             only = failed if only is None else only & failed
         run = runner.agent(run, a.limit, only=only)
+    elif a.cmd == "rescore":
+        run = runner.rescore(runner.Run(a.run_dir))
     elif a.cmd == "verify":
         buckets = tuple(b.strip().upper() for b in a.buckets.split(",") if b.strip())
         run = runner.verify(runner.Run(a.run_dir), a.setup, buckets)

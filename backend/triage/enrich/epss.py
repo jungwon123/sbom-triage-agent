@@ -12,7 +12,7 @@ def lookup(cves: list[str]) -> dict[str, tuple[float, float]]:
     out: dict[str, tuple[float, float]] = {}
     cves = sorted(set(cves))
     for i in range(0, len(cves), BATCH):
-        body = cache.fetch_json(URL + ",".join(cves[i:i + BATCH]))
+        body = cache.fetch_json(URL + ",".join(cves[i:i + BATCH]), max_age=cache.DAY)
         for row in (body or {}).get("data", []):
             out[row["cve"]] = (float(row["epss"]), float(row["percentile"]))
     return out

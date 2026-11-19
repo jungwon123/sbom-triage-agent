@@ -80,6 +80,33 @@ export default function Overview({ run, items, mode, onMode, selected, onSelect 
         })}
       </div>
       <p className="mt-2 text-sm text-dim">{caption}</p>
+      <DataNotes run={run} />
     </section>
+  );
+}
+
+/** What the result was judged against, and what it could not see. Gaps are stated, never hidden. */
+function DataNotes({ run }: { run: RunDetail }) {
+  const c = run.meta.coverage;
+  const skipped = Object.values(c.unsupported ?? {}).reduce((a, b) => a + b, 0);
+  const kev = c.kev_list;
+  return (
+    <div className="mt-1 space-y-1 text-sm">
+      {kev?.catalog_version && (
+        <p className="text-dim">
+          악용 목록(CISA KEV) {kev.catalog_version}판 {kev.count}건 기준, 이 실행에서 해당 {c.kev_hits}건.
+        </p>
+      )}
+      {!c.kev_feed && (
+        <p role="alert" className="rounded border-l-4 border-now bg-sheet px-3 py-1.5">
+          악용 목록(CISA KEV)을 받지 못한 실행입니다. 실제 악용 중인 취약점이 낮게 분류됐을 수 있습니다.
+        </p>
+      )}
+      {skipped > 0 && (
+        <p role="alert" className="rounded border-l-4 border-next bg-sheet px-3 py-1.5">
+          컴포넌트 {skipped}개는 패키지 식별자가 없거나 지원하지 않는 종류라 조회하지 못했습니다. 이 결과에 포함되지 않았습니다.
+        </p>
+      )}
+    </div>
   );
 }

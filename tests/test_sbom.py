@@ -88,3 +88,23 @@ def test_unsupported_components_are_counted_not_dropped_silently():
                           {"purl": "pkg:deb/debian/zlib@1.2"}, {"name": "no-purl"}]}
     assert sbom.unsupported_purls(bom) == {"deb": 2, "none": 1}
     assert [c.ecosystem for c in sbom.components_from_cyclonedx(bom)] == ["PyPI"]
+
+
+def test_spdx_package_without_purl_is_counted_not_dropped():
+    from triage import sbom
+    doc = {"packages": [{"SPDXID": "SPDXRef-root", "name": "app", "versionInfo": "1.0.0"},
+                        {"SPDXID": "SPDXRef-a", "name": "lodash", "versionInfo": "4.17.20"},
+                        {"SPDXID": "SPDXRef-b", "name": "ms", "versionInfo": "2.0.0",
+                         "externalRefs": [{"referenceType": "purl", "referenceLocator": "pkg:npm/ms@2.0.0"}]}],
+           "relationships": [{"spdxElementId": "SPDXRef-DOCUMENT", "relationshipType": "DESCRIBES", "relatedSpdxElement": "SPDXRef-root"}]}
+    bom = sbom.spdx_to_cyclonedx(doc)
+    assert sbom.unsupported_purls(bom) == {"none": 1}
+    assert [c.name for c in sbom.components_from_cyclonedx(bom)] == ["ms"]
+
+
+def test_four_part_versions_and_prerelease_numbers():
+    from triage.enrich import semver
+    assert semver.fixed_in(["2.13.4.2"], "2.13.4") == "2.13.4.2"
+    assert semver.lt("2.13.4.1", "2.13.4.2") and not semver.lt("2.13.4.2", "2.13.4.2")
+    assert semver.lt("1.0.0-rc.9", "1.0.0-rc.10") and semver.lt("1.0.0-rc.10", "1.0.0")
+    assert semver.lt("5.3.9.RELEASE", "5.3.10.RELEASE") and semver.bump("1.2.3", "2.0.0") == "major"

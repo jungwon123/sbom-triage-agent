@@ -276,9 +276,13 @@ def spdx_to_cyclonedx(doc: dict) -> dict:
     for sid, p in pkgs.items():
         purl = next((r.get("referenceLocator") for r in p.get("externalRefs", [])
                      if r.get("referenceType") == "purl"), None)
+        if sid in described and not purl:
+            continue                                  # the product itself, not a dependency
+        comp = {"type": "library", "bom-ref": sid, "name": p.get("name"), "version": p.get("versionInfo"),
+                "scope": "required"}
         if purl:
-            comps.append({"type": "library", "bom-ref": sid, "name": p.get("name"), "version": p.get("versionInfo"),
-                          "purl": purl, "scope": "required"})
+            comp["purl"] = purl                       # without one it is kept and counted as not scanned
+        comps.append(comp)
     for r in rels:
         a, t, b = r.get("spdxElementId"), r.get("relationshipType"), r.get("relatedSpdxElement")
         if t == "DEPENDS_ON":

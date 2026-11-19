@@ -13,6 +13,7 @@ import time
 
 from . import cache, sbom, scan as scan_mod, score
 from .agent import llm as llm_mod, run as agent_run
+from .enrich import kev as kev_mod
 from .models import Finding, ServiceContext, Triage
 from .verify import run as verify_run, sandbox
 
@@ -94,6 +95,7 @@ def scan(target: pathlib.Path, name: str | None = None, context: ServiceContext 
     run.emit({"type": "stage", "stage": "scan", "status": "start"})
     findings, coverage = scan_mod.scan(components, repo)
     coverage["unsupported"] = skipped
+    coverage["kev_list"] = kev_mod.version()
     run.write("findings.json", [f.model_dump() for f in findings])
     run.emit({"type": "stage", "stage": "scan", "status": "done", **coverage})
 
@@ -114,8 +116,25 @@ def _llm_meta(llm, code_llm) -> dict:
             "code_reader": describe(code_llm), "mode": "two_stage" if code_llm else "single"}
 
 
+def rescore(run: Run) -> Run:
+    """Bring a stored run in line with the current rules without calling any model.
+
+    Rule buckets are recomputed for every finding, recorded AI answers are replayed through the
+    current contract checks, and items with no recorded answer get the plain rule result. Use it
+    after a scoring or contract change so the dashboard does not show buckets from older rules.
+    """
+    path = run.dir / "agent_answers.json"
+    answered = {k for k, v in json.loads(path.read_text()).items() if v and not k.startswith("code:")} if path.exists() else set()
+    before = run.meta
+    run = agent(run, writer="replay" if answered else "none", code_reader="none", only=answered, keep_others=False)
+    meta = run.meta   # the answers still come from the model that wrote them; rescoring is not a new judgment
+    meta["llm"], meta["stages"] = before.get("llm"), before.get("stages", meta["stages"])
+    run.write("meta.json", meta)
+    return run
+
+
 def agent(run: Run, limit: int | None = None, writer: str | None = None, code_reader: str | None = None,
-          tag: str = "", only: set[str] | None = None) -> Run:
+          tag: str = "", only: set[str] | None = None, keep_others: bool = True) -> Run:
     """⑤. writer "none" keeps the rule bucket. code_reader set = two-stage: only that model reads source code.
 
     With a tag the result goes to triage.<tag>.json and the main triage.json stays as it is (for comparisons).
@@ -133,7 +152,7 @@ def agent(run: Run, limit: int | None = None, writer: str | None = None, code_re
         run.emit({"type": "stage", "stage": "agent", "status": "done", "tag": tag, **summarize(findings, triage)})
         return run
     old = {t.finding_id: t for t in run.triage()}
-    if only is not None:   # partial run: items outside `only` keep their earlier judgment
+    if only is not None and keep_others:   # partial run: items outside `only` keep their earlier judgment
         triage = [t if t.finding_id in only or t.finding_id not in old else old[t.finding_id] for t in triage]
     for t in triage:   # keep earlier verification results
         t.verification = old[t.finding_id].verification if t.finding_id in old else None
@@ -223,7 +242,8 @@ def verify(run: Run, setup_cmd: str | None = None, buckets: tuple[str, ...] = ("
         with (run.dir / "agent_log.jsonl").open("a") as fh:
             fh.write(json.dumps(event, ensure_ascii=False, default=str) + "\n")
 
-    revise = (lambda f, prev, steps: agent_run.revise(llm, f, prev, steps, agent_log)) if llm else None
+    logs_ok = llm_mod.code_provider() is None   # two-stage: the writer model must not see build or test logs
+    revise = (lambda f, prev, steps: agent_run.revise(llm, f, prev, steps, agent_log, logs_ok)) if llm else None
     triage = verify_run.run(repo, findings, triage, run.dir, setup_cmd, revise, run.emit, buckets)
     run.save_triage(triage)
     meta = run.meta

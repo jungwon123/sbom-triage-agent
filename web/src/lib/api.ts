@@ -30,7 +30,7 @@ export interface RunDetail {
     name: string;
     sbom_source: string;
     context: ServiceContext;
-    coverage: { components: number; epss_pct: number; kev_feed: boolean; kev_hits: number; unsupported?: Record<string, number> };
+    coverage: { components: number; epss_pct: number; kev_feed: boolean; kev_hits: number; unsupported?: Record<string, number>; kev_list?: { catalog_version: string | null; date_released: string | null; count: number } | null };
     summary: Summary;
     stages: string[];
     llm?: {

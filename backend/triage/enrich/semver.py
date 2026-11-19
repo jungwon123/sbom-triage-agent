@@ -6,17 +6,23 @@ import re
 _PRE = re.compile(r"[-+]")
 
 
-def parse(v: str) -> tuple[int, int, int, int, str]:
-    """(major, minor, patch, is_release, prerelease). Works for npm and most Maven versions."""
-    core, _, pre = _PRE.split(v, 1)[0], None, ""
+def _pre_key(pre: str) -> tuple:
+    """rc.9 < rc.10: numeric parts compare as numbers, the rest as text."""
+    return tuple((0, int(t), "") if t.isdigit() else (1, 0, t.lower()) for t in re.split(r"[.\-]", pre) if t)
+
+
+def parse(v: str) -> tuple:
+    """(major, minor, patch, fourth, is_release, prerelease key). npm, and Maven versions up to four parts
+    such as 2.13.4.2."""
+    core, pre = _PRE.split(v, 1)[0], ""
     m = _PRE.search(v)
     if m:
         pre = v[m.end():]
-    nums = [int(n) for n in re.findall(r"\d+", core)[:3]]
-    nums += [0] * (3 - len(nums))
+    nums = [int(n) for n in re.findall(r"\d+", core)[:4]]
+    nums += [0] * (4 - len(nums))
     # Maven qualifiers like .RELEASE / .Final count as releases
     release = 0 if pre and not re.fullmatch(r"(?i)(release|final|ga)", pre) else 1
-    return nums[0], nums[1], nums[2], release, pre
+    return nums[0], nums[1], nums[2], nums[3], release, _pre_key(pre) if not release else ()
 
 
 def lt(a: str, b: str) -> bool:
