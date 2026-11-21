@@ -79,4 +79,27 @@ CREATE TABLE IF NOT EXISTS http_cache (
     fetched_at  timestamptz NOT NULL DEFAULT now()
 );
 
+-- Work queue. A worker claims the oldest queued row (FOR UPDATE SKIP LOCKED) and renews `heartbeat`
+-- while it works; a running row whose heartbeat stopped is put back or marked interrupted by jobs.py.
+CREATE TABLE IF NOT EXISTS jobs (
+    id         text PRIMARY KEY,
+    seq        bigserial NOT NULL,                -- queue order
+    run_id     text NOT NULL REFERENCES runs (id) ON DELETE CASCADE,
+    kind       text NOT NULL,
+    status     text NOT NULL CHECK (status IN ('queued', 'running', 'done', 'failed', 'interrupted')),
+    heartbeat  double precision,                  -- epoch seconds
+    body       jsonb NOT NULL
+);
+CREATE INDEX IF NOT EXISTS jobs_queue ON jobs (seq) WHERE status = 'queued';
+CREATE INDEX IF NOT EXISTS jobs_run_kind ON jobs (run_id, kind, seq DESC);
+-- at most one queued or running job per run and kind, enforced by the database
+CREATE UNIQUE INDEX IF NOT EXISTS jobs_one_active ON jobs (run_id, kind) WHERE status IN ('queued', 'running');
+
+CREATE TABLE IF NOT EXISTS workers (
+    id    text PRIMARY KEY,
+    seen  double precision NOT NULL,              -- epoch seconds of the last sign of life
+    body  jsonb NOT NULL
+);
+
 INSERT INTO schema_version (version) VALUES (1) ON CONFLICT DO NOTHING;
+INSERT INTO schema_version (version) VALUES (2) ON CONFLICT DO NOTHING;

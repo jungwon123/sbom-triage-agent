@@ -1,8 +1,10 @@
 """File store: the layout the project started with. One directory per run, one JSON file per cached response."""
 from __future__ import annotations
 
+import contextlib
 import json
 import pathlib
+import time
 from typing import Any
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
@@ -66,6 +68,79 @@ class FileStore:
     def cache_put(self, key: str, url: str, body: Any) -> None:
         cache_dir().mkdir(parents=True, exist_ok=True)
         (cache_dir() / f"{key}.json").write_text(json.dumps(body))
+
+    # ---- work queue: one file per job under <run>/jobs/, one lock file for the whole queue ----
+    @contextlib.contextmanager
+    def _queue_lock(self, root: pathlib.Path):
+        """Exclusive across threads and processes on this machine (flock)."""
+        root.mkdir(parents=True, exist_ok=True)
+        with (root / ".jobs.lock").open("w") as fh:
+            try:
+                import fcntl
+                fcntl.flock(fh, fcntl.LOCK_EX)
+            except ImportError:           # no flock on this platform: single process only
+                pass
+            yield
+
+    def _job_write(self, run_dir: pathlib.Path, job: dict) -> None:
+        path = run_dir / "jobs" / f"{job['id']}.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(job, ensure_ascii=False, indent=1))
+        tmp.replace(path)                 # readers never see a half-written file
+
+    def _jobs(self, paths) -> list[dict]:
+        return sorted((json.loads(p.read_text()) for p in paths), key=lambda j: j.get("seq", 0))
+
+    def job_add(self, run_dir: pathlib.Path, job: dict) -> dict:
+        with self._queue_lock(run_dir.parent):
+            for j in self._jobs((run_dir / "jobs").glob("*.json")):
+                if j["kind"] == job["kind"] and j["status"] in ("queued", "running"):
+                    return j
+            job = {**job, "seq": time.time_ns()}
+            self._job_write(run_dir, job)
+            return job
+
+    def job_get(self, run_dir: pathlib.Path, job_id: str) -> dict | None:
+        path = run_dir / "jobs" / f"{job_id}.json"
+        return json.loads(path.read_text()) if path.is_file() else None
+
+    def job_latest(self, run_dir: pathlib.Path, kind: str) -> dict | None:
+        jobs = [j for j in self._jobs((run_dir / "jobs").glob("*.json")) if j["kind"] == kind]
+        return jobs[-1] if jobs else None
+
+    def job_claim(self, root: pathlib.Path, patch: dict) -> dict | None:
+        with self._queue_lock(root):
+            queued = [j for j in self._jobs(root.glob("*/jobs/*.json")) if j["status"] == "queued"]
+            if not queued:
+                return None
+            job = {**queued[0], **patch, "status": "running", "attempts": queued[0].get("attempts", 0) + 1}
+            self._job_write(root / job["run_id"], job)
+            return job
+
+    def job_update(self, run_dir: pathlib.Path, job_id: str, patch: dict, worker: str | None = None) -> bool:
+        with self._queue_lock(run_dir.parent):
+            job = self.job_get(run_dir, job_id)
+            if job is None or (worker is not None and (job["status"] != "running" or job.get("worker") != worker)):
+                return False
+            self._job_write(run_dir, {**job, **patch})
+            return True
+
+    def job_list(self, root: pathlib.Path, statuses: tuple[str, ...]) -> list[dict]:
+        return [j for j in self._jobs(root.glob("*/jobs/*.json")) if j["status"] in statuses]
+
+    def worker_beat(self, root: pathlib.Path, worker: dict) -> None:
+        path = root / ".workers" / f"{worker['id']}.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(worker))
+        tmp.replace(path)
+        for old in path.parent.glob("*.json"):            # workers gone for a day
+            if old.stat().st_mtime < time.time() - 86400:
+                old.unlink(missing_ok=True)
+
+    def workers(self, root: pathlib.Path) -> list[dict]:
+        return [json.loads(p.read_text()) for p in (root / ".workers").glob("*.json")]
 
     def search(self, root: pathlib.Path, package: str | None = None, vuln_id: str | None = None,
                limit: int = 200) -> list[dict]:

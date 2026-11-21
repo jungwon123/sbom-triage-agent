@@ -157,13 +157,19 @@ export interface CombinedCheck {
 
 export interface Job {
   id: string;
+  run_id?: string;
   kind: "export_together";
   status: "queued" | "running" | "done" | "failed" | "interrupted";
+  payload?: Record<string, unknown>;
   created_at: string;
   started_at?: string | null;
   finished_at?: string | null;
-  position?: number;
   result?: Record<string, unknown> | null;
   error?: string | null;
-  boot?: string;
+  attempts?: number;
+  worker?: string | null;
+  heartbeat?: number | null;
+  seq?: number;
+  position?: number;
+  waiting_for_worker?: boolean;
 }

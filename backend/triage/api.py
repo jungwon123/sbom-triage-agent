@@ -1,10 +1,12 @@
-"""FastAPI: reads out/<run_id>/ for the dashboard, replays the event log over SSE, and records the
-owner's decisions on proposed changes. The only writes are out/<run_id>/decisions.jsonl and
-out/<run_id>/export/; the analysed repository is never touched. There is no login in the prototype:
-the name on a decision is whatever the person typed."""
+"""FastAPI: serves runs to the dashboard, replays the event log over SSE, records the owner's
+decisions on proposed changes and queues slow work. Writes go through the storage layer (decisions,
+events, jobs) and to out/<run_id>/export/; the analysed repository is never touched. Slow work is
+only queued here: a worker runs it (jobs.py). There is no login yet: the name on a decision is
+whatever the person typed."""
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import re
 
@@ -17,7 +19,16 @@ from . import decide, jobs, runner, store
 from .__main__ import load_env
 
 load_env()
-app = FastAPI(title="SBOM Triage")
+
+
+@contextlib.asynccontextmanager
+async def lifespan(_: FastAPI):
+    if jobs.mode() == "inline":          # pick up jobs left queued by an earlier server process
+        jobs.ensure_inline(runner.OUT)
+    yield
+
+
+app = FastAPI(title="SBOM Triage", lifespan=lifespan)
 RUN_ID = re.compile(r"^[A-Za-z0-9_.-]+$")
 
 
@@ -86,25 +97,16 @@ def decide_one(run_id: str, body: DecisionIn) -> dict:
         raise HTTPException(422, str(e)) from e
 
 
-def _export(run: runner.Run, run_id: str, together: bool) -> dict:
-    out = decide.export(run, together)
-    draft = run.dir / "export" / "PR_DRAFT.md"
-    return {"approved": out["approved"], "files": out["files"], "dir": f"out/{run_id}/export",
-            "combined": out["combined"], "combined_skipped": out["combined_skipped"],
-            "pr_draft": draft.read_text() if draft.exists() else None}
-
-
 @app.post("/api/runs/{run_id}/export")
 def export(run_id: str) -> dict:
     """Per-change patches and the PR draft, written at once."""
-    return _export(_run(run_id), run_id, together=False)
+    return decide.export_view(_run(run_id), together=False)
 
 
 @app.post("/api/runs/{run_id}/export/together", status_code=202)
 def export_together(run_id: str) -> dict:
     """Queue one sandbox pass with every approved change. Poll the returned job for the result."""
-    run = _run(run_id)
-    return jobs.submit(run.dir, "export_together", lambda: _export(run, run_id, together=True)).model_dump()
+    return jobs.submit(_run(run_id).dir, "export_together").model_dump()
 
 
 @app.get("/api/runs/{run_id}/jobs/latest")
@@ -131,7 +133,7 @@ def search(package: str | None = None, vuln_id: str | None = None) -> list[dict]
 
 @app.get("/api/health")
 def health() -> dict:
-    return {"ok": True, "store": store.get().name}
+    return {"ok": True, "store": store.get().name, "queue": jobs.queue_state(runner.OUT)}
 
 
 _dist = runner.ROOT / "web" / "dist"

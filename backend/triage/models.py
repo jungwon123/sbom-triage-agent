@@ -162,17 +162,23 @@ class CombinedCheck(Strict):
 
 
 class Job(Strict):
-    """One queued piece of slow work (a sandbox pass). State lives in out/<run>/jobs/<id>.json."""
+    """One queued piece of slow work (a sandbox pass). Kept by the storage layer; a worker claims it."""
     id: str
+    run_id: str = ""
     kind: Literal["export_together"]
     status: Literal["queued", "running", "done", "failed", "interrupted"]
+    payload: dict = {}                       # plain values only: the worker is another process
     created_at: str
     started_at: str | None = None
     finished_at: str | None = None
-    position: int = 0                        # jobs ahead of this one when it was queued
     result: dict | None = None
     error: str | None = None
-    boot: str = ""                           # server process that owns it; a different one means it was cut off
+    attempts: int = 0                        # times a worker has taken it
+    worker: str | None = None                # the worker that holds it while running
+    heartbeat: float | None = None           # epoch seconds, renewed by that worker
+    seq: int = 0                             # queue order, set by the store
+    position: int = 0                        # filled on read: jobs ahead of this one
+    waiting_for_worker: bool = False         # filled on read: queued and no worker is alive
 
 
 class Proposal(Strict):

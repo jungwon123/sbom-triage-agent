@@ -2,7 +2,7 @@
 
 The agent proposes, a person decides. A proposal is one change set per package@version: the
 remediation, its sandbox verification and the diff taken from the sandbox copy. Decisions are an
-append-only log in out/<run>/decisions.jsonl. Export writes files under out/<run>/export/ only;
+append-only log kept by the storage layer. Export writes files under out/<run>/export/ only;
 nothing here touches the original repository or pushes anywhere (CLAUDE.md rule 4).
 """
 from __future__ import annotations
@@ -196,3 +196,12 @@ def export(run, together: bool = False, setup_cmd: str | None = None) -> dict:
               "combined": combined.verdict if combined else None})
     return {"dir": str(out_dir), "approved": [p.target for p in approved], "files": files,
             "combined": combined.model_dump() if combined else None, "combined_skipped": skipped}
+
+
+def export_view(run, together: bool) -> dict:
+    """export() plus the PR draft text: what the dashboard shows. Also the result of the queued job."""
+    out = export(run, together)
+    draft = run.dir / "export" / "PR_DRAFT.md"
+    return {"approved": out["approved"], "files": out["files"], "dir": f"out/{run.dir.name}/export",
+            "combined": out["combined"], "combined_skipped": out["combined_skipped"],
+            "pr_draft": draft.read_text() if draft.exists() else None}

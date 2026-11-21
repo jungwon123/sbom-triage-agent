@@ -10,7 +10,7 @@ from triage import cache, decide, runner, store
 from triage.store.files import FileStore
 
 TEST_URL = os.environ.get("TEST_DATABASE_URL", "postgresql://triage:triage_dev@127.0.0.1:54329/triage")
-TABLES = "runs, findings, triage, events, decisions, http_cache"
+TABLES = "runs, findings, triage, events, decisions, http_cache, jobs, workers"
 
 
 def postgres():
@@ -20,16 +20,10 @@ def postgres():
         psycopg.connect(TEST_URL, connect_timeout=2).close()
     except Exception:
         pytest.skip("PostgreSQL is not reachable")
-    pg = PostgresStore(TEST_URL)
-    pg.init()
     # tests own a schema of their own so they never touch imported runs
-    conn = pg._conn()
-    conn.execute("CREATE SCHEMA IF NOT EXISTS triage_test")
-    conn.execute("SET search_path TO triage_test")
-
+    pg = PostgresStore(TEST_URL, schema="triage_test")
     pg.init()
-    conn.execute(f"TRUNCATE {TABLES} RESTART IDENTITY CASCADE")
-
+    pg._conn().execute(f"TRUNCATE {TABLES} RESTART IDENTITY CASCADE")
     return pg
 
 

@@ -1,4 +1,4 @@
-"""CLI: python -m triage <scan|agent|verify|run|eval|doctor|schema> ..."""
+"""CLI: python -m triage <scan|agent|verify|run|worker|db|eval|doctor|schema> ..."""
 from __future__ import annotations
 
 import argparse
@@ -49,7 +49,7 @@ def db_command(a: argparse.Namespace) -> int:
     if a.action == "status":
         conn = pg._conn()
         counts = {t: conn.execute(f"SELECT count(*) AS n FROM {t}").fetchone()["n"]
-                  for t in ("runs", "findings", "triage", "events", "decisions", "http_cache")}
+                  for t in ("runs", "findings", "triage", "events", "decisions", "http_cache", "jobs", "workers")}
         print(json.dumps(counts, indent=1)); return 0
     pg.init()
     src = FileStore()
@@ -58,6 +58,28 @@ def db_command(a: argparse.Namespace) -> int:
     if a.cache:
         out["http_cache"] = migrate.import_cache(pg)
     print(json.dumps(out, ensure_ascii=False, indent=1)); return 0
+
+
+def worker_command(a: argparse.Namespace) -> int:
+    """Run queued jobs until told to stop. The job in hand is finished before the process exits."""
+    import signal
+    import threading
+    from . import jobs, runner, store
+    logging.getLogger().setLevel(logging.INFO)
+    stop, me = threading.Event(), jobs.new_worker_id()
+
+    def ask_to_stop(signum, _frame) -> None:
+        if stop.is_set():                 # second signal: give up on the job in hand
+            raise SystemExit(1)
+        logging.info("worker %s: stopping after the job in hand", me)
+        stop.set()
+
+    signal.signal(signal.SIGTERM, ask_to_stop)
+    signal.signal(signal.SIGINT, ask_to_stop)
+    logging.info("worker %s: store=%s, watching the queue", me, store.get().name)
+    handled = jobs.serve(runner.OUT, stop, a.poll, me, once=a.once)
+    logging.info("worker %s: stopped after %d job(s)", me, handled)
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -85,6 +107,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("action", choices=["init", "import", "status"])
     p.add_argument("run_dirs", nargs="*", type=pathlib.Path, help="for import: run directories (default: every run under out/)")
     p.add_argument("--cache", action="store_true", help="for import: also copy fixtures/cache into the database")
+    p = sub.add_parser("worker", help="run queued jobs (sandbox passes started from the dashboard)")
+    p.add_argument("--once", action="store_true", help="empty the queue and exit")
+    p.add_argument("--poll", type=float, default=1.0, help="seconds between looks at an empty queue")
     p = sub.add_parser("rescore", help="re-apply the current rules and checks to a stored run (no model calls)")
     p.add_argument("run_dir", type=pathlib.Path)
     p = sub.add_parser("verify"); p.add_argument("run_dir", type=pathlib.Path); p.add_argument("--setup")
@@ -114,6 +139,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if a.cmd == "db":
         return db_command(a)
+    if a.cmd == "worker":
+        return worker_command(a)
     if a.cmd == "doctor":
         return doctor.main(a.llm)
     if a.cmd == "schema":

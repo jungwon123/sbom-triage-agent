@@ -138,7 +138,9 @@ export default function Decisions({ runId, proposals, onSelect }: Props) {
       {job && isActive(job) && (
         <p role="status" className="mt-3 rounded border-l-4 border-next bg-paper px-3 py-2 text-sm">
           {job.status === "queued"
-            ? `함께 검증이 대기 중입니다${job.position ? ` (앞선 작업 ${job.position}건)` : ""}. 샌드박스는 한 번에 하나씩 실행합니다.`
+            ? job.waiting_for_worker
+              ? "함께 검증이 대기 중입니다. 지금 떠 있는 작업자가 없어 시작하지 못하고 있습니다. 작업자를 실행하면 이어서 진행합니다."
+              : `함께 검증이 대기 중입니다${job.position ? ` (앞선 작업 ${job.position}건)` : ""}. 작업자가 순서대로 처리합니다.`
             : `샌드박스에서 승인한 변경을 함께 적용해 확인하고 있습니다 (${clock(job.started_at)} 시작, 보통 1~2분).`}{" "}
           <span className="text-dim">이 화면을 닫거나 새로 고쳐도 작업은 계속됩니다.</span>
         </p>

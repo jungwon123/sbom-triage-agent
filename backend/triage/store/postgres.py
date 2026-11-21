@@ -7,6 +7,7 @@ import threading
 from typing import Any
 
 import psycopg
+import psycopg.sql
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
@@ -16,8 +17,9 @@ SCHEMA = pathlib.Path(__file__).with_name("schema.sql")
 class PostgresStore:
     name = "postgres"
 
-    def __init__(self, url: str):
+    def __init__(self, url: str, schema: str | None = None):
         self.url = url
+        self.schema = schema              # a schema of its own (tests); None means the default one
         self._local = threading.local()
 
     def _conn(self) -> psycopg.Connection:
@@ -27,6 +29,9 @@ class PostgresStore:
             # transaction. Without it psycopg opens one implicitly and those blocks turn into savepoints
             # that nothing ever commits.
             conn = psycopg.connect(self.url, row_factory=dict_row, autocommit=True)
+            if self.schema:               # every thread's connection, not only the first one
+                conn.execute(psycopg.sql.SQL("CREATE SCHEMA IF NOT EXISTS {0}").format(psycopg.sql.Identifier(self.schema)))
+                conn.execute(psycopg.sql.SQL("SET search_path TO {0}").format(psycopg.sql.Identifier(self.schema)))
             self._local.conn = conn
         return conn
 
@@ -132,6 +137,75 @@ class PostgresStore:
             conn.execute("INSERT INTO http_cache (key, url, body, fetched_at) VALUES (%s, %s, %s, %s)"
                          " ON CONFLICT (key) DO UPDATE SET url = excluded.url, body = excluded.body,"
                          " fetched_at = excluded.fetched_at", (key, url[:2000], Jsonb(body), at))
+
+    # ---- work queue ----
+    JOB_COLS = "id, run_id, seq, status, heartbeat, body"
+
+    @staticmethod
+    def _job(row: dict) -> dict:
+        return {**row["body"], "id": row["id"], "run_id": row["run_id"], "seq": row["seq"],
+                "status": row["status"], "heartbeat": row["heartbeat"]}
+
+    def job_add(self, run_dir: pathlib.Path, job: dict) -> dict:
+        conn, run_id = self._conn(), run_dir.name
+        for _ in range(3):      # the active job can finish between the refused insert and the lookup
+            with conn.transaction(), conn.cursor() as cur:
+                self._ensure_run(cur, run_id)
+                # the partial unique index jobs_one_active is what makes "check and insert" one step
+                row = cur.execute(
+                    "INSERT INTO jobs (id, run_id, kind, status, body) VALUES (%s, %s, %s, 'queued', %s)"
+                    " ON CONFLICT (run_id, kind) WHERE status IN ('queued', 'running') DO NOTHING"
+                    f" RETURNING {self.JOB_COLS}", (job["id"], run_id, job["kind"], Jsonb(job))).fetchone()
+            if row is not None:
+                return self._job(row)
+            row = conn.execute(f"SELECT {self.JOB_COLS} FROM jobs WHERE run_id = %s AND kind = %s"
+                               " AND status IN ('queued', 'running')", (run_id, job["kind"])).fetchone()
+            if row is not None:
+                return self._job(row)
+        raise RuntimeError("could not queue the job")
+
+    def job_get(self, run_dir: pathlib.Path, job_id: str) -> dict | None:
+        row = self._conn().execute(f"SELECT {self.JOB_COLS} FROM jobs WHERE run_id = %s AND id = %s",
+                                   (run_dir.name, job_id)).fetchone()
+        return self._job(row) if row else None
+
+    def job_latest(self, run_dir: pathlib.Path, kind: str) -> dict | None:
+        row = self._conn().execute(f"SELECT {self.JOB_COLS} FROM jobs WHERE run_id = %s AND kind = %s"
+                                   " ORDER BY seq DESC LIMIT 1", (run_dir.name, kind)).fetchone()
+        return self._job(row) if row else None
+
+    def job_claim(self, root: pathlib.Path, patch: dict) -> dict | None:
+        # SKIP LOCKED: a second worker asking at the same moment passes over the row this one holds
+        row = self._conn().execute(
+            "UPDATE jobs SET status = 'running', heartbeat = %s,"
+            " body = body || %s || jsonb_build_object('attempts', COALESCE((body->>'attempts')::int, 0) + 1)"
+            " WHERE id = (SELECT id FROM jobs WHERE status = 'queued' ORDER BY seq FOR UPDATE SKIP LOCKED LIMIT 1)"
+            f" RETURNING {self.JOB_COLS}", (patch.get("heartbeat"), Jsonb(patch))).fetchone()
+        return self._job(row) if row else None
+
+    def job_update(self, run_dir: pathlib.Path, job_id: str, patch: dict, worker: str | None = None) -> bool:
+        guard, args = "", []
+        if worker is not None:
+            guard, args = " AND status = 'running' AND body->>'worker' = %s", [worker]
+        row = self._conn().execute(
+            "UPDATE jobs SET body = body || %s, status = COALESCE(%s, status), heartbeat = COALESCE(%s, heartbeat)"
+            f" WHERE run_id = %s AND id = %s{guard} RETURNING id",
+            (Jsonb(patch), patch.get("status"), patch.get("heartbeat"), run_dir.name, job_id, *args)).fetchone()
+        return row is not None
+
+    def job_list(self, root: pathlib.Path, statuses: tuple[str, ...]) -> list[dict]:
+        rows = self._conn().execute(f"SELECT {self.JOB_COLS} FROM jobs WHERE status = ANY (%s) ORDER BY seq",
+                                    (list(statuses),)).fetchall()
+        return [self._job(r) for r in rows]
+
+    def worker_beat(self, root: pathlib.Path, worker: dict) -> None:
+        self._conn().execute("INSERT INTO workers (id, seen, body) VALUES (%s, %s, %s)"
+                             " ON CONFLICT (id) DO UPDATE SET seen = excluded.seen, body = excluded.body",
+                             (worker["id"], worker["seen"], Jsonb(worker)))
+        self._conn().execute("DELETE FROM workers WHERE seen < %s", (worker["seen"] - 86400,))   # long gone
+
+    def workers(self, root: pathlib.Path) -> list[dict]:
+        return [r["body"] for r in self._conn().execute("SELECT body FROM workers ORDER BY id").fetchall()]
 
     # ---- across runs ----
     def search(self, root: pathlib.Path, package: str | None = None, vuln_id: str | None = None,
