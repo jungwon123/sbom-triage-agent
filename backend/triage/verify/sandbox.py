@@ -64,7 +64,8 @@ def run(repo: Path, apply_cmd: str | None = None, setup_cmd: str | None = None,
     res = Result()
 
     def step(name: str, cmd: str, network: str) -> bool:
-        args = ["docker", "run", *LIMITS, "-v", f"{vol}:/work", "-v", f"{repo}:/src:ro", "-w", "/work"]
+        container = f"{vol}-{name}"
+        args = ["docker", "run", "--name", container, *LIMITS, "-v", f"{vol}:/work", "-v", f"{repo}:/src:ro", "-w", "/work"]
         if network == "none":
             args += ["--network", "none"]
         start = time.time()
@@ -75,6 +76,8 @@ def run(repo: Path, apply_cmd: str | None = None, setup_cmd: str | None = None,
             code, text = r.returncode, r.stdout + r.stderr
         except subprocess.TimeoutExpired:
             code, text, timed_out = 124, "timeout", True
+            # the timeout only ends the docker client; the container would run on and hold its memory
+            subprocess.run(["docker", "kill", container], capture_output=True, timeout=30)
         failed, total = parse_tests(text) if name == "test" else ([], 0)
         res.steps.append(VerifyStep(
             name=name, status="passed" if code == 0 else "failed", duration_ms=int((time.time() - start) * 1000),
