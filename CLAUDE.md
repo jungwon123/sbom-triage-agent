@@ -41,7 +41,7 @@ sbom-triage/
 │     ├─ runner.py       # 단계 호출 순서와 이벤트 기록 (CLI·API 공용)
 │     ├─ eval.py         # golden 일치율, NOW 누락
 │     ├─ decide.py       # 수정안 목록, 담당자 결정 기록, 승인분 내보내기 (원본 레포는 건드리지 않음)
-│     ├─ jobs.py         # 화면에서 시작하는 느린 작업의 큐 (작업자 1개, 상태는 out/<run>/jobs/)
+│     ├─ jobs.py         # 화면에서 시작하는 느린 작업의 큐. 작업은 저장 계층의 기록이고 작업자(`triage worker`)가 가져가 실행한다
 │     ├─ notify.py       # Slack 호환 웹훅 알림 (코드 없이 요약만)
 │     ├─ doctor.py       # 환경 점검
 │     └─ api.py          # FastAPI
@@ -68,7 +68,7 @@ sbom-triage/
 6. **외부 조회는 전부 `cache.py` 경유.** 외부로 보내는 것은 LLM 어댑터와 `notify.py`(알림)뿐이다. 알림은 소스코드를 싣지 않는다. LLM 어댑터는 단일 모드에서 에이전트가 읽은 코드 조각을 싣고, 2단계 모드(규칙 9)에서는 코드, 파일 이름, 빌드와 테스트 로그를 싣지 않는다. 에이전트는 `.env` 같은 자격 증명 파일을 읽지 못한다. 데모는 `DEMO_MODE=replay`에서 네트워크와 Docker 없이 돌아가야 한다.
 7. **비밀값은 `.env`.** 코드·로그·`out/`에 API 키를 남기지 않고, 샌드박스 컨테이너에도 전달하지 않는다.
 8. **P0 먼저.** REQUIREMENTS의 P0가 전부 끝나기 전에는 P1을 시작하지 않는다.
-10. **두 저장 모드가 같은 동작을 해야 한다.** 기록(실행 정보, Finding, Triage, 결정, 이벤트, 캐시)은 `store/`의 인터페이스로만 읽고 쓴다. 저장 방식을 바꾸는 변경은 `tests/test_store.py`에서 파일과 PostgreSQL 양쪽으로 확인한다. 시연은 파일 모드에서 네트워크, Docker, DB 없이 돌아가야 한다 (HANDOFF D45).
+10. **두 저장 모드가 같은 동작을 해야 한다.** 기록(실행 정보, Finding, Triage, 결정, 이벤트, 캐시, 작업)은 `store/`의 인터페이스로만 읽고 쓴다. 저장 방식을 바꾸는 변경은 `tests/test_store.py`에서 파일과 PostgreSQL 양쪽으로 확인한다. 시연은 파일 모드에서 네트워크, Docker, DB 없이 돌아가야 한다 (HANDOFF D45). 작업의 입력은 값으로만 넘긴다(함수나 객체를 넘기지 않는다). API 프로세스는 작업을 기록만 하고 실행은 작업자가 한다 (HANDOFF D46).
 9. **코드 판독 모델과 작성 모델의 경계.** `LLM_CODE_PROVIDER`가 설정되면(2단계 모드) 소스코드와 파일 이름은 그 모델에만 전달한다. 작성 모델의 프롬프트는 `prompts.writer_prompt`로만 만들고 도구를 주지 않는다 (HANDOFF D35, `tests/test_two_stage.py`).
 
 ## 5. 코드 컨벤션
@@ -89,6 +89,7 @@ uv run python -m triage agent out/<run_id>             # ⑤
 docker compose -f deploy/docker-compose.yml up -d postgres   # 운영 저장소 띄우기 (로컬은 127.0.0.1:54329)
 uv run python -m triage db init                        # 테이블 생성 (DATABASE_URL 필요, 여러 번 실행해도 안전)
 uv run python -m triage db import --cache              # 파일로 쌓인 실행과 캐시를 DB로 복사 (db status로 건수 확인)
+uv run python -m triage worker                         # 대기 중인 작업을 실행하는 작업자 (PostgreSQL 모드에서 필요, --once는 큐를 비우고 종료)
 uv run python -m triage rescore out/<run_id>           # 규칙이나 검사를 바꾼 뒤 저장된 실행을 현재 코드에 맞춤 (모델 호출 없음)
 uv run python -m triage verify out/<run_id>            # ⑥ NOW 항목 샌드박스 검증 (--buckets NOW,NEXT로 범위 확대)
 uv run python -m triage decide out/<run_id> body-parser@1.20.2 approved --by 홍길동   # 담당자 결정 기록 (rejected, held는 --reason 필수)
