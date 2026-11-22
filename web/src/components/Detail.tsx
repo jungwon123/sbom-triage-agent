@@ -2,7 +2,7 @@ import type { Item } from "../lib/api";
 import {
   bucketColor, bucketMeaning, codeReadLabel, decidedLabel, fmtCvss, fmtEpss, reachLabel, reasonLabel, stepLabel, verdictLabel,
 } from "../lib/format";
-import type { Proposal, Verification } from "../lib/types";
+import type { Me, Proposal, Verification } from "../lib/types";
 import ProposalBox from "./ProposalBox";
 
 const PARTS = [
@@ -15,10 +15,11 @@ interface Props {
   item: Item;
   runId: string;
   proposal: Proposal | null;
+  me: Me;
   onDecided: () => Promise<unknown>;
 }
 
-export default function Detail({ item, runId, proposal, onDecided }: Props) {
+export default function Detail({ item, runId, proposal, me, onDecided }: Props) {
   const { finding: f, triage: t } = item;
   const c = bucketColor[t.final_bucket];
   const r = t.remediation;
@@ -155,7 +156,7 @@ export default function Detail({ item, runId, proposal, onDecided }: Props) {
           t.final_bucket === "NOW" && <p className="text-sm text-dim">이 조치안은 아직 샌드박스에서 검증하지 않았습니다.</p>
         )}
 
-        {proposal && <ProposalBox key={proposal.target} runId={runId} proposal={proposal} onDecided={onDecided} />}
+        {proposal && <ProposalBox key={proposal.target} runId={runId} proposal={proposal} me={me} onDecided={onDecided} />}
       </div>
     </article>
   );

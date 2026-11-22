@@ -139,6 +139,7 @@ class Decision(Strict):
     target: str                              # "<package>@<version>"
     status: Literal["approved", "rejected", "held"]
     by: str = Field(min_length=1, max_length=60)
+    by_id: str | None = Field(default=None, max_length=200)   # signed-in account (email or subject); None = the name was typed
     reason: str = Field(default="", max_length=600)
     at: str                                  # ISO 8601, set by the server
     to_version: str | None = None            # what was on screen when the call was made
@@ -214,3 +215,13 @@ class Triage(Strict):
 def schema_json() -> str:
     models = [Component, Finding, AgentVerdict, Remediation, Verification, Triage, ServiceContext, Decision, Proposal, CombinedCheck, Job]
     return json.dumps({m.__name__: m.model_json_schema() for m in models}, ensure_ascii=False, indent=1)
+
+
+class Me(Strict):
+    """Who is asking, as the dashboard needs it (auth.py). With login off nobody is identified and
+    everything is allowed, so role is "admin" and signed_in is False."""
+    mode: Literal["off", "oidc"]
+    signed_in: bool
+    name: str | None = None
+    email: str | None = None
+    role: Literal["viewer", "approver", "admin"] | None = None

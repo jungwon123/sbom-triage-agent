@@ -47,6 +47,8 @@ def checks(test_llm: bool = False) -> list[tuple[str, str, str]]:
             rows.append(("TRIAGE_STORE", "fail", f"postgres 연결 실패: {str(e)[:80]} (compose 실행과 `triage db init` 확인)"))
     else:
         rows.append(("TRIAGE_STORE", "ok", f"{store.kind()} (out/과 fixtures/cache의 JSON 파일)"))
+    from . import auth
+    rows.append(("TRIAGE_AUTH", *auth.describe()))
     p = llm_mod.provider()
     key = {"anthropic": "ANTHROPIC_API_KEY", "openai": "OPENAI_API_KEY"}.get(p)
     has_key = bool(key and os.environ.get(key))

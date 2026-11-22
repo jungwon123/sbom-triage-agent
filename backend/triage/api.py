@@ -1,8 +1,9 @@
 """FastAPI: serves runs to the dashboard, replays the event log over SSE, records the owner's
 decisions on proposed changes and queues slow work. Writes go through the storage layer (decisions,
 events, jobs) and to out/<run_id>/export/; the analysed repository is never touched. Slow work is
-only queued here: a worker runs it (jobs.py). There is no login yet: the name on a decision is
-whatever the person typed."""
+only queued here: a worker runs it (jobs.py). Who may call what is decided by auth.py: reading
+needs the viewer role, deciding and exporting need approver. With login off (the default, for the
+offline demo) everything is open and the name on a decision is whatever the person typed."""
 from __future__ import annotations
 
 import asyncio
@@ -10,12 +11,12 @@ import contextlib
 import json
 import re
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import PlainTextResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from fastapi.staticfiles import StaticFiles
 
-from . import decide, jobs, runner, store
+from . import auth, decide, jobs, runner, store
 from .__main__ import load_env
 
 load_env()
@@ -23,13 +24,16 @@ load_env()
 
 @contextlib.asynccontextmanager
 async def lifespan(_: FastAPI):
+    auth.settings()                      # refuse to start with half-configured login
     if jobs.mode() == "inline":          # pick up jobs left queued by an earlier server process
         jobs.ensure_inline(runner.OUT)
     yield
 
 
 app = FastAPI(title="SBOM Triage", lifespan=lifespan)
+app.include_router(auth.router)
 RUN_ID = re.compile(r"^[A-Za-z0-9_.-]+$")
+VIEW, APPROVE = [Depends(auth.viewer)], [Depends(auth.approver)]
 
 
 def _run(run_id: str) -> runner.Run:
@@ -39,12 +43,12 @@ def _run(run_id: str) -> runner.Run:
     return runner.Run(path)
 
 
-@app.get("/api/runs")
+@app.get("/api/runs", dependencies=VIEW)
 def runs() -> list[dict]:
     return store.get().list_runs(runner.OUT)
 
 
-@app.get("/api/runs/{run_id}")
+@app.get("/api/runs/{run_id}", dependencies=VIEW)
 def run_detail(run_id: str) -> dict:
     run = _run(run_id)
     findings = {f.id: f for f in run.findings()}
@@ -52,7 +56,7 @@ def run_detail(run_id: str) -> dict:
     return {"id": run_id, "meta": run.meta, "items": items}
 
 
-@app.get("/api/runs/{run_id}/events")
+@app.get("/api/runs/{run_id}/events", dependencies=VIEW)
 async def events(run_id: str, speed: float = 20.0) -> StreamingResponse:
     rows = _run(run_id).events()
 
@@ -72,16 +76,16 @@ async def events(run_id: str, speed: float = 20.0) -> StreamingResponse:
 class DecisionIn(BaseModel):
     target: str = Field(max_length=300)
     status: str = Field(pattern="^(approved|rejected|held)$")
-    by: str = Field(max_length=60)
+    by: str = Field(default="", max_length=60)        # used only when login is off
     reason: str = Field(default="", max_length=600)
 
 
-@app.get("/api/runs/{run_id}/proposals")
+@app.get("/api/runs/{run_id}/proposals", dependencies=VIEW)
 def proposals(run_id: str) -> list[dict]:
     return [p.model_dump() for p in decide.proposals(_run(run_id))]
 
 
-@app.get("/api/runs/{run_id}/patch", response_class=PlainTextResponse)
+@app.get("/api/runs/{run_id}/patch", response_class=PlainTextResponse, dependencies=VIEW)
 def patch(run_id: str, target: str) -> str:
     text = decide.patch_text(_run(run_id), target)
     if text is None:
@@ -90,32 +94,35 @@ def patch(run_id: str, target: str) -> str:
 
 
 @app.post("/api/runs/{run_id}/decisions")
-def decide_one(run_id: str, body: DecisionIn) -> dict:
+def decide_one(run_id: str, body: DecisionIn, user: auth.User = Depends(auth.approver)) -> dict:
+    # Signed in: the decision carries the session's identity and the typed name is ignored.
+    by, by_id = (body.by, None) if user.local else (user.name, user.email or user.sub)
     try:
-        return decide.record(_run(run_id), body.target, body.status, body.by, body.reason).model_dump()
+        return decide.record(_run(run_id), body.target, body.status, by, body.reason, by_id=by_id).model_dump()
     except decide.DecisionError as e:
         raise HTTPException(422, str(e)) from e
 
 
-@app.post("/api/runs/{run_id}/export")
+@app.post("/api/runs/{run_id}/export", dependencies=APPROVE)
 def export(run_id: str) -> dict:
     """Per-change patches and the PR draft, written at once."""
     return decide.export_view(_run(run_id), together=False)
 
 
 @app.post("/api/runs/{run_id}/export/together", status_code=202)
-def export_together(run_id: str) -> dict:
+def export_together(run_id: str, user: auth.User = Depends(auth.approver)) -> dict:
     """Queue one sandbox pass with every approved change. Poll the returned job for the result."""
-    return jobs.submit(_run(run_id).dir, "export_together").model_dump()
+    payload = {} if user.local else {"requested_by": user.email or user.sub}
+    return jobs.submit(_run(run_id).dir, "export_together", payload).model_dump()
 
 
-@app.get("/api/runs/{run_id}/jobs/latest")
+@app.get("/api/runs/{run_id}/jobs/latest", dependencies=VIEW)
 def latest_job(run_id: str, kind: str = "export_together") -> dict | None:
     job = jobs.latest(_run(run_id).dir, kind)
     return job.model_dump() if job else None
 
 
-@app.get("/api/runs/{run_id}/jobs/{job_id}")
+@app.get("/api/runs/{run_id}/jobs/{job_id}", dependencies=VIEW)
 def job(run_id: str, job_id: str) -> dict:
     found = jobs.get(_run(run_id).dir, job_id)
     if found is None:
@@ -123,7 +130,7 @@ def job(run_id: str, job_id: str) -> dict:
     return found.model_dump()
 
 
-@app.get("/api/search")
+@app.get("/api/search", dependencies=VIEW)
 def search(package: str | None = None, vuln_id: str | None = None) -> list[dict]:
     """Which services carry this package or this vulnerability, by the latest run of each."""
     if not package and not vuln_id:

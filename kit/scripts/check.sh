@@ -30,16 +30,18 @@ if [ $FAST -eq 1 ]; then note "--fast: 건너뜀"; else
 fi
 
 echo "== 2. 절대 규칙 (CLAUDE.md 4장)"
-hits=$(grep -rnE "import httpx|import requests|urllib\.request|httpx\.(get|post|Client)" $SRC --include=*.py | grep -v "^$SRC/cache.py" | grep -v "^$SRC/notify.py" | head -5)
-[ -z "$hits" ] && ok "규칙 6: 외부 HTTP 호출은 cache.py(조회)와 notify.py(알림)에만 있음" || { ng "규칙 6: cache.py 밖의 HTTP 호출"; echo "$hits" | sed 's/^/      /'; }
+hits=$(grep -rnE "import httpx|import requests|urllib\.request|httpx\.(get|post|Client)" $SRC --include=*.py | grep -v "^$SRC/cache.py" | grep -v "^$SRC/notify.py" | grep -v "^$SRC/auth.py" | head -5)
+[ -z "$hits" ] && ok "규칙 6: 외부 HTTP 호출은 cache.py(조회), notify.py(알림), auth.py(로그인)에만 있음" || { ng "규칙 6: cache.py 밖의 HTTP 호출"; echo "$hits" | sed 's/^/      /'; }
 hits=$(grep -rnE "subprocess|os\.system|os\.popen|\beval\(|\bexec\(" $SRC/agent --include=*.py | head -5)
 [ -z "$hits" ] && ok "규칙 4, 5: agent/ 에 명령 실행 코드 없음" || { ng "규칙 4, 5: agent/ 에 실행 코드"; echo "$hits" | sed 's/^/      /'; }
 hits=$(grep -rnE "open\([^)]*['\"][wa]b?['\"]|write_text|write_bytes|unlink|rmtree" $SRC/agent/tools.py | head -5)
 [ -z "$hits" ] && ok "규칙 4: 에이전트 도구에 쓰기 코드 없음" || { ng "규칙 4: tools.py 에 쓰기 코드"; echo "$hits" | sed 's/^/      /'; }
 hits=$(grep -rnE "['\"](claude-[a-z0-9-]+|gpt-[a-z0-9.-]+|o[0-9]-[a-z0-9-]+)['\"]" $SRC --include=*.py | grep -v "^$SRC/agent/llm_anthropic.py" | grep -v "^$SRC/doctor.py" | head -5)
 [ -z "$hits" ] && ok "모델명 하드코딩 없음 (기본값은 llm_anthropic.py 한 곳)" || { ng "모델명 하드코딩"; echo "$hits" | sed 's/^/      /'; }
+open_routes=$(grep -nE '^@app\.(get|post|put|delete|patch)\(' $SRC/api.py | grep -v "dependencies=" | grep -vE '"/api/(health|runs/\{run_id\}/(decisions|export/together))"' | head -5)
+[ -z "$open_routes" ] && ok "규칙 11: API 경로에 역할 검사가 달려 있음" || { ng "규칙 11: 역할 검사가 없는 API 경로"; echo "$open_routes" | sed 's/^/      /'; }
 grep -q "risk" <(sed -n '/^class AgentVerdict/,/^class /p' $SRC/models.py) && ng "규칙 2: AgentVerdict에 점수 필드가 있음" || ok "규칙 2: AgentVerdict에 점수 필드 없음"
-for t in test_writer_gets_no_code_and_no_tools test_two_step_jump_rejected test_kev_downgrade_rejected test_raw_number_in_rationale_rejected test_shell_metacharacters_rejected test_symlink_escape_rejected test_original_untouched_and_network_blocked; do
+for t in test_writer_gets_no_code_and_no_tools test_two_step_jump_rejected test_kev_downgrade_rejected test_raw_number_in_rationale_rejected test_shell_metacharacters_rejected test_symlink_escape_rejected test_original_untouched_and_network_blocked test_nothing_is_readable_without_a_session test_a_viewer_reads_but_cannot_decide_or_export test_a_bad_id_token_gives_no_session; do
   grep -rq "def $t" tests 2>/dev/null || ng "안전장치 테스트 없음: $t"
 done
 if [ -d web/src ]; then

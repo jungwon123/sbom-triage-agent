@@ -66,8 +66,9 @@ def proposals(run) -> list[Proposal]:
     return out
 
 
-def record(run, target: str, status: str, by: str, reason: str = "") -> Decision:
-    """Append one decision. Approval needs something a person can actually apply."""
+def record(run, target: str, status: str, by: str, reason: str = "", by_id: str | None = None) -> Decision:
+    """Append one decision. Approval needs something a person can actually apply. by_id is the
+    signed-in account when login is on; without it `by` is a name somebody typed."""
     p = next((x for x in proposals(run) if x.target == target), None)
     if p is None:
         raise DecisionError("이 실행에 없는 수정안입니다.")
@@ -82,7 +83,7 @@ def record(run, target: str, status: str, by: str, reason: str = "") -> Decision
             raise DecisionError("검증을 통과하지 못한 수정안을 승인하려면 사유를 적어야 합니다.")
     elif not reason:
         raise DecisionError("반려와 보류에는 사유를 적어야 합니다.")
-    d = Decision(target=target, status=status, by=by, reason=reason,
+    d = Decision(target=target, status=status, by=by, by_id=by_id, reason=reason,
                  at=dt.datetime.now(dt.timezone.utc).astimezone().isoformat(timespec="seconds"),
                  to_version=p.remediation.to_version, verdict=v.verdict if v else None)
     store.get().append_decision(run.dir, d.model_dump())

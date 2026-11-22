@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  exportApproved, getJob, latestExportJob, startExportTogether, type ExportJob, type ExportResult,
+  canDecide, exportApproved, getJob, latestExportJob, startExportTogether, type ExportJob, type ExportResult,
 } from "../lib/api";
 import { reasonLabel, verdictLabel } from "../lib/format";
-import type { Proposal } from "../lib/types";
+import type { Me, Proposal } from "../lib/types";
 
 interface Props {
   runId: string;
   proposals: Proposal[];
+  me: Me;
   onSelect: (findingId: string) => void;
 }
 
@@ -21,7 +22,7 @@ function clock(iso?: string | null): string {
 }
 
 /** Where the owner stands: how many proposed changes are decided, and the export of the approved ones. */
-export default function Decisions({ runId, proposals, onSelect }: Props) {
+export default function Decisions({ runId, proposals, me, onSelect }: Props) {
   const [result, setResult] = useState<ExportResult | null>(null);
   const [job, setJob] = useState<ExportJob | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +68,7 @@ export default function Decisions({ runId, proposals, onSelect }: Props) {
   const open = ready.filter((p) => !p.decision);
   const approved = count("approved");
   const working = busy || isActive(job);
+  const allowed = canDecide(me);
 
   async function together() {
     setBusy(true);
@@ -102,7 +104,7 @@ export default function Decisions({ runId, proposals, onSelect }: Props) {
           승인 {approved}, 보류 {count("held")}, 반려 {count("rejected")},{" "}
           <span className={open.length ? "font-semibold" : "text-dim"}>결정 대기 {open.length}</span>
         </p>
-        <div className="ml-auto flex flex-wrap gap-2">
+        <div className={allowed ? "ml-auto flex flex-wrap gap-2" : "hidden"}>
           <button
             type="button"
             className="rounded bg-ink px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-40"
@@ -121,6 +123,7 @@ export default function Decisions({ runId, proposals, onSelect }: Props) {
           </button>
         </div>
       </div>
+      {!allowed && <p className="mt-2 text-sm text-dim">내보내기와 함께 검증은 승인 권한이 있는 계정만 실행할 수 있습니다.</p>}
       {open.length > 0 && (
         <p className="mt-2 text-sm text-dim">
           결정 대기:{" "}

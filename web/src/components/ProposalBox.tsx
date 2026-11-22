@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { decide, patchUrl } from "../lib/api";
-import type { Decision, Proposal } from "../lib/types";
+import { canDecide, decide, patchUrl, roleLabel } from "../lib/api";
+import type { Decision, Me, Proposal } from "../lib/types";
 
 export const statusLabel: Record<Decision["status"], string> = { approved: "승인", rejected: "반려", held: "보류" };
 const NAME_KEY = "triage.decider";
@@ -21,11 +21,12 @@ function when(iso: string): string {
 interface Props {
   runId: string;
   proposal: Proposal;
+  me: Me;
   onDecided: () => Promise<unknown>;
 }
 
 /** The change the sandbox produced, and the owner's call on it. The agent never decides here. */
-export default function ProposalBox({ runId, proposal: p, onDecided }: Props) {
+export default function ProposalBox({ runId, proposal: p, me, onDecided }: Props) {
   const [by, setBy] = useState(savedName);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -34,16 +35,22 @@ export default function ProposalBox({ runId, proposal: p, onDecided }: Props) {
   const d = p.decision;
   const hasPatch = Boolean(v?.patch_file);
   const others = p.finding_ids.length - 1;
+  // Signed in: the server takes the name from the session, so there is nothing to type.
+  const typed = !me.signed_in;
+  const allowed = canDecide(me);
+  const named = typed ? Boolean(by.trim()) : true;
 
   async function submit(status: Decision["status"]) {
     setBusy(true);
     setError(null);
     try {
-      await decide(runId, { target: p.target, status, by, reason });
-      try {
-        localStorage.setItem(NAME_KEY, by.trim());
-      } catch {
-        /* the name is a convenience only */
+      await decide(runId, { target: p.target, status, by: typed ? by : undefined, reason });
+      if (typed) {
+        try {
+          localStorage.setItem(NAME_KEY, by.trim());
+        } catch {
+          /* the name is a convenience only */
+        }
       }
       setReason("");
       await onDecided();
@@ -104,7 +111,8 @@ export default function ProposalBox({ runId, proposal: p, onDecided }: Props) {
           <p className="mt-1 text-[15px]">
             <span className="font-semibold">{statusLabel[d.status]}</span>{" "}
             <span className="text-dim">
-              {d.by}, {when(d.at)}
+              {d.by}
+              {d.by_id && d.by_id !== d.by ? ` (${d.by_id})` : ""}, {when(d.at)}
             </span>
             {d.reason && <span className="mt-0.5 block text-sm">사유: {d.reason}</span>}
           </p>
@@ -112,52 +120,68 @@ export default function ProposalBox({ runId, proposal: p, onDecided }: Props) {
           <p className="mt-1 text-sm text-dim">아직 결정하지 않았습니다. 반영 여부는 사람이 정합니다.</p>
         )}
 
-        <div className="mt-3 grid gap-2 sm:grid-cols-[9rem_1fr]">
-          <label className="text-sm">
-            <span className="text-dim">결정하는 사람</span>
-            <input
-              className="mt-0.5 w-full rounded border border-rule bg-sheet px-2 py-1"
-              value={by}
-              maxLength={60}
-              onChange={(e) => setBy(e.target.value)}
-            />
-          </label>
-          <label className="text-sm">
-            <span className="text-dim">사유 (반려와 보류에는 필수)</span>
-            <input
-              className="mt-0.5 w-full rounded border border-rule bg-sheet px-2 py-1"
-              value={reason}
-              maxLength={600}
-              onChange={(e) => setReason(e.target.value)}
-            />
-          </label>
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="rounded bg-ink px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-40"
-            disabled={busy || !by.trim() || !hasPatch}
-            onClick={() => submit("approved")}
-          >
-            승인
-          </button>
-          <button
-            type="button"
-            className="rounded border border-ink px-3 py-1.5 text-sm font-semibold disabled:opacity-40"
-            disabled={busy || !by.trim() || !reason.trim()}
-            onClick={() => submit("held")}
-          >
-            보류
-          </button>
-          <button
-            type="button"
-            className="rounded border border-ink px-3 py-1.5 text-sm font-semibold disabled:opacity-40"
-            disabled={busy || !by.trim() || !reason.trim()}
-            onClick={() => submit("rejected")}
-          >
-            반려
-          </button>
-        </div>
+        {allowed ? (
+          <>
+            <div className="mt-3 grid gap-2 sm:grid-cols-[9rem_1fr]">
+              {typed ? (
+                <label className="text-sm">
+                  <span className="text-dim">결정하는 사람</span>
+                  <input
+                    className="mt-0.5 w-full rounded border border-rule bg-sheet px-2 py-1"
+                    value={by}
+                    maxLength={60}
+                    onChange={(e) => setBy(e.target.value)}
+                  />
+                </label>
+              ) : (
+                <p className="text-sm">
+                  <span className="block text-dim">결정하는 사람</span>
+                  <span className="mt-0.5 block py-1 font-semibold">{me.name}</span>
+                </p>
+              )}
+              <label className="text-sm">
+                <span className="text-dim">사유 (반려와 보류에는 필수)</span>
+                <input
+                  className="mt-0.5 w-full rounded border border-rule bg-sheet px-2 py-1"
+                  value={reason}
+                  maxLength={600}
+                  onChange={(e) => setReason(e.target.value)}
+                />
+              </label>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="rounded bg-ink px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-40"
+                disabled={busy || !named || !hasPatch}
+                onClick={() => submit("approved")}
+              >
+                승인
+              </button>
+              <button
+                type="button"
+                className="rounded border border-ink px-3 py-1.5 text-sm font-semibold disabled:opacity-40"
+                disabled={busy || !named || !reason.trim()}
+                onClick={() => submit("held")}
+              >
+                보류
+              </button>
+              <button
+                type="button"
+                className="rounded border border-ink px-3 py-1.5 text-sm font-semibold disabled:opacity-40"
+                disabled={busy || !named || !reason.trim()}
+                onClick={() => submit("rejected")}
+              >
+                반려
+              </button>
+            </div>
+          </>
+        ) : (
+          <p className="mt-3 rounded bg-paper px-3 py-2 text-sm">
+            지금 계정은 {me.role ? roleLabel[me.role] : "열람"} 권한이라 결정을 기록할 수 없습니다. 결정은 승인 권한이 있는
+            계정으로 로그인해야 기록할 수 있습니다.
+          </p>
+        )}
         {error && (
           <p role="alert" className="mt-2 text-sm text-now">
             결정을 기록하지 못했습니다. {error}

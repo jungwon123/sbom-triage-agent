@@ -123,6 +123,7 @@ export interface Decision {
   target: string;
   status: "approved" | "rejected" | "held";
   by: string;
+  by_id?: string | null;
   reason?: string;
   at: string;
   to_version?: string | null;
@@ -172,4 +173,12 @@ export interface Job {
   seq?: number;
   position?: number;
   waiting_for_worker?: boolean;
+}
+
+export interface Me {
+  mode: "off" | "oidc";
+  signed_in: boolean;
+  name?: string | null;
+  email?: string | null;
+  role?: "viewer" | "approver" | "admin" | null;
 }

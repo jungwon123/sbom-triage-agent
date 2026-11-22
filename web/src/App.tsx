@@ -3,14 +3,34 @@ import Detail from "./components/Detail";
 import ItemList from "./components/ItemList";
 import Overview from "./components/Overview";
 import Decisions from "./components/Decisions";
-import { getProposals, getRun, listRuns, type RunDetail, type RunListItem } from "./lib/api";
-import type { Proposal } from "./lib/types";
+import {
+  SIGNED_OUT, getMe, getProposals, getRun, listRuns, loginUrl, logout, roleLabel, type RunDetail, type RunListItem,
+} from "./lib/api";
+import type { Me, Proposal } from "./lib/types";
 import { byCvss, byPriority } from "./lib/format";
 
 export type SortMode = "priority" | "cvss";
 
 function runFromUrl(): string | null {
   return new URLSearchParams(window.location.search).get("run");
+}
+
+const LOGIN_ERRORS: Record<string, string> = {
+  expired: "로그인 요청이 만료되었습니다. 다시 시도하세요.",
+  denied: "로그인을 취소했거나 인증 서버가 거부했습니다.",
+  no_role: "로그인은 확인됐지만 이 서비스의 권한이 없는 계정입니다. 관리자에게 열람 또는 승인 그룹에 추가해 달라고 요청하세요.",
+  provider: "인증 서버에 연결하지 못했습니다. 잠시 뒤 다시 시도하세요.",
+  failed: "로그인을 확인하지 못했습니다. 다시 시도하세요.",
+};
+
+/** The reason the last sign-in attempt ended without a session, read once and removed from the address. */
+function takeLoginError(): string | null {
+  const url = new URL(window.location.href);
+  const code = url.searchParams.get("login_error");
+  if (!code) return null;
+  url.searchParams.delete("login_error");
+  window.history.replaceState(null, "", url);
+  return LOGIN_ERRORS[code] ?? LOGIN_ERRORS.failed;
 }
 
 export default function App() {
@@ -21,18 +41,33 @@ export default function App() {
   const [mode, setMode] = useState<SortMode>("priority");
   const [selected, setSelected] = useState<string | null>(null);
   const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [me, setMe] = useState<Me | null>(null);
+  const [loginError] = useState(takeLoginError);
+  const locked = me?.mode === "oidc" && !me.signed_in;
+  const ready = me !== null && !locked;
 
   useEffect(() => {
+    getMe()
+      .then(setMe)
+      .catch((e: Error) => setError(e.message));
+    // Any call answered with 401 means the session ended: back to the sign-in screen.
+    const out = () => setMe((m) => (m && m.mode === "oidc" ? { mode: "oidc", signed_in: false } : m));
+    window.addEventListener(SIGNED_OUT, out);
+    return () => window.removeEventListener(SIGNED_OUT, out);
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
     listRuns()
       .then((list) => {
         setRuns(list);
         if (!runFromUrl() && list.length) setRunId(list[0].id);
       })
       .catch((e: Error) => setError(e.message));
-  }, []);
+  }, [ready]);
 
   useEffect(() => {
-    if (!runId) return;
+    if (!runId || !ready) return;
     setRun(null);
     setProposals([]);
     getProposals(runId).then(setProposals).catch(() => setProposals([]));
@@ -44,7 +79,7 @@ export default function App() {
         setSelected(first ? first.finding.id : null);
       })
       .catch((e: Error) => setError(e.message));
-  }, [runId]);
+  }, [runId, ready]);
 
   const items = useMemo(() => (run ? [...run.items].sort(mode === "priority" ? byPriority : byCvss) : []), [run, mode]);
   const current = items.find((i) => i.finding.id === selected) ?? null;
@@ -57,6 +92,16 @@ export default function App() {
     window.history.replaceState(null, "", url);
     setRunId(id);
   }
+
+  async function signOut() {
+    await logout().catch(() => undefined);
+    setRun(null);
+    setRuns([]);
+    setProposals([]);
+    setMe({ mode: "oidc", signed_in: false });
+  }
+
+  if (locked) return <SignIn error={loginError} />;
 
   return (
     <div className="mx-auto max-w-[1440px] px-4 pb-16 sm:px-8">
@@ -78,6 +123,15 @@ export default function App() {
           </select>
         </label>
         {run && <Context run={run} />}
+        {me?.signed_in && (
+          <p className={`flex items-center gap-2 text-sm ${run ? "" : "ml-auto"}`}>
+            <span title={me.email ?? undefined}>{me.name}</span>
+            {me.role && <span className="rounded bg-monitor-soft px-1.5 py-0.5 text-[13px]">{roleLabel[me.role]} 권한</span>}
+            <button type="button" className="text-link underline" onClick={signOut}>
+              로그아웃
+            </button>
+          </p>
+        )}
       </header>
 
       {error && (
@@ -86,29 +140,52 @@ export default function App() {
           <code className="rounded bg-sheet px-1.5 py-0.5 font-mono text-[13px]">uv run uvicorn triage.api:app</code>
         </p>
       )}
-      {!error && !run && runId && <p className="mt-10 text-dim">불러오는 중입니다.</p>}
-      {!error && !runId && runs.length === 0 && (
+      {!error && !run && (runId || !ready) && <p className="mt-10 text-dim">불러오는 중입니다.</p>}
+      {!error && ready && !runId && runs.length === 0 && (
         <p className="mt-10 max-w-xl text-[15px] leading-relaxed">
           아직 분석 결과가 없습니다. 먼저 스캔을 실행하세요:{" "}
           <code className="rounded bg-sheet px-1.5 py-0.5 font-mono text-[13px]">uv run python -m triage scan &lt;레포 경로&gt;</code>
         </p>
       )}
 
-      {run && (
+      {run && me && (
         <>
           <Overview run={run} items={items} mode={mode} onMode={setMode} selected={selected} onSelect={setSelected} />
-          <Decisions runId={run.id} proposals={proposals} onSelect={setSelected} />
+          <Decisions runId={run.id} proposals={proposals} me={me} onSelect={setSelected} />
           <main className="mt-8 grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(420px,520px)]">
             <ItemList items={items} mode={mode} selected={selected} onSelect={setSelected} />
             <aside className="order-first lg:sticky lg:top-4 lg:order-none lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
               {current ? (
-                <Detail item={current} runId={run.id} proposal={proposal} onDecided={reloadProposals} />
+                <Detail item={current} runId={run.id} proposal={proposal} me={me} onDecided={reloadProposals} />
               ) : <p className="text-dim">목록에서 항목을 고르면 근거와 조치안이 표시됩니다.</p>}
             </aside>
           </main>
         </>
       )}
     </div>
+  );
+}
+
+function SignIn({ error }: { error: string | null }) {
+  return (
+    <main className="mx-auto max-w-md px-4 pt-[18vh]">
+      <h1 className="text-[22px] font-semibold">SBOM Triage</h1>
+      <p className="mt-3 text-[15px] leading-relaxed">
+        서비스의 취약점 목록과 수정안은 로그인한 사람만 볼 수 있습니다. 회사 계정으로 로그인하세요.
+      </p>
+      {error && (
+        <p role="alert" className="mt-4 rounded border-l-4 border-now bg-sheet px-3 py-2 text-sm leading-relaxed">
+          {error}
+        </p>
+      )}
+      <a className="mt-6 inline-block rounded bg-ink px-4 py-2 text-[15px] font-semibold text-white" href={loginUrl()}>
+        회사 계정으로 로그인
+      </a>
+      <p className="mt-6 text-sm leading-relaxed text-dim">
+        열람 권한은 분석 결과를 볼 수 있고, 승인 권한은 수정안을 승인하거나 반려하고 내보낼 수 있습니다. 권한은 회사 계정의
+        그룹으로 정해집니다.
+      </p>
+    </main>
   );
 }
 

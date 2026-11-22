@@ -1,4 +1,4 @@
-import type { CombinedCheck, Decision, Finding, Job, Proposal, ServiceContext, Triage } from "./types";
+import type { CombinedCheck, Decision, Finding, Job, Me, Proposal, ServiceContext, Triage } from "./types";
 
 export type Bucket = Triage["final_bucket"];
 export type Counts = Record<Bucket, number>;
@@ -43,9 +43,18 @@ export interface RunDetail {
   items: Item[];
 }
 
+/** Fired when the server says the session is gone, so the app can go back to the sign-in screen. */
+export const SIGNED_OUT = "triage:signed-out";
+
+async function fail(res: Response): Promise<never> {
+  if (res.status === 401) window.dispatchEvent(new Event(SIGNED_OUT));
+  const detail = await res.json().then((d) => d?.detail).catch(() => null);
+  throw new Error(typeof detail === "string" ? detail : `${res.status} ${res.statusText}`);
+}
+
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(path);
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  if (!res.ok) return fail(res);
   return res.json() as Promise<T>;
 }
 
@@ -55,12 +64,17 @@ async function post<T>(path: string, body?: unknown): Promise<T> {
     headers: { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-  if (!res.ok) {
-    const detail = await res.json().then((d) => d?.detail).catch(() => null);
-    throw new Error(typeof detail === "string" ? detail : `${res.status} ${res.statusText}`);
-  }
+  if (!res.ok) return fail(res);
   return res.json() as Promise<T>;
 }
+
+export const getMe = () => get<Me>("/api/me");
+export const logout = () => post<{ ok: boolean }>("/auth/logout");
+/** Sign-in starts with a full page navigation; the server sends the browser to the identity provider. */
+export const loginUrl = () => `/auth/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+export const roleLabel: Record<NonNullable<Me["role"]>, string> = { viewer: "열람", approver: "승인", admin: "관리" };
+/** Deciding, exporting and starting sandbox work need the approver role (auth.py). */
+export const canDecide = (me: Me) => me.role === "approver" || me.role === "admin";
 
 export interface ExportResult {
   approved: string[];
@@ -74,7 +88,7 @@ export interface ExportResult {
 const base = (id: string) => `/api/runs/${encodeURIComponent(id)}`;
 export const getProposals = (id: string) => get<Proposal[]>(`${base(id)}/proposals`);
 export const patchUrl = (id: string, target: string) => `${base(id)}/patch?target=${encodeURIComponent(target)}`;
-export const decide = (id: string, body: { target: string; status: Decision["status"]; by: string; reason: string }) =>
+export const decide = (id: string, body: { target: string; status: Decision["status"]; by?: string; reason: string }) =>
   post<Decision>(`${base(id)}/decisions`, body);
 export const exportApproved = (id: string) => post<ExportResult>(`${base(id)}/export`);
 export type ExportJob = Omit<Job, "result"> & { result?: ExportResult | null };
