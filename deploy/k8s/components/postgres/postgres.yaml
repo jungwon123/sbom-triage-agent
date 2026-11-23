@@ -57,3 +57,16 @@ spec:
   ingress:
     - from: [{podSelector: {matchLabels: {triage/db-client: "true"}}}]
       ports: [{port: 5432}]
+---
+# worker-egress (base) closes private addresses; this opens the one the worker needs.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: worker-reaches-postgres
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: triage-worker}
+  policyTypes: [Egress]
+  egress:
+    - to: [{podSelector: {matchLabels: {app.kubernetes.io/name: triage-postgres}}}]
+      ports: [{port: 5432}]

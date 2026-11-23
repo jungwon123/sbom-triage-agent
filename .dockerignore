@@ -2,6 +2,8 @@
 .git
 .env
 .env.*
+**/.env
+**/.env.*
 !.env.example
 .venv
 out

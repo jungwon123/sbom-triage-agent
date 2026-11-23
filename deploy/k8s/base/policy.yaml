@@ -20,12 +20,33 @@ spec:
   ingress:
     - ports: [{port: 8000}]
 ---
-# Losing a node must not take every API pod with it.
+# The worker runs code from analysed repositories in its sandbox, and that traffic leaves with the
+# worker pod's address. So the worker may reach DNS and public addresses only: not the API, not other
+# pods or nodes, not the cloud metadata address. A database (or an in-house model) on a private
+# address needs its own rule: components/postgres adds one, overlays/multinode shows an address rule.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: worker-egress
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: triage-worker}
+  policyTypes: [Egress]
+  egress:
+    - to: [{namespaceSelector: {}, podSelector: {matchLabels: {k8s-app: kube-dns}}}]
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 100.64.0.0/10]
+---
+# A drain may take one API pod at a time. This covers voluntary evictions only; spreading the replicas
+# over nodes (api.yaml) is what limits the damage of a node failure, and that spreading is best effort.
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
   name: triage-api
 spec:
-  minAvailable: 1
+  maxUnavailable: 1
   selector:
     matchLabels: {app.kubernetes.io/name: triage-api}

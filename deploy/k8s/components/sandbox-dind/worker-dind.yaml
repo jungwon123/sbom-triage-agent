@@ -5,12 +5,14 @@ metadata:
 spec:
   template:
     spec:
-      containers:
-        - name: worker
-          env:
-            - {name: DOCKER_HOST, value: "tcp://127.0.0.1:2375"}
+      initContainers:
+        # A native sidecar (an init container with restartPolicy: Always, Kubernetes 1.29+): it starts
+        # before the worker and the worker waits for its startupProbe, and on shutdown it is stopped only
+        # after the worker has exited. As an ordinary container it got SIGTERM together with the worker
+        # and killed the sandbox pass the worker was trying to finish.
         - name: dind
           image: public.ecr.aws/docker/library/docker:27-dind
+          restartPolicy: Always
           # "dockerd" must come first: given only flags, the image's entrypoint adds --host=tcp://0.0.0.0:2375
           # itself, which collides with the loopback listener and would expose the daemon on the pod address.
           # --mtu: sandbox containers sit behind the pod's interface, whose MTU is below 1500 on overlay
@@ -19,12 +21,22 @@ spec:
           args: ["dockerd", "--host=tcp://127.0.0.1:2375", "--tls=false", "--mtu=1400"]
           env:
             - {name: DOCKER_TLS_CERTDIR, value: ""}
+            - {name: DOCKER_HOST, value: "tcp://127.0.0.1:2375"}
+          startupProbe:
+            exec: {command: ["docker", "info"]}
+            periodSeconds: 2
+            failureThreshold: 60
           securityContext: {privileged: true, runAsUser: 0, runAsNonRoot: false}
           resources:
-            requests: {cpu: 500m, memory: 1Gi}
+            requests: {cpu: 500m, memory: 1Gi, ephemeral-storage: 5Gi}
             limits: {memory: 4Gi}
           volumeMounts:
             - {name: repos, mountPath: /repos, readOnly: true}
             - {name: docker, mountPath: /var/lib/docker}
+      containers:
+        - name: worker
+          env:
+            - {name: DOCKER_HOST, value: "tcp://127.0.0.1:2375"}
       volumes:
-        - {name: docker, emptyDir: {}}
+        # images, sandbox volumes and whatever an interrupted pass left behind; gone with the pod
+        - {name: docker, emptyDir: {sizeLimit: 20Gi}}

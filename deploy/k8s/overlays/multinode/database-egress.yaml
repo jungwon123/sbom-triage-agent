@@ -1,0 +1,13 @@
+# The database is outside the cluster on a private address, which worker-egress (base) closes.
+# Replace the address with the database's own (a /32, or the subnet of a managed database).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: worker-reaches-database
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: triage-worker}
+  policyTypes: [Egress]
+  egress:
+    - to: [{ipBlock: {cidr: 172.20.0.5/32}}]
+      ports: [{port: 5432}]

@@ -20,19 +20,29 @@ spec:
             matchLabels: {app.kubernetes.io/name: triage-api}
       securityContext: {runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001, fsGroup: 10001, seccompProfile: {type: RuntimeDefault}}
       initContainers:
-        - name: db-init              # creates missing tables; safe to run on every start
+        - name: db-init              # creates missing tables; an advisory lock makes concurrent starts wait their turn
           image: sbom-triage
           command: ["python", "-m", "triage", "db", "init"]
-          envFrom: [{configMapRef: {name: triage-config}}, {secretRef: {name: triage-secrets}}]
+          env:                       # each container gets only the secret keys it uses
+            - name: DATABASE_URL
+              valueFrom: {secretKeyRef: {name: triage-secrets, key: DATABASE_URL}}
           securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
       containers:
         - name: api
           image: sbom-triage
           ports: [{name: http, containerPort: 8000}]
-          envFrom: [{configMapRef: {name: triage-config}}, {secretRef: {name: triage-secrets}}]
+          envFrom: [{configMapRef: {name: triage-config}}]
+          env:                       # the API never calls the model or the alert webhook, so it holds neither key
+            - name: DATABASE_URL
+              valueFrom: {secretKeyRef: {name: triage-secrets, key: DATABASE_URL}}
+            - name: TRIAGE_SESSION_SECRET
+              valueFrom: {secretKeyRef: {name: triage-secrets, key: TRIAGE_SESSION_SECRET, optional: true}}
+            - name: OIDC_CLIENT_SECRET
+              valueFrom: {secretKeyRef: {name: triage-secrets, key: OIDC_CLIENT_SECRET, optional: true}}
           readinessProbe:            # /api/health reads the store, so a pod that lost the database stops getting traffic
             httpGet: {path: /api/health, port: http}
             periodSeconds: 10
+            timeoutSeconds: 3
             failureThreshold: 3
           livenessProbe:             # only "is the process serving": a database outage must not restart every pod
             tcpSocket: {port: http}
@@ -40,6 +50,7 @@ spec:
           startupProbe:
             httpGet: {path: /api/health, port: http}
             periodSeconds: 3
+            timeoutSeconds: 3
             failureThreshold: 40
           resources:
             requests: {cpu: 100m, memory: 256Mi}

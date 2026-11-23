@@ -10,11 +10,25 @@ labels:
       app.kubernetes.io/part-of: sbom-triage
 resources:
   - namespace.yaml
-  - config.yaml
   - storage.yaml
   - api.yaml
   - worker.yaml
   - policy.yaml
+# Settings that are not secret. Generated, so the name carries a hash of the content: changing a value
+# changes the pod template and rolls the pods (a fixed name would leave them running with the old value).
+# An overlay changes a value with its own configMapGenerator entry and `behavior: merge`.
+# Secrets live in the Secret "triage-secrets", created by hand and never committed (secrets.example.env).
+configMapGenerator:
+  - name: triage-config
+    literals:
+      - TRIAGE_STORE=postgres
+      - TRIAGE_WORKER=external            # the API only queues work; the worker Deployment runs it
+      - TRIAGE_SERVICE_ROOTS=/repos       # where registered services' repositories and SBOM files are mounted
+      - TRIAGE_AUTH=off                   # set to oidc with the OIDC_* settings before exposing this outside the cluster
+      # The address people use. Required behind an ingress that ends TLS: the cross-site write check
+      # compares the browser's Origin with it, and the sign-in callback is built from it.
+      - TRIAGE_PUBLIC_URL=http://localhost:8000
+      - LLM_PROVIDER=none                 # rule only until a provider and its key are set
 images:
   - name: sbom-triage
     newName: sbom-triage

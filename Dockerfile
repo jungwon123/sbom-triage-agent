@@ -17,6 +17,9 @@ RUN pnpm build
 # ---- the Docker CLI, for the worker's sandbox (it talks to a daemon given by DOCKER_HOST) ----
 FROM ${REGISTRY}/docker:27-cli AS dockercli
 
+# ---- Syft, the same version the laptop runs use: a re-check must build the SBOM the way its baseline did ----
+FROM ghcr.io/anchore/syft:v1.57.2 AS syft
+
 # ---- application ----
 FROM ${REGISTRY}/python:3.12-slim AS app
 ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 UV_LINK_MODE=copy UV_PROJECT_ENVIRONMENT=/app/.venv \
@@ -32,8 +35,10 @@ COPY fixtures/cache/ fixtures/cache/
 RUN uv sync --frozen --no-dev --extra postgres --extra auth --extra openai
 COPY --from=web /web/dist web/dist
 COPY --from=dockercli /usr/local/bin/docker /usr/local/bin/docker
-# Runs as an unprivileged user; out/ is the artifact volume and the only place the process writes.
-RUN useradd --uid 10001 --create-home triage && mkdir -p /app/out /repos && chown -R 10001:10001 /app/out /repos
+COPY --from=syft /syft /usr/local/bin/syft
+# Runs as an unprivileged user. It writes to out/ (the artifact volume), to the response cache when the
+# file store is used, and to /tmp.
+RUN useradd --uid 10001 --create-home triage && mkdir -p /app/out /repos && chown -R 10001:10001 /app/out /repos /app/fixtures/cache
 USER 10001
 EXPOSE 8000
 CMD ["uvicorn", "triage.api:app", "--host", "0.0.0.0", "--port", "8000"]

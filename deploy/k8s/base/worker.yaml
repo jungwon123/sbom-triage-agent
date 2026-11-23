@@ -20,11 +20,30 @@ spec:
       # anyway, the job's heartbeat stops and another worker picks it up once.
       terminationGracePeriodSeconds: 900
       securityContext: {runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001, fsGroup: 10001, seccompProfile: {type: RuntimeDefault}}
+      initContainers:
+        - name: db-init              # creates missing tables; an advisory lock makes concurrent starts wait their turn
+          image: sbom-triage
+          command: ["python", "-m", "triage", "db", "init"]
+          env:                       # each container gets only the secret keys it uses
+            - name: DATABASE_URL
+              valueFrom: {secretKeyRef: {name: triage-secrets, key: DATABASE_URL}}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
       containers:
         - name: worker
           image: sbom-triage
           command: ["python", "-m", "triage", "worker"]
-          envFrom: [{configMapRef: {name: triage-config}}, {secretRef: {name: triage-secrets}}]
+          envFrom: [{configMapRef: {name: triage-config}}]
+          env:                       # no session or sign-in secret here: a worker cannot mint a login
+            - name: DATABASE_URL
+              valueFrom: {secretKeyRef: {name: triage-secrets, key: DATABASE_URL}}
+            - name: ANTHROPIC_API_KEY
+              valueFrom: {secretKeyRef: {name: triage-secrets, key: ANTHROPIC_API_KEY, optional: true}}
+            - name: OPENAI_API_KEY
+              valueFrom: {secretKeyRef: {name: triage-secrets, key: OPENAI_API_KEY, optional: true}}
+            - name: LOCAL_LLM_API_KEY
+              valueFrom: {secretKeyRef: {name: triage-secrets, key: LOCAL_LLM_API_KEY, optional: true}}
+            - name: SLACK_WEBHOOK_URL
+              valueFrom: {secretKeyRef: {name: triage-secrets, key: SLACK_WEBHOOK_URL, optional: true}}
           resources:
             requests: {cpu: 200m, memory: 512Mi}
             limits: {memory: 2Gi}

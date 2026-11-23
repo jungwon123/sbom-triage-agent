@@ -12,9 +12,18 @@ labels:
 resources:
   - ../../base
   - volumes.yaml
+  - database-egress.yaml
 components:
   - ../../components/ingress
   - ../../components/sandbox-dind
+configMapGenerator:
+  # The address people type, port included: the cross-site write check compares the browser's Origin with it.
+  # TRIAGE_AUTH stays off here because this is a test cluster with no identity provider; anything
+  # reachable by other people needs TRIAGE_AUTH=oidc (with it off, everyone who reaches the ingress is an admin).
+  - name: triage-config
+    behavior: merge
+    literals:
+      - TRIAGE_PUBLIC_URL=https://triage.localhost:8444
 patches:
   # Bind each claim to its prepared volume instead of asking a provisioner.
   - target: {kind: PersistentVolumeClaim, name: triage-out}
@@ -29,7 +38,3 @@ patches:
     patch: |-
       - {op: replace, path: /spec/rules/0/host, value: triage.localhost}
       - {op: replace, path: /spec/tls/0/hosts/0, value: triage.localhost}
-  # The address people type, port included: the cross-site write check compares the browser's Origin with it.
-  - target: {kind: ConfigMap, name: triage-config}
-    patch: |-
-      - {op: replace, path: /data/TRIAGE_PUBLIC_URL, value: "https://triage.localhost:8444"}
