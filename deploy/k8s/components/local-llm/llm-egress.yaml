@@ -1,0 +1,24 @@
+# worker-egress (base) closes private addresses, so the in-house model server needs its own rule.
+# NetworkPolicy matches addresses, not host names: replace the placeholder (a documentation address
+# that routes nowhere) with the server's address as a /32, or its subnet, and the port it listens on,
+# from the overlay with a patch (overlays/multinode shows it).
+# Policies add up, so this opens exactly one more destination for the worker.
+#
+# The sandbox shares the worker pod's address, so code under verification can reach this port too.
+# Require a key on the model server: the key is never passed into the sandbox (CLAUDE.md rule 7).
+#
+# A model server inside this cluster is selected by label instead of by address:
+#   - to: [{namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: llm}},
+#           podSelector: {matchLabels: {app.kubernetes.io/name: vllm}}}]
+# and the server's own namespace must accept traffic from the worker.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: worker-reaches-llm
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: triage-worker}
+  policyTypes: [Egress]
+  egress:
+    - to: [{ipBlock: {cidr: 192.0.2.10/32}}]
+      ports: [{protocol: TCP, port: 8000}]

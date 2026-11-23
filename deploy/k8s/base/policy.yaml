@@ -23,7 +23,8 @@ spec:
 # The worker runs code from analysed repositories in its sandbox, and that traffic leaves with the
 # worker pod's address. So the worker may reach DNS and public addresses only: not the API, not other
 # pods or nodes, not the cloud metadata address. A database (or an in-house model) on a private
-# address needs its own rule: components/postgres adds one, overlays/multinode shows an address rule.
+# address needs its own rule: components/postgres and components/local-llm add one, overlays/multinode
+# shows an address rule for a database.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

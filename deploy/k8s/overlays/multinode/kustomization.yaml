@@ -16,6 +16,7 @@ resources:
 components:
   - ../../components/ingress
   - ../../components/sandbox-dind
+  # - ../../components/local-llm     # an in-house model server: also uncomment its two patches below
 configMapGenerator:
   # The address people type, port included: the cross-site write check compares the browser's Origin with it.
   # TRIAGE_AUTH stays off here because this is a test cluster with no identity provider; anything
@@ -38,3 +39,13 @@ patches:
     patch: |-
       - {op: replace, path: /spec/rules/0/host, value: triage.localhost}
       - {op: replace, path: /spec/tls/0/hosts/0, value: triage.localhost}
+  # The in-house model server (components/local-llm): its /v1 address, model name, and the address and
+  # port the worker may reach.
+  # - target: {kind: ConfigMap, name: triage-config}
+  #   patch: |-
+  #     - {op: replace, path: /data/LOCAL_LLM_BASE_URL, value: "http://10.20.30.40:8000/v1"}
+  #     - {op: replace, path: /data/LOCAL_LLM_MODEL, value: "the-model-name"}
+  # - target: {kind: NetworkPolicy, name: worker-reaches-llm}
+  #   patch: |-
+  #     - {op: replace, path: /spec/egress/0/to/0/ipBlock/cidr, value: 10.20.30.40/32}
+  #     - {op: replace, path: /spec/egress/0/ports/0/port, value: 8000}

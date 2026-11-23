@@ -1,0 +1,26 @@
+# An in-house model server with an OpenAI-compatible API (vLLM, Ollama, LM Studio) on a private address.
+# Adds the three settings the local adapter reads and opens the worker's egress to that one address.
+# List this component in the overlay and set the cluster's own values there with `patches`
+# (overlays/multinode shows the three lines). An overlay's `behavior: merge` entry does not work for
+# this: the component is applied after it and its placeholders win. A patch is applied last, and the
+# generated name still gets a new hash, so the pods roll.
+#
+# As written this is the two-stage mode (CLAUDE.md rule 9): the in-house model reads the source code,
+# and LLM_PROVIDER (set in the overlay) writes the verdict from facts only. To let the in-house model
+# do both, set LLM_PROVIDER=local in the overlay and remove the LLM_CODE_PROVIDER line here.
+#
+# If the server asks for a key, put LOCAL_LLM_API_KEY in the Secret (secrets.example.env); only the
+# worker container receives it.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+resources:
+  - llm-egress.yaml
+configMapGenerator:
+  - name: triage-config
+    behavior: merge
+    literals:
+      - LLM_CODE_PROVIDER=local
+      # The /v1 root of the server. A host name is fine here (the worker may reach cluster DNS),
+      # but the egress rule needs the address it resolves to.
+      - LOCAL_LLM_BASE_URL=http://192.0.2.10:8000/v1
+      - LOCAL_LLM_MODEL=change-me          # the model name as the server lists it (GET /v1/models)
