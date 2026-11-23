@@ -1,0 +1,21 @@
+# SBOM Triage on Kubernetes: API and worker from one image, records in PostgreSQL, artifacts on a volume.
+# Render:  kubectl kustomize deploy/k8s/overlays/local
+# The database is not part of the base: point DATABASE_URL at a managed PostgreSQL, or add
+# components/postgres for an in-cluster one. See deploy/k8s/README.md.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: sbom-triage
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: sbom-triage
+resources:
+  - namespace.yaml
+  - config.yaml
+  - storage.yaml
+  - api.yaml
+  - worker.yaml
+  - policy.yaml
+images:
+  - name: sbom-triage
+    newName: sbom-triage
+    newTag: dev

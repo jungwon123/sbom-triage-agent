@@ -2,8 +2,8 @@
 #   docker compose -f deploy/docker-compose.yml up -d postgres
 # With TRIAGE_STORE=postgres the API only queues slow work. Run a worker next to it:
 #   uv run python -m triage worker
-# The worker needs the Docker CLI and the same out/ folder as the API. It is not a service in this
-# file yet: the application image comes with the deployment step.
+# The worker needs the Docker CLI and the same out/ folder as the API. The application image is built
+# from the Dockerfile at the repository root; running it on a cluster is described in deploy/k8s/README.md.
 # The password below is a local development default. Set POSTGRES_PASSWORD (and DATABASE_URL to
 # match) for anything that is not a laptop.
 name: sbom-triage

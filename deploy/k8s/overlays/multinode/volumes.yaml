@@ -1,0 +1,23 @@
+# Two ReadWriteMany volumes on /shared, a directory that every node mounts from the same place
+# (a stand-in for NFS or CephFS). /shared/out must be writable by uid 10001.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: triage-out
+spec:
+  capacity: {storage: 20Gi}
+  accessModes: [ReadWriteMany]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  hostPath: {path: /shared/out, type: Directory}
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: triage-repos
+spec:
+  capacity: {storage: 20Gi}
+  accessModes: [ReadWriteMany]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  hostPath: {path: /shared/repos, type: Directory}

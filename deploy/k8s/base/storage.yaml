@@ -1,0 +1,24 @@
+# out/: SBOM files, agent logs, recorded answers, patches and exports. The API and every worker read and
+# write it, so with more than one node it must be ReadWriteMany (NFS, CephFS, EFS, ...). ReadWriteOnce
+# works only while all pods land on one node.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: triage-out
+spec:
+  accessModes: [ReadWriteMany]
+  resources:
+    requests:
+      storage: 20Gi
+---
+# /repos: the repositories and SBOM files of registered services. How they get there (a sync job, a CI
+# step that copies them) is outside this application: it never fetches code by itself.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: triage-repos
+spec:
+  accessModes: [ReadWriteMany]
+  resources:
+    requests:
+      storage: 20Gi

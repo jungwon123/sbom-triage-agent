@@ -1,0 +1,8 @@
+# An in-cluster PostgreSQL for a test cluster. For operation use a managed database with backups and
+# leave this component out: DATABASE_URL in triage-secrets is all the application needs.
+# An overlay that uses this component must set `namespace: sbom-triage` itself (see overlays/local):
+# the base's namespace setting does not apply to what a component adds.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+resources:
+  - postgres.yaml

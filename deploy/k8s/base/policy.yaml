@@ -1,0 +1,31 @@
+# Nothing in the namespace accepts traffic unless a policy below (or in a component) allows it.
+# Outbound traffic is left open: the scan reads public vulnerability feeds, the agent calls the model
+# provider and sign-in calls the identity provider. Narrow it per cluster once those addresses are known.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-accepts-http
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: triage-api}
+  policyTypes: [Ingress]
+  ingress:
+    - ports: [{port: 8000}]
+---
+# Losing a node must not take every API pod with it.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: triage-api
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: triage-api}

@@ -1,0 +1,24 @@
+# Keep the build context small and keep secrets and analysed repositories out of the image.
+.git
+.env
+.env.*
+!.env.example
+.venv
+out
+docs
+tests
+poc
+kit
+.claude
+.omc
+.archify
+.pytest_cache
+**/__pycache__
+**/node_modules
+web/dist
+fixtures/demo-repo
+fixtures/eval
+fixtures/maven-demo
+fixtures/blind
+fixtures/blind2
+deploy

@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: triage
+spec:
+  tls:
+    - hosts: [triage.example.com]
+      secretName: triage-tls
+  rules:
+    - host: triage.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: {name: triage-api, port: {name: http}}

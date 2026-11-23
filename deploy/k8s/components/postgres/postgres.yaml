@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: triage-postgres
+spec:
+  serviceName: triage-postgres
+  replicas: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: triage-postgres}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: triage-postgres}
+    spec:
+      automountServiceAccountToken: false
+      securityContext: {runAsNonRoot: true, runAsUser: 70, runAsGroup: 70, fsGroup: 70, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: postgres
+          image: public.ecr.aws/docker/library/postgres:16-alpine
+          ports: [{name: pg, containerPort: 5432}]
+          env:
+            - {name: POSTGRES_USER, value: triage}
+            - {name: POSTGRES_DB, value: triage}
+            - {name: PGDATA, value: /var/lib/postgresql/data/pgdata}
+            - name: POSTGRES_PASSWORD      # must match the password inside DATABASE_URL
+              valueFrom: {secretKeyRef: {name: triage-secrets, key: POSTGRES_PASSWORD}}
+          readinessProbe:
+            exec: {command: ["pg_isready", "-U", "triage", "-d", "triage"]}
+            periodSeconds: 5
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {memory: 1Gi}
+          securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
+          volumeMounts: [{name: data, mountPath: /var/lib/postgresql/data}]
+  volumeClaimTemplates:
+    - metadata: {name: data}
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources: {requests: {storage: 10Gi}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: triage-postgres
+spec:
+  selector: {app.kubernetes.io/name: triage-postgres}
+  ports: [{name: pg, port: 5432, targetPort: pg}]
+---
+# Only the API and the workers may reach the database, and the database opens no connection of its own.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-accepts-app
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/name: triage-postgres}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from: [{podSelector: {matchLabels: {triage/db-client: "true"}}}]
+      ports: [{port: 5432}]

@@ -1,0 +1,35 @@
+# A test cluster with several nodes (three k3s nodes run as containers, see README section 6):
+# the database is outside the cluster, both volumes are ReadWriteMany on a directory every node mounts,
+# the worker has the sandbox sidecar and the API is reached through the ingress controller over TLS.
+# It is the shape of an operating deployment; replace volumes.yaml and the host name with the cluster's own.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Set here too: the base's namespace does not reach resources that a component adds.
+namespace: sbom-triage
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: sbom-triage
+resources:
+  - ../../base
+  - volumes.yaml
+components:
+  - ../../components/ingress
+  - ../../components/sandbox-dind
+patches:
+  # Bind each claim to its prepared volume instead of asking a provisioner.
+  - target: {kind: PersistentVolumeClaim, name: triage-out}
+    patch: |-
+      - {op: add, path: /spec/storageClassName, value: ""}
+      - {op: add, path: /spec/volumeName, value: triage-out}
+  - target: {kind: PersistentVolumeClaim, name: triage-repos}
+    patch: |-
+      - {op: add, path: /spec/storageClassName, value: ""}
+      - {op: add, path: /spec/volumeName, value: triage-repos}
+  - target: {kind: Ingress, name: triage}
+    patch: |-
+      - {op: replace, path: /spec/rules/0/host, value: triage.localhost}
+      - {op: replace, path: /spec/tls/0/hosts/0, value: triage.localhost}
+  # The address people type, port included: the cross-site write check compares the browser's Origin with it.
+  - target: {kind: ConfigMap, name: triage-config}
+    patch: |-
+      - {op: replace, path: /data/TRIAGE_PUBLIC_URL, value: "https://triage.localhost:8444"}

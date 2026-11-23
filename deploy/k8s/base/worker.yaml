@@ -1,0 +1,39 @@
+# Runs queued jobs (re-checks of registered services, the combined sandbox pass) and queues the checks
+# that are due. One worker runs one job at a time: more replicas = more jobs in parallel.
+# Without a Docker daemon the sandbox steps are skipped and recorded as skipped; add
+# components/sandbox-dind to give the worker one.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: triage-worker
+  labels: {app.kubernetes.io/name: triage-worker}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: triage-worker}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: triage-worker, triage/db-client: "true"}
+    spec:
+      automountServiceAccountToken: false
+      # SIGTERM lets the worker finish the job in hand (a sandbox pass can take minutes). If it is killed
+      # anyway, the job's heartbeat stops and another worker picks it up once.
+      terminationGracePeriodSeconds: 900
+      securityContext: {runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001, fsGroup: 10001, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: worker
+          image: sbom-triage
+          command: ["python", "-m", "triage", "worker"]
+          envFrom: [{configMapRef: {name: triage-config}}, {secretRef: {name: triage-secrets}}]
+          resources:
+            requests: {cpu: 200m, memory: 512Mi}
+            limits: {memory: 2Gi}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          volumeMounts:
+            - {name: out, mountPath: /app/out}
+            - {name: repos, mountPath: /repos, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - {name: out, persistentVolumeClaim: {claimName: triage-out}}
+        - {name: repos, persistentVolumeClaim: {claimName: triage-repos}}
+        - {name: tmp, emptyDir: {}}

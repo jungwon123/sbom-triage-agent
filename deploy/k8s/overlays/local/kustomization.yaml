@@ -1,0 +1,33 @@
+# A one-node test cluster (Docker Desktop, kind, minikube): in-cluster PostgreSQL, the image built on
+# this machine, volumes that one node can mount. No sandbox and no ingress; reach it with
+#   kubectl -n sbom-triage port-forward svc/triage-api 8000:80
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Set here too: the base's namespace does not reach resources that a component adds.
+namespace: sbom-triage
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: sbom-triage
+resources:
+  - ../../base
+components:
+  - ../../components/postgres
+patches:
+  - target: {kind: PersistentVolumeClaim}
+    patch: |-
+      - op: replace
+        path: /spec/accessModes
+        value: [ReadWriteOnce]
+      - op: replace
+        path: /spec/resources/requests/storage
+        value: 2Gi
+  - target: {kind: Deployment, name: triage-api}
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+  - target: {kind: Deployment}
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/imagePullPolicy
+        value: IfNotPresent

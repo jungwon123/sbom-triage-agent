@@ -1,0 +1,14 @@
+# Gives the worker a Docker daemon of its own so it can run the verification sandbox.
+#
+# The daemon runs as a PRIVILEGED sidecar. That is a real cost: a privileged container can reach the
+# node. Use it only on nodes set aside for this (taint them and add a toleration and nodeSelector), or
+# leave this component out and run verification elsewhere. The daemon listens on the pod's loopback
+# only, has no credentials, and the application's secrets are never passed into sandbox containers.
+#
+# The sandbox bind-mounts the repository by path, so the sidecar mounts /repos at the same path as the
+# worker does. Each worker pod has its own daemon and image cache.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+patches:
+  - target: {kind: Deployment, name: triage-worker}
+    path: worker-dind.yaml
