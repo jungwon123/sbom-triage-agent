@@ -13,7 +13,7 @@
 | 5 | `HANDOFF.md` 2장 | 결정 이력 D1 ~ D53과 이유 | 2장만 현행이다. 나머지 장은 2026-10-31의 초기 기록이다 |
 | 필요할 때 | `deploy/k8s/README.md` | 쿠버네티스 구성과 한계 | |
 | 필요할 때 | `docs/REQUIREMENTS.md` | 요구사항 원본 | |
-| 읽지 않음 | `docs/reviews/`, `docs/poc-results.md`, `docs/application/`, `poc/` | 지난 검토와 실험, 지원서 | 이력이다. 현재 동작의 근거로 쓰지 않는다 |
+| 읽지 않음 | `docs/reviews/`, `docs/poc-results.md`, `poc/` | 지난 검토와 실험 | 이력이다. 현재 동작의 근거로 쓰지 않는다 |
 
 문서와 코드가 다르면 코드와 테스트가 맞다. 다른 점을 발견하면 문서를 고친다.
 
