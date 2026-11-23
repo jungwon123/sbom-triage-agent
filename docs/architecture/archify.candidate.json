@@ -2,20 +2,66 @@
  "schema_version": 1,
  "diagram_type": "architecture",
  "meta": {
-  "title": "SBOM 트리아지 에이전트 아키텍처 (2026-11-19 구현 기준)",
+  "title": "SBOM 트리아지 아키텍처 (쿠버네티스 배포, D52 반영)",
   "locale": "ko",
   "output": "docs/architecture/sbom-triage-architecture.html",
   "quality_profile": "showcase"
  },
  "components": [
   {
-   "id": "npm",
-   "type": "external",
-   "label": "npm 레지스트리",
-   "sublabel": "install 단계만 허용",
+   "id": "user",
+   "type": "frontend",
+   "label": "React 대시보드",
+   "sublabel": "TypeScript, Vite, Tailwind",
    "pos": [
-    1450,
-    40
+    40,
+    300
+   ],
+   "size": [
+    150,
+    64
+   ],
+   "brand": "react"
+  },
+  {
+   "id": "ingress",
+   "type": "security",
+   "label": "인그레스",
+   "sublabel": "Kubernetes, TLS 종료",
+   "pos": [
+    246,
+    300
+   ],
+   "size": [
+    130,
+    64
+   ],
+   "brand": "kubernetes"
+  },
+  {
+   "id": "api",
+   "type": "backend",
+   "label": "API 파드 2개",
+   "sublabel": "Pydantic v2, 연결 풀",
+   "pos": [
+    460,
+    300
+   ],
+   "size": [
+    150,
+    64
+   ],
+   "tag": "작업 등록만, 실행 안 함",
+   "brand": "fastapi"
+  },
+  {
+   "id": "idp",
+   "type": "external",
+   "label": "사내 인증 서버",
+   "sublabel": "OIDC, 선택",
+   "pos": [
+    465,
+    60
    ],
    "size": [
     140,
@@ -23,189 +69,158 @@
    ]
   },
   {
-   "id": "feeds",
-   "type": "external",
-   "label": "공개 취약점 DB",
-   "sublabel": "OSV · EPSS · CISA KEV",
+   "id": "db",
+   "type": "database",
+   "label": "PostgreSQL",
+   "sublabel": "기록, 작업 큐, 캐시",
    "pos": [
-    750,
-    40
+    635,
+    60
    ],
    "size": [
     140,
+    64
+   ],
+   "tag": "TLS, 생성 잠금",
+   "brand": "postgresql"
+  },
+  {
+   "id": "local",
+   "type": "external",
+   "label": "사내 LLM",
+   "sublabel": "Ollama 등, 코드 판독",
+   "pos": [
+    825,
+    60
+   ],
+   "size": [
+    140,
+    64
+   ],
+   "tag": "2단계 모드",
+   "brand": "ollama"
+  },
+  {
+   "id": "worker",
+   "type": "backend",
+   "label": "작업자 파드",
+   "sublabel": "Syft, uv, httpx, 연결 풀",
+   "pos": [
+    810,
+    300
+   ],
+   "size": [
+    170,
+    64
+   ],
+   "tag": "스캔, 판단, 검증 작업",
+   "brand": "python"
+  },
+  {
+   "id": "feeds",
+   "type": "external",
+   "label": "공개 취약점 DB",
+   "sublabel": "OSV, EPSS, CISA KEV",
+   "pos": [
+    1110,
+    180
+   ],
+   "size": [
+    130,
     64
    ]
   },
   {
    "id": "llm",
    "type": "external",
-   "label": "LLM API",
-   "sublabel": "Opus 5.5 · OpenAI 교체 가능",
+   "label": "외부 LLM API",
+   "sublabel": "Claude Opus 5.5",
    "pos": [
-    1215,
-    40
+    1110,
+    300
    ],
    "size": [
-    140,
+    130,
     64
-   ]
-  },
-  {
-   "id": "cache",
-   "type": "database",
-   "label": "응답 캐시",
-   "sublabel": "KEV · EPSS 하루 만료",
-   "pos": [
-    750,
-    180
    ],
-   "size": [
-    140,
-    64
-   ]
+   "tag": "OpenAI 교체 가능",
+   "brand": "claude"
   },
   {
-   "id": "user",
-   "type": "external",
-   "label": "보안·개발 담당자",
-   "sublabel": "승인 · 보류 · 반려",
+   "id": "dind",
+   "type": "security",
+   "label": "Docker 사이드카",
+   "sublabel": "특권, 루프백 2375",
    "pos": [
-    40,
-    330
-   ],
-   "size": [
-    140,
-    64
-   ]
-  },
-  {
-   "id": "web",
-   "type": "frontend",
-   "label": "React 대시보드",
-   "sublabel": "React · Vite · Tailwind",
-   "pos": [
-    270,
-    330
-   ],
-   "size": [
-    140,
-    64
-   ]
-  },
-  {
-   "id": "api",
-   "type": "backend",
-   "label": "FastAPI + 오케스트레이터",
-   "sublabel": "runner · decide · jobs 큐",
-   "pos": [
-    490,
-    330
+    810,
+    450
    ],
    "size": [
     170,
     64
-   ]
-  },
-  {
-   "id": "pipeline",
-   "type": "backend",
-   "label": "SBOM·스캔·보강",
-   "sublabel": "Syft · CycloneDX · SPDX",
-   "pos": [
-    750,
-    330
    ],
-   "size": [
-    140,
-    64
-   ]
-  },
-  {
-   "id": "score",
-   "type": "backend",
-   "label": "규칙 점수 엔진",
-   "sublabel": "순수 함수 · KEV 하한",
-   "pos": [
-    980,
-    330
-   ],
-   "size": [
-    140,
-    64
-   ]
-  },
-  {
-   "id": "agent",
-   "type": "backend",
-   "label": "트리아지 에이전트",
-   "sublabel": "계약 검사 · 규칙 대체",
-   "pos": [
-    1215,
-    330
-   ],
-   "size": [
-    140,
-    64
-   ],
-   "tag": "±1 버킷 제약"
+   "tag": "네이티브 사이드카",
+   "brand": "docker"
   },
   {
    "id": "sandbox",
    "type": "security",
-   "label": "검증 샌드박스",
-   "sublabel": "Docker · diff 생성",
+   "label": "샌드박스 컨테이너",
+   "sublabel": "node:20-slim, 일회용",
    "pos": [
-    1450,
-    330
+    810,
+    600
    ],
    "size": [
-    140,
+    170,
+    64
+   ],
+   "brand": "node-js",
+   "tag": "시크릿 없음"
+  },
+  {
+   "id": "npm",
+   "type": "external",
+   "label": "npm 레지스트리",
+   "sublabel": "설치 단계만",
+   "pos": [
+    1110,
+    600
+   ],
+   "size": [
+    130,
     64
    ]
   },
   {
    "id": "out",
    "type": "database",
-   "label": "실행 결과 저장소",
-   "sublabel": "out/<run> · 결정 · 패치",
+   "label": "out 볼륨",
+   "sublabel": "SBOM, 패치, 로그",
    "pos": [
-    505,
-    520
+    620,
+    450
    ],
    "size": [
     140,
     64
-   ]
+   ],
+   "tag": "ReadWriteMany"
   },
   {
-   "id": "repo",
+   "id": "repos",
    "type": "database",
-   "label": "대상 레포 · SBOM",
-   "sublabel": "계열사 서비스 코드",
+   "label": "repos 볼륨",
+   "sublabel": "분석 대상 저장소",
    "pos": [
-    980,
-    520
+    810,
+    750
    ],
    "size": [
-    140,
+    170,
     64
    ],
    "tag": "읽기 전용"
-  },
-  {
-   "id": "local",
-   "type": "backend",
-   "label": "사내 LLM",
-   "sublabel": "Ollama · 코드 판독 (선택)",
-   "pos": [
-    1215,
-    520
-   ],
-   "size": [
-    140,
-    64
-   ],
-   "tag": "2단계 모드"
   }
  ],
  "boundaries": [
@@ -213,187 +228,179 @@
    "kind": "region",
    "label": "온프레미스 사내망",
    "wraps": [
-    "web",
+    "user",
+    "ingress",
     "api",
-    "pipeline",
-    "score",
-    "agent",
+    "idp",
+    "db",
+    "local",
+    "worker",
+    "dind",
     "sandbox",
-    "cache",
     "out",
-    "repo",
-    "local"
+    "repos"
+   ],
+   "pad": 30
+  },
+  {
+   "kind": "region",
+   "label": "쿠버네티스 네임스페이스 sbom-triage",
+   "wraps": [
+    "api",
+    "worker",
+    "dind",
+    "sandbox",
+    "out",
+    "repos"
    ],
    "pad": 20
   },
   {
    "kind": "security-group",
-   "label": "격리 컨테이너 · egress 제한",
+   "label": "작업자 파드 (나가는 통신은 DNS와 공인 주소만)",
    "wraps": [
+    "worker",
+    "dind",
     "sandbox"
-   ]
+   ],
+   "pad": 12
   }
  ],
  "connections": [
   {
-   "id": "user-web",
+   "id": "user-ingress",
    "from": "user",
-   "to": "web",
-   "label": "수정안 검토 · 결정",
+   "to": "ingress",
+   "label": "HTTPS",
    "variant": "emphasis"
   },
   {
-   "id": "web-api",
-   "from": "web",
+   "id": "ingress-api",
+   "from": "ingress",
    "to": "api",
-   "label": "결과 조회 · 결정 기록",
+   "label": "HTTP 8000",
    "variant": "emphasis"
   },
   {
-   "id": "api-pipeline",
+   "id": "api-db",
    "from": "api",
-   "to": "pipeline",
-   "label": "레포 경로 · SBOM",
+   "to": "db",
+   "label": "조회, 검증 작업 등록",
    "variant": "emphasis"
   },
   {
-   "id": "pipeline-score",
-   "from": "pipeline",
-   "to": "score",
-   "label": "Finding[]",
+   "id": "worker-db",
+   "from": "worker",
+   "to": "db",
+   "label": "작업 수령, 결과 재시도",
    "variant": "emphasis"
   },
   {
-   "id": "score-agent",
-   "from": "score",
-   "to": "agent",
-   "label": "NOW·NEXT 후보",
-   "variant": "emphasis"
-  },
-  {
-   "id": "api-sandbox",
+   "id": "api-idp",
    "from": "api",
-   "to": "sandbox",
-   "label": "조치안 검증 · 승인분 함께 검증",
-   "variant": "emphasis"
-  },
-  {
-   "id": "pipeline-cache",
-   "from": "pipeline",
-   "to": "cache",
-   "label": "보강 데이터 조회"
-  },
-  {
-   "id": "cache-feeds",
-   "from": "cache",
-   "to": "feeds",
-   "label": "미스 · 만료 시 HTTPS",
+   "to": "idp",
+   "label": "OIDC 로그인",
    "variant": "dashed"
   },
   {
-   "id": "agent-llm",
-   "from": "agent",
+   "id": "worker-local",
+   "from": "worker",
+   "to": "local",
+   "label": "코드 조각",
+   "variant": "security"
+  },
+  {
+   "id": "worker-feeds",
+   "from": "worker",
+   "to": "feeds",
+   "label": "캐시 경유 조회"
+  },
+  {
+   "id": "worker-llm",
+   "from": "worker",
    "to": "llm",
-   "label": "근거 작성 요청",
+   "label": "근거 데이터 전송",
    "variant": "security"
   },
   {
-   "id": "pipeline-repo",
-   "from": "pipeline",
-   "to": "repo",
-   "label": "lockfile · import 검색"
-  },
-  {
-   "id": "agent-repo",
-   "from": "agent",
-   "to": "repo",
-   "label": "읽기 전용 도구 4종",
+   "id": "worker-dind",
+   "from": "worker",
+   "to": "dind",
+   "label": "docker run",
    "variant": "security"
   },
   {
-   "id": "agent-cache",
-   "from": "agent",
-   "to": "cache",
-   "label": "어드바이저리 조회"
-  },
-  {
-   "id": "sandbox-repo",
-   "from": "sandbox",
-   "to": "repo",
-   "label": "읽기 전용 마운트",
+   "id": "dind-sandbox",
+   "from": "dind",
+   "to": "sandbox",
+   "label": "일회용 실행",
    "variant": "security"
   },
   {
    "id": "sandbox-npm",
    "from": "sandbox",
    "to": "npm",
-   "label": "스크립트 차단 설치",
+   "label": "install만 허용",
    "variant": "security"
   },
   {
-   "id": "sandbox-cache",
+   "id": "sandbox-repos",
    "from": "sandbox",
-   "to": "cache",
-   "label": "호스트에서 재스캔"
+   "to": "repos",
+   "label": "읽기 전용 마운트",
+   "variant": "security"
+  },
+  {
+   "id": "worker-out",
+   "from": "worker",
+   "to": "out",
+   "label": "산출물 쓰기"
   },
   {
    "id": "api-out",
    "from": "api",
    "to": "out",
-   "label": "결과 · 결정 · 패치 저장"
-  },
-  {
-   "id": "agent-local",
-   "from": "agent",
-   "to": "local",
-   "label": "코드 사용 여부 판정",
-   "variant": "security"
+   "label": "산출물 읽기"
   }
  ],
  "cards": [
   {
    "dot": "cyan",
-   "title": "① 수집 (코드, 결정론)",
+   "title": "기술 스택",
    "items": [
-    "Syft나 lockfile로 SBOM을 만들고 CycloneDX, SPDX 파일도 직접 받음",
-    "OSV로 취약점을 찾고 EPSS, KEV, 수정 버전, import 위치를 붙임",
-    "npm, Maven, PyPI, Go 등 8개 생태계 조회. 외부 응답은 전부 캐시 경유"
-   ]
-  },
-  {
-   "dot": "violet",
-   "title": "② 판단 (규칙 + AI)",
-   "items": [
-    "규칙이 위험 점수와 1차 등급을 계산. KEV와 악성 패키지는 하한 적용",
-    "AI는 코드나 어드바이저리를 읽고 한 단계까지만 조정, 사유 필수",
-    "숫자는 코드가 채우고, 계약을 어긴 답은 규칙 결과로 대체"
+    "백엔드: Python 3.12, uv, FastAPI, Pydantic v2, httpx, psycopg 연결 풀",
+    "화면: React, Vite, TypeScript, Tailwind",
+    "데이터: Syft 1.57.2, OSV, EPSS, CISA KEV",
+    "운영: Docker, Kubernetes, Kustomize, PostgreSQL"
    ]
   },
   {
    "dot": "emerald",
-   "title": "③ 수정안 · 검증 · 승인",
+   "title": "작업과 복구",
    "items": [
-    "명령은 코드가 조립. 샌드박스 사본에서 바뀐 내용을 diff로 저장",
-    "담당자가 승인, 보류, 반려를 사유와 함께 기록",
-    "승인분은 작업 큐에서 함께 검증해 패치 하나와 PR 초안으로 내보냄. 푸시 없음"
+    "화면의 검증과 함께 내보내기는 큐 작업, 작업자가 실행",
+    "DB가 잠깐 끊겨도 끝난 작업의 결과를 다시 기록",
+    "데몬은 작업자보다 먼저 뜨고 나중에 내려감",
+    "테이블 생성은 잠금으로 직렬화, 변경은 버전별 SQL"
    ]
   },
   {
    "dot": "rose",
-   "title": "기술 스택",
+   "title": "네트워크와 비밀값",
    "items": [
-    "백엔드: Python 3.12, uv, Pydantic v2, httpx, FastAPI, uvicorn",
-    "프론트: React 19, TypeScript, Vite, Tailwind 4. 빌드 결과를 FastAPI가 서빙",
-    "AI: Anthropic API(tool use), OpenAI와 Ollama 어댑터. 검증: Docker. 테스트: pytest"
+    "들어오는 통신은 기본 차단, API 8000만 허용",
+    "샌드박스는 API, 다른 파드, 메타데이터 주소에 닿지 못함",
+    "사설 주소의 DB는 그 주소만 여는 정책으로 허용",
+    "컨테이너마다 쓰는 시크릿 키만 전달, 샌드박스는 0개"
    ]
   },
   {
-   "dot": "amber",
-   "title": "저장과 운영 설계",
+   "dot": "violet",
+   "title": "모델 구성과 사내망 밖 통신",
    "items": [
-    "프로토타입은 실행별 파일 저장, DB 없음. 작업 큐는 프로세스 안 작업자 1개",
-    "운영은 PostgreSQL과 외부 큐, 작업자는 쿠버네티스 Job으로 교체",
-    "API와 파일 형식은 그대로 두고 뒤쪽만 바꾸는 구조"
+    "기본은 외부 모델 하나, 2단계 모드는 사내 LLM만 코드를 읽음",
+    "밖으로 나가는 것은 외부 LLM API, 공개 취약점 DB, npm 레지스트리",
+    "리플레이 모드는 네트워크와 Docker 없이 동작"
    ]
   }
  ]

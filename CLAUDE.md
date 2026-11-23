@@ -3,6 +3,7 @@
 > 이 파일은 **무엇을 만드는지와 지켜야 할 규칙**(context)이다.
 > **어떻게 진행하는지**(단계·게이트·검증 루프)는 `HARNESS.md`를 따른다.
 > 요구사항 원본은 `docs/REQUIREMENTS.md`. 충돌 시 REQUIREMENTS > CLAUDE > HARNESS 순.
+> 기능별 정상 동작과 확인 방법은 `docs/GUIDE.md`, 결정의 이유는 `HANDOFF.md` 2장, 문서 전체 목록은 `README.md` 6장.
 
 ## 1. 프로젝트 한 줄
 
@@ -25,8 +26,8 @@ npm 레포의 취약점을 CVSS 목록이 아니라 **NOW / NEXT / MONITOR** 3�
 
 ```
 sbom-triage/
-├─ CLAUDE.md / HARNESS.md
-├─ docs/REQUIREMENTS.md
+├─ README.md / AGENTS.md / CLAUDE.md / HARNESS.md / HANDOFF.md
+├─ docs/REQUIREMENTS.md, docs/GUIDE.md
 ├─ backend/
 │  └─ triage/
 │     ├─ ingest.py       # 입력 형식 판별과 변환: lock 파일, 스캐너 결과, CycloneDX XML, SPDX tag-value, 표와 JSON 목록 → Component
@@ -42,7 +43,7 @@ sbom-triage/
 │     ├─ runner.py       # 단계 호출 순서와 이벤트 기록 (CLI·API 공용)
 │     ├─ eval.py         # golden 일치율, NOW 누락
 │     ├─ decide.py       # 수정안 목록, 담당자 결정 기록, 승인분 내보내기 (원본 레포는 건드리지 않음)
-│     ├─ jobs.py         # 화면에서 시작하는 느린 작업의 큐. 작업은 저장 계층의 기록이고 작업자(`triage worker`)가 가져가 실행한다
+│     ├─ jobs.py         # 화면에서 시작하는 느린 작업의 큐. 작업은 저장 계층의 기록이고 작업자(`triage worker`)가 가져가 실행한다. 종류: `export_together`, `service_check`, `verify`, `agent`
 │     ├─ services.py     # 서비스 등록과 자동 재분류: 다시 스캔해 현재 실행과 비교하고, 달라졌을 때만 새 실행을 만든다 (모델 호출 없음)
 │     ├─ notify.py       # Slack 호환 웹훅 알림 (코드 없이 요약만)
 │     ├─ auth.py         # 로그인(OIDC)과 역할(열람, 승인, 관리), 서명된 세션 쿠키. `TRIAGE_AUTH=off`가 기본
@@ -50,7 +51,7 @@ sbom-triage/
 │     └─ api.py          # FastAPI
 ├─ web/                  # ⑦ React(Vite) 대시보드
 ├─ Dockerfile            # API와 작업자가 함께 쓰는 이미지 (.dockerignore가 .env, out/, 대상 레포를 뺀다)
-├─ deploy/               # docker-compose.yml (PostgreSQL), k8s/ (쿠버네티스 매니페스트, k8s/README.md 참고)
+├─ deploy/               # docker-compose.yml (PostgreSQL), k8s/ (base, components: postgres, sandbox-dind, ingress, local-llm, overlays: local, multinode. k8s/README.md 참고)
 ├─ kit/                  # 본선용 하네스 키트 (절차서, 문서 틀, 점검 스크립트). kit/README.md 참고
 ├─ scripts/gen_types.py  # 스키마에서 프론트 타입 생성
 ├─ fixtures/

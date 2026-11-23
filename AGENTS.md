@@ -1,6 +1,21 @@
 # AGENTS.md — Codex와 그 밖의 코딩 에이전트용
 
-이 파일 하나로 작업을 시작할 수 있게 썼다. 자세한 규칙은 `CLAUDE.md`(무엇을 만들고 무엇을 지키는가), 진행 방식은 `HARNESS.md`, 결정 이력은 `HANDOFF.md`(D1 ~ D49)에 있다. 충돌하면 현장 과제 안내 → `docs/REQUIREMENTS.md` → `CLAUDE.md` → `HARNESS.md` → `kit/` 순서로 따른다.
+이 파일 하나로 작업을 시작할 수 있게 썼다. 충돌하면 현장 과제 안내 → `docs/REQUIREMENTS.md` → `CLAUDE.md` → `HARNESS.md` → `kit/` 순서로 따른다.
+
+더 읽을 때의 순서와 각 문서의 상태:
+
+| 순서 | 문서 | 내용 | 주의 |
+|---|---|---|---|
+| 1 | `AGENTS.md` | 이 파일 | |
+| 2 | `docs/GUIDE.md` | 기능별로 무엇이 나와야 정상인지, 확인 방법, 흔한 문제 | 동작을 바꾸면 같이 고친다 |
+| 3 | `CLAUDE.md` | 스택, 디렉터리, 절대 규칙 원문, 명령 모음, 용어 | 규칙의 기준 |
+| 4 | `HARNESS.md` | 단계별 통과 조건(2장), 날짜별 진행 기록(7장) | 7장은 누적 기록이라 오래된 줄이 현재와 다를 수 있다 |
+| 5 | `HANDOFF.md` 2장 | 결정 이력 D1 ~ D53과 이유 | 2장만 현행이다. 나머지 장은 2026-10-31의 초기 기록이다 |
+| 필요할 때 | `deploy/k8s/README.md` | 쿠버네티스 구성과 한계 | |
+| 필요할 때 | `docs/REQUIREMENTS.md` | 요구사항 원본 | |
+| 읽지 않음 | `docs/reviews/`, `docs/poc-results.md`, `docs/application/`, `poc/` | 지난 검토와 실험, 지원서 | 이력이다. 현재 동작의 근거로 쓰지 않는다 |
+
+문서와 코드가 다르면 코드와 테스트가 맞다. 다른 점을 발견하면 문서를 고친다.
 
 ## 1. 한 줄 요약
 
@@ -15,6 +30,14 @@ uv run pytest -q                                       # 바꾸기 전과 후에
 bash kit/scripts/check.sh --fast                       # 절대 규칙 정적 점검
 ```
 
+새로 복제한 저장소에 없는 것:
+
+- `out/`(실행 결과)은 git에 없다. 화면에 보일 실행은 `scan`으로 먼저 만든다.
+- `fixtures/demo-repo/`와 `fixtures/eval/`(분석 대상 저장소)은 git에 없다. `fixtures/demo-repo.ref`, `fixtures/eval-repos.ref`의 주소와 커밋으로 받는다(`README.md` 2장).
+- `.env`는 없다. 없어도 재생 모드와 규칙 결과는 돈다: `DEMO_MODE=replay uv run python -m triage scan fixtures/blind/sbom-a.cdx.json`
+- `web/dist`는 없다. 화면이 필요하면 `cd web && pnpm install && pnpm build`.
+- PostgreSQL 테스트는 `--extra postgres`와 DB(`docker compose -f deploy/docker-compose.yml up -d postgres`)가 없으면 건너뛴다.
+
 본선 당일의 첫 지시는 `kit/START.md 읽고 그대로 해.`이다.
 
 ## 3. 하지 않는 일 (Claude Code에서는 설정이 막지만 Codex에서는 이 목록이 유일한 장치다)
@@ -25,7 +48,8 @@ bash kit/scripts/check.sh --fast                       # 절대 규칙 정적 �
 4. 사람이 시키기 전에는 커밋하지 않는다. 커밋 메시지와 PR 본문에 AI 기여자 표기(`Co-Authored-By`, "Generated with ...")를 넣지 않는다.
 5. 비용이 드는 일(API 모델을 30건 넘게 호출)은 먼저 묻는다.
 6. 사용자의 앱(Docker Desktop 등)을 끄거나 다시 띄우지 않는다.
-7. 실제 데모 실행(`out/20261118-030615-realworld`)에 결정(승인)을 기록하지 않는다. 확인은 사본으로 한다.
+7. 기준으로 쓰는 실행(작성자의 컴퓨터에서는 `out/20261118-030615-realworld`)에 결정(승인)을 기록하지 않는다. 확인은 사본으로 하고, 시험용 실행을 `out/`에 남기지 않는다.
+8. `fixtures/cache/`는 재생의 기준 자료다. 실조회 스캔이 이 폴더를 바꾸면(특히 KEV 목록 파일) 커밋하기 전에 사람에게 묻는다.
 
 ## 4. 절대 규칙 (요약, 원문은 `CLAUDE.md` 4장)
 
@@ -93,18 +117,34 @@ backend/triage/
   enrich/          EPSS, KEV, semver, import 검색
   score.py         ④ 규칙 점수 (순수 함수)
   agent/           ⑤ LLM 판단 (어댑터: anthropic, openai, local, replay)
-  verify/          ⑥ Docker 샌드박스 검증
+  verify/          ⑥ Docker 샌드박스 검증 (sandbox.py 실행, apply.py 명령 조립, run.py 판정)
   runner.py        단계 순서와 이벤트 기록 (CLI와 API 공용)
   services.py      서비스 등록과 자동 재분류
   decide.py        수정안, 결정, 내보내기
-  jobs.py          작업 큐와 작업자
-  store/           저장 계층 (file, postgres)
+  jobs.py          작업 큐와 작업자. 작업 종류: export_together, service_check, verify, agent
+  store/           저장 계층 (file, postgres), 마이그레이션
   auth.py          로그인(OIDC)과 역할
   api.py           FastAPI
 web/               React 대시보드 (빌드 결과를 FastAPI가 서빙)
+deploy/            docker-compose.yml(PostgreSQL), k8s/(base, components, overlays)
 kit/               본선 하네스 키트 (절차서, 문서 틀, 점검 스크립트)
 docs/finals/       본선 문서 (TASK, GAP, DATA_NOTES, DECISIONS, HANDOFF, ...)
 ```
+
+실행 방식은 세 가지이고 코드는 같다.
+
+| 방식 | 설정 | 비고 |
+|---|---|---|
+| 단독 | `TRIAGE_STORE=file` (기본) | 작업자는 API 프로세스 안의 스레드. 네트워크, Docker, DB 없이 재생 모드가 돈다. 이 방식이 깨지면 안 된다 |
+| Compose | `TRIAGE_STORE=postgres`, `DATABASE_URL` | `python -m triage db init`, `python -m triage worker` |
+| 쿠버네티스 | `deploy/k8s/overlays/{local,multinode}` | 이미지 하나로 API와 작업자. 샌드박스와 사내 LLM은 선택 컴포넌트 |
+
+새 기능을 넣을 때 확인할 것:
+
+- 느린 일(모델 호출, 샌드박스, 스캔)은 API에서 직접 하지 않고 `jobs.py`에 작업 종류로 넣는다. 입력은 값만 넘긴다.
+- 새 API 경로에는 역할 의존성을 단다(`dependencies=VIEW`나 `APPROVE` 등). `kit/scripts/check.sh`가 데코레이터의 `dependencies=`를 찾는다.
+- 기록을 읽고 쓰는 코드는 `store/` 인터페이스만 쓴다. 저장 방식에 닿는 변경은 `tests/test_store.py`에서 두 모드로 확인한다.
+- `models.py`를 바꾸면 `uv run python scripts/gen_types.py`를 같은 커밋에서 돌린다.
 
 자주 쓰는 명령은 `CLAUDE.md` 6장에 있다.
 
@@ -121,4 +161,14 @@ docs/finals/       본선 문서 (TASK, GAP, DATA_NOTES, DECISIONS, HANDOFF, ...
 
 ## 9. LLM 설정
 
-모델과 제공자는 `.env`의 `LLM_PROVIDER`, `LLM_MODEL`로 주입하고 코드에 모델명을 쓰지 않는다. 기본은 Anthropic(`claude-opus-5-5`)이고 OpenAI 어댑터(`backend/triage/agent/llm_openai.py`)가 있다. OpenAI 어댑터는 실제 호출로 확인하지 않았으므로 처음 쓸 때 `uv run python -m triage doctor --llm`부터 돌린다. 30분 안에 안 되면 `LLM_PROVIDER=none`(규칙만)으로 한 줄기를 먼저 완성한다.
+모델과 제공자는 `.env`의 `LLM_PROVIDER`, `LLM_MODEL`로 주입하고 코드에 모델명을 쓰지 않는다.
+
+| 설정 | 동작 | 확인 상태 |
+|---|---|---|
+| `LLM_PROVIDER=anthropic` | 기본. 모델 `claude-opus-5-5` | 실제 호출로 확인 |
+| `LLM_PROVIDER=openai` | `backend/triage/agent/llm_openai.py` | 실제 호출로 확인하지 않았다. 처음 쓸 때 `uv run python -m triage doctor --llm`부터 돌린다 |
+| `LLM_PROVIDER=local` | OpenAI 호환 서버. `LOCAL_LLM_BASE_URL`, `LOCAL_LLM_MODEL` | Ollama `qwen2.5:7b`로 확인. 작은 모델은 도구 호출을 자주 틀려 규칙 결과로 남는 항목이 생긴다 |
+| `LLM_PROVIDER=none` | 규칙 결과만 | |
+| `LLM_CODE_PROVIDER=local` | 2단계 모드. 사내 모델만 코드를 읽는다 | 외부로 나간 요청에 코드와 파일 이름이 없는 것을 요청 기록으로 확인. 판독 정확도는 측정하지 않았다 |
+
+30분 안에 모델이 붙지 않으면 `LLM_PROVIDER=none`(규칙만)으로 한 줄기를 먼저 완성한다.
