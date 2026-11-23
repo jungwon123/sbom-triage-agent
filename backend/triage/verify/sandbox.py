@@ -95,7 +95,8 @@ def run(repo: Path, apply_cmd: str | None = None, setup_cmd: str | None = None,
 
     subprocess.run(["docker", "volume", "create", vol], capture_output=True)
     try:
-        ok = step("copy", "cp -a /src/. /work/ && rm -rf /work/.git /work/node_modules", "none")
+        # the container has no CAP_CHOWN, so keeping the owner fails whenever the repo is not root's
+        ok = step("copy", "cp -a --no-preserve=ownership /src/. /work/ && rm -rf /work/.git /work/node_modules", "none")
         if ok and apply_cmd:
             ok = step("apply", apply_cmd, "bridge")
         if ok:
