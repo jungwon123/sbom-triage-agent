@@ -1,50 +1,106 @@
-"""PostgreSQL store. One connection per thread; every write is one transaction."""
+"""PostgreSQL store. Connections come from a bounded pool; every write is one transaction.
+
+The pool (psycopg_pool.ConnectionPool) checks a connection before handing it out and replaces a broken
+one, so a connection that died while a long job ran, or across a database failover, is not reused.
+Defaults that a DATABASE_URL may override: connect_timeout=5 and TCP keepalives after 30 idle seconds,
+so a vanished database is noticed instead of holding a thread until the TCP timeout.
+TRIAGE_DB_POOL_MAX caps the connections of one process (default 10).
+"""
 from __future__ import annotations
 
+import contextlib
 import datetime as dt
+import functools
+import os
 import pathlib
 import threading
+from collections.abc import Iterator
 from typing import Any
 
 import psycopg
 import psycopg.sql
+from psycopg.conninfo import conninfo_to_dict, make_conninfo
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
+from psycopg_pool import ConnectionPool
 
 SCHEMA = pathlib.Path(__file__).with_name("schema.sql")
+MIGRATIONS = pathlib.Path(__file__).with_name("migrations")
+INIT_LOCK = 7_402_511            # advisory lock key: one process at a time creates the tables
+CONN_DEFAULTS = {"connect_timeout": 5, "keepalives_idle": 30, "keepalives_interval": 10, "keepalives_count": 3}
 
 
 class PostgresStore:
     name = "postgres"
 
     def __init__(self, url: str, schema: str | None = None):
-        self.url = url
+        given = conninfo_to_dict(url)
+        self.url = make_conninfo(url, **{k: v for k, v in CONN_DEFAULTS.items() if k not in given})
         self.schema = schema              # a schema of its own (tests); None means the default one
         self._local = threading.local()
+        self._pool: ConnectionPool | None = None
+        self._pool_lock = threading.Lock()
+
+    def _configure(self, conn: psycopg.Connection) -> None:
+        if self.schema:                   # every connection of the pool, not only the first one
+            conn.execute(psycopg.sql.SQL("CREATE SCHEMA IF NOT EXISTS {0}").format(psycopg.sql.Identifier(self.schema)))
+            conn.execute(psycopg.sql.SQL("SET search_path TO {0}").format(psycopg.sql.Identifier(self.schema)))
+
+    def _pool_get(self) -> ConnectionPool:
+        with self._pool_lock:
+            if self._pool is None:
+                # autocommit: a single statement commits by itself, and `with conn.transaction()` is a real
+                # transaction. Without it psycopg opens one implicitly and those blocks turn into savepoints
+                # that nothing ever commits.
+                pool = ConnectionPool(
+                    self.url, min_size=1, max_size=int(os.environ.get("TRIAGE_DB_POOL_MAX", "10")),
+                    kwargs={"row_factory": dict_row, "autocommit": True}, configure=self._configure,
+                    check=ConnectionPool.check_connection, open=False, name="triage")
+                pool.open()
+                self._pool = pool
+            return self._pool
+
+    @contextlib.contextmanager
+    def connection(self) -> Iterator[psycopg.Connection]:
+        """A pooled connection for the block. Nested use on one thread shares the outer connection."""
+        held = getattr(self._local, "conn", None)
+        if held is not None:
+            yield held
+            return
+        with self._pool_get().connection() as conn:
+            self._local.conn = conn
+            try:
+                yield conn
+            finally:
+                self._local.conn = None
 
     def _conn(self) -> psycopg.Connection:
-        conn = getattr(self._local, "conn", None)
-        if conn is None or conn.closed:
-            # autocommit: a single statement commits by itself, and `with conn.transaction()` is a real
-            # transaction. Without it psycopg opens one implicitly and those blocks turn into savepoints
-            # that nothing ever commits.
-            conn = psycopg.connect(self.url, row_factory=dict_row, autocommit=True)
-            if self.schema:               # every thread's connection, not only the first one
-                conn.execute(psycopg.sql.SQL("CREATE SCHEMA IF NOT EXISTS {0}").format(psycopg.sql.Identifier(self.schema)))
-                conn.execute(psycopg.sql.SQL("SET search_path TO {0}").format(psycopg.sql.Identifier(self.schema)))
-            self._local.conn = conn
-        return conn
+        """The connection of the store method that is running (every public method holds one)."""
+        return self._local.conn
 
     def init(self) -> int:
-        """Create tables if missing. -> schema version."""
+        """Create tables if missing. -> schema version. Safe to call from several processes at once."""
         with self._conn().transaction():
+            # CREATE TABLE IF NOT EXISTS is not safe against a concurrent CREATE; the lock makes the
+            # second caller wait, and it is released when the transaction ends.
+            self._conn().execute("SELECT pg_advisory_xact_lock(%s)", (INIT_LOCK,))
             self._conn().execute(SCHEMA.read_text())
+            # Changes to tables that already exist: store/migrations/<version>_<name>.sql, applied once each
+            # in version order under the same lock. schema.sql stays the starting point (versions 1 to 3).
+            have = self._conn().execute("SELECT max(version) AS v FROM schema_version").fetchone()["v"] or 0
+            for path in sorted(MIGRATIONS.glob("[0-9]*.sql"), key=lambda p: int(p.name.split("_")[0])):
+                version = int(path.name.split("_")[0])
+                if version > have:
+                    self._conn().execute(path.read_text())
+                    self._conn().execute("INSERT INTO schema_version (version) VALUES (%s)", (version,))
         return self._conn().execute("SELECT max(version) AS v FROM schema_version").fetchone()["v"]
 
     def close(self) -> None:
-        conn = getattr(self._local, "conn", None)
-        if conn is not None and not conn.closed:
-            conn.close()
+        """Close the pool. The next use opens a new one."""
+        with self._pool_lock:
+            pool, self._pool = self._pool, None
+        if pool is not None:
+            pool.close()
 
     # ---- runs ----
     def _ensure_run(self, cur, run_id: str) -> None:
@@ -246,3 +302,17 @@ class PostgresStore:
             ORDER BY l.id DESC, f.seq LIMIT %s"""
         rows = self._conn().execute(sql, (*args, limit)).fetchall()
         return rows
+
+
+def _pooled(fn):
+    @functools.wraps(fn)
+    def run(self: PostgresStore, *args: Any, **kwargs: Any) -> Any:
+        with self.connection():
+            return fn(self, *args, **kwargs)
+    return run
+
+
+# every public method runs with one pooled connection, which _conn() returns
+for _name, _fn in list(vars(PostgresStore).items()):
+    if callable(_fn) and not _name.startswith("_") and _name not in ("connection", "close"):
+        setattr(PostgresStore, _name, _pooled(_fn))

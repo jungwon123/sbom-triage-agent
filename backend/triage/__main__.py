@@ -47,9 +47,9 @@ def db_command(a: argparse.Namespace) -> int:
     if a.action == "init":
         print(json.dumps({"schema_version": pg.init()})); return 0
     if a.action == "status":
-        conn = pg._conn()
-        counts = {t: conn.execute(f"SELECT count(*) AS n FROM {t}").fetchone()["n"]
-                  for t in ("runs", "findings", "triage", "events", "decisions", "http_cache", "jobs", "workers", "services")}
+        with pg.connection() as conn:
+            counts = {t: conn.execute(f"SELECT count(*) AS n FROM {t}").fetchone()["n"]
+                      for t in ("runs", "findings", "triage", "events", "decisions", "http_cache", "jobs", "workers", "services")}
         print(json.dumps(counts, indent=1)); return 0
     pg.init()
     src = FileStore()

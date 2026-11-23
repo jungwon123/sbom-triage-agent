@@ -11,8 +11,7 @@ def import_run(src: FileStore, dst: PostgresStore, run_dir: pathlib.Path) -> dic
     """Replace the run's rows with the file copy. Events and decisions are re-inserted in order."""
     if not src.has_run(run_dir):
         raise FileNotFoundError(f"{run_dir} has no meta.json")
-    conn = dst._conn()
-    with conn.transaction():
+    with dst.connection() as conn, conn.transaction():
         conn.execute("DELETE FROM runs WHERE id = %s", (run_dir.name,))     # cascades to the run's rows
     counts = {}
     for doc in ("meta", "findings", "triage"):

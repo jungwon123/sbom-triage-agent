@@ -23,7 +23,8 @@ def postgres():
     # tests own a schema of their own so they never touch imported runs
     pg = PostgresStore(TEST_URL, schema="triage_test")
     pg.init()
-    pg._conn().execute(f"TRUNCATE {TABLES} RESTART IDENTITY CASCADE")
+    with pg.connection() as conn:
+        conn.execute(f"TRUNCATE {TABLES} RESTART IDENTITY CASCADE")
     return pg
 
 
@@ -156,3 +157,18 @@ def test_writes_are_visible_to_another_connection(tmp_path):
         n = other.execute("SELECT (SELECT count(*) FROM runs) + (SELECT count(*) FROM events) + (SELECT count(*) FROM http_cache)").fetchone()[0]
     assert n == 3
     pg.close()
+
+
+def test_a_migration_file_is_applied_once_in_version_order(tmp_path, monkeypatch):
+    from triage.store import postgres as pg_mod
+    pg = postgres()
+    try:
+        (tmp_path / "4_add_note.sql").write_text("ALTER TABLE services ADD COLUMN IF NOT EXISTS note text;")
+        monkeypatch.setattr(pg_mod, "MIGRATIONS", tmp_path)
+        assert pg.init() == 4 and pg.init() == 4
+        with pg.connection() as conn:
+            assert conn.execute("SELECT count(*) AS n FROM schema_version WHERE version = 4").fetchone()["n"] == 1
+            conn.execute("ALTER TABLE services DROP COLUMN note")
+            conn.execute("DELETE FROM schema_version WHERE version = 4")
+    finally:
+        pg.close()
