@@ -29,6 +29,7 @@ sbom-triage/
 ├─ docs/REQUIREMENTS.md
 ├─ backend/
 │  └─ triage/
+│     ├─ ingest.py       # 입력 형식 판별과 변환: lock 파일, 스캐너 결과, CycloneDX XML, SPDX tag-value, 표와 JSON 목록 → Component
 │     ├─ sbom.py         # ① Syft 실행 + lockfile fallback
 │     ├─ scan.py         # ② SBOM 컴포넌트 → OSV querybatch → Finding
 │     ├─ enrich/         # ③ epss.py, kev.py, semver.py, usages.py(Python 파일 순회)
@@ -87,7 +88,9 @@ sbom-triage/
 ```bash
 uv run python -m triage doctor                         # 환경 점검 (--llm: LLM 호출 1회 확인)
 uv run python -m triage scan fixtures/demo-repo        # ①~④ (레포 디렉터리)
-uv run python -m triage scan path/to/bom.cdx.json      # ①~④ (SBOM 파일: CycloneDX 또는 SPDX JSON)
+uv run python -m triage scan path/to/bom.cdx.json      # ①~④ (파일 입력: SBOM, 스캐너 결과, lock 파일, 표. 표는 --columns name=<열>,version=<열> --ecosystem npm)
+uv run python -m triage inspect data                   # 파일이나 폴더가 무슨 형식이고 읽을 수 있는지 (읽기 전용)
+uv run python -m triage seed --kev kev.json --epss epss.csv.gz   # 받은 취약점 데이터 파일을 넣어 네트워크 없이 사용
 uv run python -m triage run fixtures/demo-repo --setup "npx prisma generate"   # ①~⑥ 한 번에
 uv run python -m triage agent out/<run_id>             # ⑤
 docker compose -f deploy/docker-compose.yml up -d postgres   # 운영 저장소 띄우기 (로컬은 127.0.0.1:54329)
