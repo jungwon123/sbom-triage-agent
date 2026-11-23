@@ -65,8 +65,8 @@ def resolve_target(text: str, restricted: bool) -> pathlib.Path:
     if not path.is_absolute():
         path = runner.ROOT / path
     path = path.resolve()
-    if not (path.is_dir() or (path.is_file() and path.suffix == ".json")):
-        raise ServiceError("대상은 저장소 디렉터리이거나 SBOM JSON 파일이어야 합니다.")
+    if not (path.is_dir() or path.is_file()):
+        raise ServiceError("대상은 저장소 디렉터리이거나 입력 파일(SBOM, 스캐너 결과, lock 파일, 표)이어야 합니다.")
     if restricted and not any(path == r or r in path.parents for r in allowed_roots()):
         raise ServiceError("허용된 위치 밖의 경로입니다. TRIAGE_SERVICE_ROOTS에 등록된 디렉터리 아래만 등록할 수 있습니다.")
     return path

@@ -32,6 +32,24 @@ def key(url: str, data: Any = None) -> str:
 DAY = 86_400.0
 
 
+def snapshot_get(name: str) -> Any | None:
+    """A data file handed over on site (no network): stored once with `triage seed`, read like a cached response."""
+    from . import store
+    hit = store.get().cache_get(key("snapshot:" + name))
+    return hit[0] if hit else None
+
+
+def snapshot_put(name: str, body: Any) -> None:
+    from . import store
+    store.get().cache_put(key("snapshot:" + name), "snapshot:" + name, body)
+
+
+def seed(url: str, body: Any, data: Any = None) -> None:
+    """Store `body` as if it had been fetched from `url` (an offline copy of a public feed)."""
+    from . import store
+    store.get().cache_put(key(url, data), url, body)
+
+
 def fetch_json(url: str, data: Any = None, timeout: float = 60, max_age: float | None = None) -> Any | None:
     """max_age (seconds) is for feeds that change daily (KEV, EPSS): an older copy is fetched again in
     live mode. If that fetch fails the old copy is still returned, with a warning. Replay never refetches."""

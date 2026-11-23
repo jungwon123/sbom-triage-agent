@@ -51,6 +51,13 @@ export interface CodeRef {
   snippet: string;
 }
 
+export interface Reported {
+  id: string;
+  cvss?: number | null;
+  severity?: string | null;
+  fixed?: string | null;
+}
+
 export interface Component {
   name: string;
   version: string;
@@ -59,6 +66,7 @@ export interface Component {
   scope?: "prod" | "dev";
   direct?: boolean;
   paths?: string[][];
+  reported?: Reported[];
 }
 
 export interface Finding {

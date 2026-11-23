@@ -92,6 +92,67 @@ def services_command(a: argparse.Namespace) -> int:
     print(json.dumps(rows, ensure_ascii=False, indent=1)); return 0
 
 
+def columns_of(text: str | None) -> dict[str, str] | None:
+    """"name=Package,version=Ver" -> {"name": "Package", "version": "Ver"}."""
+    if not text:
+        return None
+    pairs = [p.split("=", 1) for p in text.split(",") if "=" in p]
+    return {k.strip(): v.strip() for k, v in pairs}
+
+
+def inspect_command(a: argparse.Namespace) -> int:
+    """What is this file or folder, and can the pipeline read it? Reads only; prints no file content."""
+    from . import ingest
+    if not a.target.exists():
+        print(f"없는 경로: {a.target}"); return 2
+    if a.target.is_file():
+        rows = [ingest.describe(a.target, columns_of(a.columns), a.ecosystem)]
+    else:
+        rows = ingest.survey(a.target)
+        repo = ingest.repo_files(a.target)
+        if repo:
+            print("저장소로 스캔할 때 읽는 의존성 파일: " + ", ".join(str(p.relative_to(a.target)) for p in repo))
+    if a.json:
+        print(json.dumps(rows, ensure_ascii=False, indent=1)); return 0
+    if not rows:
+        print("입력으로 쓸 수 있는 파일을 찾지 못했습니다."); return 1
+    for r in rows:
+        if not r["supported"]:
+            print(f"[미지원] {r['file']}\n         {r['why']}"); continue
+        eco = ", ".join(f"{k} {v}" for k, v in r["ecosystems"].items()) or "없음"
+        print(f"[지원]   {r['file']}\n         형식 {r['format']}, 컴포넌트 {r['components']}개 ({eco}), 직접 {r['direct']}, 개발용 {r['dev']}, "
+              f"입력이 보고한 취약점 {r['reported_vulnerabilities']}건")
+        if r["not_scannable"]:
+            print(f"         조회하지 못하는 컴포넌트: {r['not_scannable']}")
+        for n in r["notes"]:
+            print(f"         - {n}")
+    return 0
+
+
+def seed_command(a: argparse.Namespace) -> int:
+    """Load vulnerability data files handed over on site, for places with no network."""
+    import gzip
+    from . import cache
+    from .enrich import epss, kev
+    out = {}
+    read = lambda p: gzip.decompress(p.read_bytes()).decode() if p.suffix == ".gz" else p.read_text()  # noqa: E731
+    if a.kev:
+        body = json.loads(read(a.kev))
+        if not isinstance(body.get("vulnerabilities"), list):
+            print("KEV 파일이 아닙니다 (vulnerabilities 목록이 없음)"); return 1
+        cache.seed(kev.URL, body)
+        out["kev"] = len(body["vulnerabilities"])
+    if a.epss:
+        rows = epss.parse_csv(read(a.epss))
+        if not rows:
+            print("EPSS 파일에서 읽은 행이 없습니다 (cve,epss,percentile 형식이어야 함)"); return 1
+        cache.snapshot_put("epss", rows)
+        out["epss"] = len(rows)
+    if not out:
+        print("사용: triage seed --kev <known_exploited_vulnerabilities.json> --epss <epss_scores.csv[.gz]>"); return 2
+    print(json.dumps(out)); return 0
+
+
 def worker_command(a: argparse.Namespace) -> int:
     """Run queued jobs until told to stop. The job in hand is finished before the process exits."""
     import signal
@@ -126,6 +187,8 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("target", type=pathlib.Path, help="repo directory or SBOM file (CycloneDX/SPDX JSON)")
         p.add_argument("--name")
         p.add_argument("--no-syft", action="store_true")
+        p.add_argument("--columns", help="for a table or JSON record list: name=<column>,version=<column>[,ecosystem=,group=,vuln=,...]")
+        p.add_argument("--ecosystem", help="for a table with no ecosystem column: npm, Maven, PyPI, Go, ...")
         context_args(p)
         if name == "run":
             p.add_argument("--limit", type=int, help="max findings sent to the LLM")
@@ -140,6 +203,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("action", choices=["init", "import", "status"])
     p.add_argument("run_dirs", nargs="*", type=pathlib.Path, help="for import: run directories (default: every run under out/)")
     p.add_argument("--cache", action="store_true", help="for import: also copy fixtures/cache into the database")
+    p = sub.add_parser("inspect", help="say what a file or folder is and whether the pipeline can read it")
+    p.add_argument("target", type=pathlib.Path); p.add_argument("--json", action="store_true")
+    p.add_argument("--columns"); p.add_argument("--ecosystem")
+    p = sub.add_parser("seed", help="load KEV and EPSS data files for use without network")
+    p.add_argument("--kev", type=pathlib.Path); p.add_argument("--epss", type=pathlib.Path)
     p = sub.add_parser("services", help="registered services: add, list, check (re-triage), remove")
     p.add_argument("action", choices=["add", "list", "check", "remove"])
     p.add_argument("id", nargs="?"); p.add_argument("target", nargs="?", help="for add: repo directory or SBOM file")
@@ -184,6 +252,10 @@ def main(argv: list[str] | None = None) -> int:
         return db_command(a)
     if a.cmd == "worker":
         return worker_command(a)
+    if a.cmd == "inspect":
+        return inspect_command(a)
+    if a.cmd == "seed":
+        return seed_command(a)
     if a.cmd == "services":
         return services_command(a)
     if a.cmd == "doctor":
@@ -191,7 +263,12 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd == "schema":
         print(models.schema_json()); return 0
     if a.cmd in ("scan", "run"):
-        run = runner.scan(a.target, a.name, context_of(a), use_syft=not a.no_syft)
+        from . import ingest
+        try:
+            run = runner.scan(a.target, a.name, context_of(a), use_syft=not a.no_syft, columns=columns_of(a.columns),
+                              ecosystem=a.ecosystem)
+        except ingest.UnsupportedInput as e:
+            print(f"입력을 읽지 못했습니다: {e}\n형식 확인: uv run python -m triage inspect {a.target}"); return 1
         if a.cmd == "run":
             runner.agent(run, a.limit)
             if not a.no_verify:

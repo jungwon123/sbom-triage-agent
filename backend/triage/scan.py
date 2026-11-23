@@ -67,8 +67,16 @@ def query_osv(components: list[Component]) -> list[tuple[Component, str]] | None
 
 def scan(components: list[Component], repo: pathlib.Path | None) -> tuple[list[Finding], dict]:
     hits = query_osv(components)
+    # what the input file itself reported: kept even when OSV does not list it or cannot be reached
+    told = {(c.purl, r.id): r for c in components for r in c.reported if r.id}
+    osv_ok = hits is not None
     if hits is None:
-        raise RuntimeError("OSV unavailable and no cached response (try DEMO_MODE=live with network)")
+        if not told:
+            raise RuntimeError("OSV unavailable and no cached response (try DEMO_MODE=live with network)")
+        log.warning("OSV unavailable: continuing with the %d vulnerabilities the input reports", len(told))
+        hits = []
+    from_osv = len(hits)
+    hits = hits + [(c, r.id) for c in components for r in c.reported if r.id]     # after OSV's, so OSV wins a tie
     ids = sorted({vid for _, vid in hits})
     with cf.ThreadPoolExecutor(8) as ex:
         details = dict(zip(ids, ex.map(lambda i: cache.fetch_json(OSV_VULN + i) or {}, ids)))
@@ -79,12 +87,15 @@ def scan(components: list[Component], repo: pathlib.Path | None) -> tuple[list[F
 
     findings: list[Finding] = []
     seen: set[tuple[str, str, str]] = set()
-    for comp, vid in hits:
+    only_input = 0
+    for n, (comp, vid) in enumerate(hits):
         d = details.get(vid, {})
+        own = told.get((comp.purl, vid))
         canon = cve_of.get(vid) or vid
         if d.get("withdrawn") or (canon, comp.name, comp.version) in seen:
             continue
         seen.add((canon, comp.name, comp.version))
+        only_input += n >= from_osv
         missing = []
         if not d:
             missing.append("osv_detail")
@@ -95,10 +106,15 @@ def scan(components: list[Component], repo: pathlib.Path | None) -> tuple[list[F
         if kev is None:
             missing.append("kev")
         cvss, src = severity(d)
+        if cvss is None and own is not None:        # no advisory text: fall back on what the input says
+            label = (own.severity or "").upper()
+            cvss, src = (own.cvss, "vector") if own.cvss is not None else (LABEL[label], "label") if label in LABEL else (None, "none")
         if cvss is None:
             missing.append("cvss")
         fixes = semver.fixes_for(d, comp.ecosystem, comp.name)
         lo = semver.fixed_in(fixes, comp.version)
+        if lo is None and not d and own is not None and own.fixed and semver.valid(own.fixed):
+            lo = own.fixed
         if comp.ecosystem not in file_cache:
             file_cache[comp.ecosystem] = usages.files_for(repo, comp.ecosystem)
         if repo is None or comp.ecosystem not in usages.SEARCHABLE:
@@ -130,4 +146,9 @@ def scan(components: list[Component], repo: pathlib.Path | None) -> tuple[list[F
         "cvss_pct": round(sum(f.cvss is not None for f in findings) / n * 100, 1),
         "fixed_pct": round(sum(f.fixed_in is not None for f in findings) / n * 100, 1),
     }
+    if told:
+        coverage["reported_by_input"] = len(told)           # vulnerabilities the input file named
+        coverage["only_in_input"] = only_input              # of the findings, those OSV did not return
+    if not osv_ok:
+        coverage["osv"] = False
     return findings, coverage

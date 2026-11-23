@@ -15,7 +15,7 @@ import urllib.parse
 import xml.etree.ElementTree as ET
 from collections import deque
 
-from .models import Component
+from .models import Component, Reported
 
 log = logging.getLogger(__name__)
 MAX_PATHS = 3
@@ -169,6 +169,19 @@ def maven_pom_components(pom_text: str) -> list[Component]:
 # ---------- CycloneDX ----------
 
 def to_cyclonedx(components: list[Component], source: str) -> dict:
+    vulns: dict[str, dict] = {}
+    for c in components:             # what the input reported, as a standard CycloneDX vulnerabilities section
+        for r in c.reported:
+            v = vulns.setdefault(r.id, {"id": r.id, "ratings": [], "affects": [], "properties": []})
+            v["affects"].append({"ref": c.purl})
+            if (r.cvss is not None or r.severity) and not v["ratings"]:
+                v["ratings"].append({k: x for k, x in (("score", r.cvss), ("severity", (r.severity or "").lower() or None)) if x is not None})
+            if r.fixed:
+                v["properties"].append({"name": f"triage:fixed:{c.purl}", "value": r.fixed})
+    return {**({"vulnerabilities": list(vulns.values())} if vulns else {}), **_cyclonedx_body(components, source)}
+
+
+def _cyclonedx_body(components: list[Component], source: str) -> dict:
     return {
         "bomFormat": "CycloneDX", "specVersion": "1.5", "version": 1,
         "metadata": {"tools": {"components": [{"type": "application", "name": f"sbom-triage ({source})"}]}},
@@ -182,11 +195,12 @@ def to_cyclonedx(components: list[Component], source: str) -> dict:
 
 
 def lockfile_components(repo: pathlib.Path) -> list[Component]:
-    if (repo / "package-lock.json").exists():
-        return npm_lock_components(json.loads((repo / "package-lock.json").read_text()))
-    if (repo / "pom.xml").exists():
-        return maven_pom_components((repo / "pom.xml").read_text())
-    return []
+    """Components from the repository's dependency files (ingest.py knows the file names)."""
+    from . import ingest      # late import: ingest builds on this module
+    comps, notes = ingest.repo_components(repo)
+    for n in notes:
+        log.info("lockfile: %s", n)
+    return comps
 
 
 def run_syft(repo: pathlib.Path, timeout: int = 300) -> dict | None:
@@ -213,7 +227,8 @@ def generate(repo: pathlib.Path, use_syft: bool = True) -> tuple[dict, str]:
     bom = run_syft(repo) if use_syft else None
     if bom is None:
         if not lock:
-            raise FileNotFoundError(f"no package-lock.json or pom.xml in {repo}")
+            raise FileNotFoundError(f"no dependency file found in {repo} (looked for: package-lock.json, yarn.lock, "
+                                    "pnpm-lock.yaml, pom.xml, gradle.lockfile, requirements.txt, poetry.lock, go.mod, ...)")
         return to_cyclonedx(lock, "lockfile"), "lockfile"
     meta = {c.purl: c for c in lock}
     syft_comps = components_from_cyclonedx(bom)
@@ -245,6 +260,21 @@ def components_from_cyclonedx(bom: dict) -> list[Component]:
             if len(chain) < 12:
                 queue.append((child, chain + [by_ref.get(child, {}).get("name", child)]))
 
+    reported: dict[str, list[Reported]] = {}       # bom-ref or purl -> what the file's vulnerabilities section says
+    for v in bom.get("vulnerabilities") or []:
+        if not v.get("id"):
+            continue
+        ratings = [r for r in v.get("ratings") or [] if isinstance(r, dict)]
+        scores = [r["score"] for r in ratings if isinstance(r.get("score"), (int, float)) and 0 <= r["score"] <= 10]
+        severity = next((str(r["severity"]).upper() for r in ratings if r.get("severity")), None)
+        fixed = {p["name"].removeprefix("triage:fixed:"): p.get("value") for p in v.get("properties") or []
+                 if str(p.get("name", "")).startswith("triage:fixed:")}
+        for a in v.get("affects") or []:
+            ref = str(a.get("ref") or "")
+            for key in {ref, ref.split("#")[-1]}:          # VEX refs look like urn:cdx:<serial>/<version>#<bom-ref>
+                reported.setdefault(key, []).append(Reported(id=str(v["id"]), cvss=max(scores, default=None),
+                                                             severity=severity, fixed=fixed.get(key)))
+
     out: dict[str, Component] = {}
     for c in raw:
         parsed = parse_purl(c.get("purl", ""))
@@ -260,6 +290,7 @@ def components_from_cyclonedx(bom: dict) -> list[Component]:
             scope="dev" if c.get("scope") in ("optional", "excluded") else "prod",
             direct=(direct_prop == "true") if direct_prop else ref in roots,
             paths=json.loads(paths_prop) if paths_prop else graph_paths.get(ref, []),
+            reported=list({r.id: r for r in reported.get(ref, []) + reported.get(c["purl"], [])}.values()),
         )
         out.setdefault(comp.purl, comp)
     return list(out.values())
@@ -300,11 +331,13 @@ def spdx_to_cyclonedx(doc: dict) -> dict:
             "components": comps, "dependencies": [{"ref": k, "dependsOn": v} for k, v in deps.items()]}
 
 
-def load_file(path: pathlib.Path) -> tuple[dict, str]:
-    """Read a ready-made SBOM (finals data may arrive as SBOM files instead of repos)."""
-    doc = json.loads(path.read_text())
-    if doc.get("bomFormat") == "CycloneDX":
-        return doc, "file:cyclonedx"
-    if str(doc.get("spdxVersion", "")).startswith("SPDX"):
-        return spdx_to_cyclonedx(doc), "file:spdx"
-    raise ValueError(f"unsupported SBOM format: {path}")
+def load_file(path: pathlib.Path, columns: dict[str, str] | None = None, ecosystem: str | None = None) -> tuple[dict, str]:
+    """Read a ready-made input file: an SBOM, a scanner result, a lock file or a table (ingest.py)."""
+    bom, source, _ = load_file_notes(path, columns, ecosystem)
+    return bom, source
+
+
+def load_file_notes(path: pathlib.Path, columns: dict[str, str] | None = None,
+                    ecosystem: str | None = None) -> tuple[dict, str, list[str]]:
+    from . import ingest      # late import: ingest builds on this module
+    return ingest.load(path, columns, ecosystem)

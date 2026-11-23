@@ -99,13 +99,15 @@ class Scanned:
     seconds: float
 
 
-def collect(target: pathlib.Path, emit: Callable[[dict], None], use_syft: bool = True) -> Scanned:
+def collect(target: pathlib.Path, emit: Callable[[dict], None], use_syft: bool = True,
+            columns: dict[str, str] | None = None, ecosystem: str | None = None) -> Scanned:
     """①~④ without recording a run. target is a repo directory or an SBOM file (CycloneDX / SPDX JSON)."""
     target = target.resolve()
     start = time.time()
     emit({"type": "stage", "stage": "sbom", "status": "start"})
+    notes: list[str] = []
     if target.is_file():
-        bom, source = sbom.load_file(target)
+        bom, source, notes = sbom.load_file_notes(target, columns, ecosystem)
         repo = None
     else:
         bom, source = sbom.generate(target, use_syft=use_syft and not cache.replay_mode())
@@ -121,6 +123,8 @@ def collect(target: pathlib.Path, emit: Callable[[dict], None], use_syft: bool =
     findings, coverage = scan_mod.scan(components, repo)
     coverage["unsupported"] = skipped
     coverage["kev_list"] = kev_mod.version()
+    if notes:
+        coverage["input_notes"] = notes        # what the input file lacks, shown as-is
     emit({"type": "stage", "stage": "scan", "status": "done", **coverage})
     triage = agent_run.run(findings, repo, None, target)   # rule only: no model, nothing written
     return Scanned(target, repo, bom, source, findings, triage, coverage, round(time.time() - start, 1))
@@ -156,12 +160,12 @@ def safe_name(text: str) -> str:
 
 
 def scan(target: pathlib.Path, name: str | None = None, context: ServiceContext | None = None,
-         use_syft: bool = True) -> Run:
+         use_syft: bool = True, columns: dict[str, str] | None = None, ecosystem: str | None = None) -> Run:
     """①~④, recorded as a new run."""
     target = target.resolve()
     name = name or safe_name(target.stem if target.is_file() else target.name)
     run = new_run(name)
-    return record(run, collect(target, run.emit, use_syft), name, context)
+    return record(run, collect(target, run.emit, use_syft, columns, ecosystem), name, context)
 
 
 def _llm_meta(llm, code_llm) -> dict:

@@ -28,6 +28,14 @@ class CodeRef(Strict):
     snippet: str
 
 
+class Reported(Strict):
+    """A vulnerability the input file itself reports for a component (scanner result, VEX section, CVE column)."""
+    id: str
+    cvss: float | None = None
+    severity: str | None = None      # the input's own label, e.g. HIGH
+    fixed: str | None = None         # fixed version, if the input names one
+
+
 class Component(Strict):
     """One package@version from the SBOM, with lockfile metadata attached by purl (F2-3, F2-5)."""
     name: str
@@ -37,6 +45,7 @@ class Component(Strict):
     scope: Literal["prod", "dev"] = "prod"
     direct: bool = False
     paths: list[list[str]] = Field(default_factory=list)
+    reported: list[Reported] = Field(default_factory=list)
 
 
 class ServiceContext(Strict):
