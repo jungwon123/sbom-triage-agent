@@ -40,6 +40,7 @@ BEAT = 5.0              # seconds between heartbeats
 STALE = 30.0            # a running job this long without a heartbeat has lost its worker
 WORKER_ALIVE = 15.0     # a worker seen within this many seconds counts as alive
 MAX_ATTEMPTS = 2
+RESULT_RETRY = (1.0, 2.0, 4.0, 8.0, 15.0, 30.0)   # waits between tries to record a finished job
 CUT_OFF = "작업자가 작업 도중 중단되어 끝내지 못했습니다. 다시 실행하세요."
 
 
@@ -53,9 +54,19 @@ def _service_check(scope_dir: pathlib.Path, payload: dict) -> dict:
     return services.check(scope_dir.parent, payload["service_id"]).model_dump()
 
 
+def _verify(run_dir: pathlib.Path, payload: dict) -> dict:
+    """The sandbox pass for a run's items, with the setup command the run already carries."""
+    from . import runner
+    run = runner.verify(runner.Run(run_dir), None, tuple(payload.get("buckets") or ("NOW",)))
+    stages = [e for e in store.get().events(run_dir) if e.get("type") == "stage" and e.get("stage") == "verify"]
+    last = stages[-1] if stages else {}
+    return {"summary": run.meta.get("summary"), "skipped": last.get("why") if last.get("status") == "skipped" else None}
+
+
 # kind -> handler(run_dir, payload) -> result. Handlers get plain values, never a closure.
 HANDLERS: dict[str, Callable[[pathlib.Path, dict], dict]] = {"export_together": _export_together,
-                                                             "service_check": _service_check}
+                                                             "service_check": _service_check,
+                                                             "verify": _verify}
 
 
 def _now() -> str:
@@ -145,14 +156,12 @@ def work_once(root: pathlib.Path, me: str, st: store.Store | None = None) -> Job
     run_dir, started, stop = root / row["run_id"], _now(), threading.Event()
 
     def beat() -> None:
-        try:
-            while not stop.wait(BEAT):
+        while not stop.wait(BEAT):
+            try:
                 st.job_update(run_dir, row["id"], {"heartbeat": time.time()}, worker=me)
                 st.worker_beat(root, _info(me, started))
-        except Exception:  # a missed heartbeat is recovered by the next one or by reclaim
-            log.exception("heartbeat failed")
-        finally:
-            getattr(st, "close", lambda: None)()       # this thread's own database connection
+            except Exception:  # one missed heartbeat must not end them all: the next one recovers
+                log.exception("heartbeat failed")
 
     ticker = threading.Thread(target=beat, name="triage-job-heartbeat", daemon=True)
     ticker.start()
@@ -164,10 +173,24 @@ def work_once(root: pathlib.Path, me: str, st: store.Store | None = None) -> Job
     finally:
         stop.set()
         ticker.join()
-    if not st.job_update(run_dir, row["id"], {**patch, "finished_at": _now()}, worker=me):
+    patch["finished_at"] = _now()
+    # The handler may have run for minutes; losing its result to a database that was away for a moment
+    # would run the whole job again. Keep trying for about a minute before giving the job up to reclaim.
+    kept = _retry(lambda: st.job_update(run_dir, row["id"], patch, worker=me))
+    if not kept:
         log.warning("job %s was taken away from this worker; its result is dropped", row["id"])
-    done = st.job_get(run_dir, row["id"])
+    done = _retry(lambda: st.job_get(run_dir, row["id"]))
     return Job.model_validate(done) if done else None
+
+
+def _retry(call: Callable[[], object], waits: tuple[float, ...] = RESULT_RETRY) -> object:
+    for wait in waits:
+        try:
+            return call()
+        except Exception:
+            log.exception("could not reach the store; trying again in %ss", wait)
+            time.sleep(wait)
+    return call()
 
 
 def serve(root: pathlib.Path, stop: threading.Event | None = None, poll: float = 1.0, me: str | None = None,

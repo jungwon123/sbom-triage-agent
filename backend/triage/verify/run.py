@@ -25,6 +25,9 @@ def verdict(steps: list[VerifyStep], base: list[VerifyStep], target_left: bool, 
 
     if mitigation_only:
         return "inconclusive", "mitigation_only", []
+    if any(s.infra for s in [*steps, *base]):
+        # the sandbox itself failed (daemon restarting, pod shutting down): not evidence about the change
+        return "inconclusive", "sandbox_unavailable", []
     timed_out = any(s.timed_out for s in steps)
     for name in ("copy", "apply", "install", "setup"):
         s = get(steps, name)

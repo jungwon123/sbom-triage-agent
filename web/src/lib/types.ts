@@ -129,6 +129,7 @@ export interface VerifyStep {
   failed_tests?: string[];
   tests_run?: number;
   timed_out?: boolean;
+  infra?: boolean;
 }
 
 export interface Verification {
@@ -206,7 +207,7 @@ export interface CombinedCheck {
 export interface Job {
   id: string;
   run_id?: string;
-  kind: "export_together" | "service_check";
+  kind: "export_together" | "service_check" | "verify";
   status: "queued" | "running" | "done" | "failed" | "interrupted";
   payload?: Record<string, unknown>;
   created_at: string;

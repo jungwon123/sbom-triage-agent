@@ -6,6 +6,7 @@ No environment variables from the host (API keys included) are passed in.
 """
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import subprocess
@@ -16,7 +17,8 @@ from pathlib import Path
 
 from ..models import VerifyStep
 
-IMAGE = "public.ecr.aws/docker/library/node:20-slim"
+# TRIAGE_SANDBOX_IMAGE: the same image from an in-house registry when the public one is not reachable
+IMAGE = os.environ.get("TRIAGE_SANDBOX_IMAGE", "public.ecr.aws/docker/library/node:20-slim")
 LIMITS = ["--rm", "--memory", "2g", "--cpus", "2", "--pids-limit", "512", "--cap-drop", "ALL",
           "--security-opt", "no-new-privileges", "-e", "NX_DAEMON=false", "-e", "CI=1"]
 NPM = "--ignore-scripts --no-audit --no-fund"
@@ -79,10 +81,13 @@ def run(repo: Path, apply_cmd: str | None = None, setup_cmd: str | None = None,
             # the timeout only ends the docker client; the container would run on and hold its memory
             subprocess.run(["docker", "kill", container], capture_output=True, timeout=30)
         failed, total = parse_tests(text) if name == "test" else ([], 0)
+        # 125 is docker's own failure (docker run reference, "Exit status"). A daemon that went away while
+        # the step ran gives other codes, so ask it again: a failure with no daemon says nothing about the change.
+        infra = code != 0 and not timed_out and (code == 125 or not available())
         res.steps.append(VerifyStep(
             name=name, status="passed" if code == 0 else "failed", duration_ms=int((time.time() - start) * 1000),
             log_tail="\n".join(text.splitlines()[-15:])[-1800:], failed_tests=failed, tests_run=total,
-            timed_out=timed_out))
+            timed_out=timed_out, infra=infra))
         return code == 0
 
     def skip(name: str) -> None:

@@ -25,6 +25,7 @@ import json
 import logging
 import os
 import pathlib
+import shutil
 import time
 
 from . import cache, jobs, notify, runner, store
@@ -189,6 +190,10 @@ def check(root: pathlib.Path, service_id: str) -> ServiceCheck:
         # Same way of building the SBOM as the run it is compared with: Syft and the lock file parser
         # disagree on a few components, and that difference is not a change in the service.
         same_as_base = base is None or base.meta.get("sbom_source") != "lockfile"
+        if base is not None and same_as_base and not shutil.which("syft"):
+            # falling back to the lock file parser here would report its differences from Syft as changes
+            raise ServiceError("기준 실행은 Syft로 만든 SBOM인데 이 환경에는 Syft가 없습니다. "
+                               "Syft를 설치하거나 lock 파일 방식으로 만든 실행을 기준으로 지정하세요.")
         fresh = runner.collect(target, lambda e: events.append({"ts": round(time.time(), 3), **e}),
                                use_syft=same_as_base, osv_max_age=OSV_MAX_AGE)
         changes = diff(base.findings(), base.triage(), fresh.findings, fresh.triage) if base else []

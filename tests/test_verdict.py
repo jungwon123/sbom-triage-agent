@@ -53,3 +53,10 @@ def test_install_failure():
 def test_skipped_steps_allowed():
     steps = [s("install"), s("build", "skipped"), s("test", "skipped")]
     assert verdict(steps, steps, False, False)[0] == "verified"
+
+
+def test_a_step_lost_to_the_docker_daemon_is_not_a_failure_of_the_change():
+    lost = VerifyStep(name="test", status="failed", duration_ms=1, log_tail="", infra=True)
+    assert verdict([s("install"), s("build"), lost], BASE, False, False)[:2] == ("inconclusive", "sandbox_unavailable")
+    lost_install = VerifyStep(name="install", status="failed", duration_ms=1, log_tail="", infra=True)
+    assert verdict([lost_install], BASE, True, False)[:2] == ("inconclusive", "sandbox_unavailable")

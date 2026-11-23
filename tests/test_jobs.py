@@ -145,3 +145,100 @@ def test_inline_mode_runs_the_job_inside_the_same_process(tmp_path, monkeypatch)
     while jobs.get(run, job.id).status in jobs.ACTIVE and time.time() < end:
         time.sleep(0.05)
     assert jobs.get(run, job.id).result == {"inline": True}
+
+
+def test_one_failed_heartbeat_does_not_stop_the_next_ones(tmp_path, monkeypatch):
+    """Critique 3, 2-3: the heartbeat thread used to end at its first error."""
+    from triage import store
+    from triage.store.files import FileStore
+    st, beats, broken = FileStore(), [], []
+    store.use(st)
+    real = st.job_update
+
+    def flaky(run_dir, job_id, patch, worker=None):
+        if set(patch) == {"heartbeat"}:
+            beats.append(patch["heartbeat"])
+            if len(beats) == 2:
+                broken.append(1)
+                raise OSError("store away for a moment")
+        return real(run_dir, job_id, patch, worker=worker)
+
+    monkeypatch.setattr(st, "job_update", flaky)
+    monkeypatch.setattr(jobs, "BEAT", 0.05)
+    monkeypatch.setitem(jobs.HANDLERS, "export_together", lambda run_dir, payload: time.sleep(0.5) or {})
+    try:
+        jobs.submit(tmp_path / "r1", "export_together")
+        done = jobs.work_once(tmp_path, "w1", st)
+    finally:
+        store.use(None)
+    assert broken and len(beats) >= 5 and done.status == "done"
+
+
+def test_result_is_kept_when_the_database_connections_die_during_the_job(tmp_path, monkeypatch):
+    """Critique 3, 2-3: every connection is cut while the handler runs; the job must still end done, once."""
+    from tests.test_store import postgres
+    from triage import store
+    pg, ran = postgres(), []
+    store.use(pg)
+
+    def handler(run_dir, payload):
+        ran.append(1)
+        with pg.connection() as conn:     # cut every other connection of this user, as a failover would
+            conn.execute("SELECT pg_terminate_backend(pid) FROM pg_stat_activity"
+                         " WHERE usename = current_user AND datname = current_database() AND pid <> pg_backend_pid()")
+        return {"ok": True}
+
+    monkeypatch.setitem(jobs.HANDLERS, "export_together", handler)
+    monkeypatch.setattr(jobs, "RESULT_RETRY", (0.05, 0.05))
+    try:
+        jobs.submit(tmp_path / "r1", "export_together")
+        done = jobs.work_once(tmp_path, "w1", pg)
+        assert done.status == "done" and done.attempts == 1 and ran == [1]
+    finally:
+        store.use(None)
+        pg.close()
+
+
+def test_tables_can_be_created_by_several_processes_at_once():
+    """Critique 3, 2-6: CREATE TABLE IF NOT EXISTS alone fails when two callers race."""
+    from tests.test_store import TEST_URL, postgres
+    from triage.store.postgres import PostgresStore
+    postgres().close()
+    name = "triage_race"
+    with __import__("psycopg").connect(TEST_URL, autocommit=True) as conn:
+        conn.execute(f"DROP SCHEMA IF EXISTS {name} CASCADE")
+    stores, errors = [PostgresStore(TEST_URL, schema=name) for _ in range(4)], []
+    for s in stores:
+        with s.connection():      # connect first so the four init() calls really overlap
+            pass
+    gate = threading.Barrier(4)
+
+    def go(s):
+        gate.wait()
+        try:
+            s.init()
+        except Exception as e:
+            errors.append(repr(e))
+
+    threads = [threading.Thread(target=go, args=(s,)) for s in stores]
+    [t.start() for t in threads]
+    [t.join() for t in threads]
+    for s in stores:
+        s.close()
+    with __import__("psycopg").connect(TEST_URL, autocommit=True) as conn:
+        conn.execute(f"DROP SCHEMA IF EXISTS {name} CASCADE")
+    assert errors == []
+
+
+def test_verify_is_a_queued_job_and_reports_why_it_was_skipped(st, tmp_path, monkeypatch, make_finding):
+    """Critique 3, 2-1: the dashboard starts verification through the queue."""
+    from triage import runner
+    monkeypatch.setenv("DEMO_MODE", "replay")
+    run = runner.Run(tmp_path / "r1")
+    run.dir.mkdir(exist_ok=True)
+    st.put_doc(run.dir, "meta", {"name": "r1", "summary": {}, "stages": []})
+    st.put_doc(run.dir, "findings", [])
+    st.put_doc(run.dir, "triage", [])
+    jobs.submit(run.dir, "verify", {"buckets": ["NOW"]})
+    done = jobs.work_once(tmp_path, "w1", st)
+    assert done.status == "done" and done.result["skipped"] == "replay mode"

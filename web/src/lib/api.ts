@@ -28,6 +28,7 @@ export interface RunDetail {
   id: string;
   meta: {
     name: string;
+    repo?: string | null;
     sbom_source: string;
     context: ServiceContext;
     coverage: { components: number; epss_pct: number; kev_feed: boolean; kev_hits: number; unsupported?: Record<string, number>; input_notes?: string[]; reported_by_input?: number; only_in_input?: number; osv?: boolean; kev_list?: { catalog_version: string | null; date_released: string | null; count: number } | null };
@@ -98,6 +99,10 @@ export type ExportJob = Omit<Job, "result"> & { result?: ExportResult | null };
 export const startExportTogether = (id: string) => post<ExportJob>(`${base(id)}/export/together`);
 export const getJob = (id: string, jobId: string) => get<ExportJob>(`${base(id)}/jobs/${encodeURIComponent(jobId)}`);
 export const latestExportJob = (id: string) => get<ExportJob | null>(`${base(id)}/jobs/latest?kind=export_together`);
+export type VerifyJob = Omit<Job, "result"> & { result?: { summary: Summary | null; skipped: string | null } | null };
+export const startVerify = (id: string) => post<VerifyJob>(`${base(id)}/verify`);
+export const latestVerifyJob = (id: string) => get<VerifyJob | null>(`${base(id)}/jobs/latest?kind=verify`);
+export const getVerifyJob = (id: string, jobId: string) => get<VerifyJob>(`${base(id)}/jobs/${encodeURIComponent(jobId)}`);
 export const listRuns = () => get<RunListItem[]>("/api/runs");
 export const getRun = (id: string) => get<RunDetail>(`/api/runs/${encodeURIComponent(id)}`);
 

@@ -4,6 +4,7 @@ import ItemList from "./components/ItemList";
 import Overview from "./components/Overview";
 import Changes from "./components/Changes";
 import Decisions from "./components/Decisions";
+import VerifyStart from "./components/VerifyStart";
 import Services from "./components/Services";
 import {
   SIGNED_OUT, getMe, getProposals, getRun, listRuns, loginUrl, logout, roleLabel, type RunDetail, type RunListItem,
@@ -93,6 +94,11 @@ export default function App() {
   const items = useMemo(() => (run ? [...run.items].sort(mode === "priority" ? byPriority : byCvss) : []), [run, mode]);
   const current = items.find((i) => i.finding.id === selected) ?? null;
   const proposal = current ? (proposals.find((p) => p.finding_ids.includes(current.finding.id)) ?? null) : null;
+  const reloadRun = () => {
+    if (!runId) return;
+    getRun(runId).then(setRun).catch(() => undefined);
+    getProposals(runId).then(setProposals).catch(() => undefined);
+  };
   const reloadProposals = () => (runId ? getProposals(runId).then(setProposals) : Promise.resolve());
 
   function pickRun(id: string) {
@@ -197,6 +203,7 @@ export default function App() {
               <Changes changes={run.meta.changes} onSelect={setSelected} />
             </section>
           )}
+          <VerifyStart runId={run.id} me={me} hasRepo={Boolean(run.meta.repo)} verified={run.meta.summary?.verified ?? 0} onDone={reloadRun} />
           <Decisions runId={run.id} proposals={proposals} me={me} onSelect={setSelected} />
           <main className="mt-8 grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(420px,520px)]">
             <ItemList items={items} mode={mode} selected={selected} onSelect={setSelected} />

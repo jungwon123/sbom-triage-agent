@@ -11,6 +11,7 @@ import asyncio
 import contextlib
 import json
 import re
+from typing import Literal
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import PlainTextResponse, StreamingResponse
@@ -116,6 +117,19 @@ def export_together(run_id: str, user: auth.User = Depends(auth.approver)) -> di
     """Queue one sandbox pass with every approved change. Poll the returned job for the result."""
     payload = {} if user.local else {"requested_by": user.email or user.sub}
     return jobs.submit(_run(run_id).dir, "export_together", payload).model_dump()
+
+
+class VerifyIn(BaseModel):
+    buckets: list[Literal["NOW", "NEXT", "MONITOR"]] = Field(default=["NOW"], min_length=1, max_length=3)
+
+
+@app.post("/api/runs/{run_id}/verify", status_code=202, dependencies=APPROVE)
+def verify_start(run_id: str, body: VerifyIn | None = None, user: auth.User = Depends(auth.approver)) -> dict:
+    """Queue the sandbox verification of a run's items. The worker runs it; poll the returned job."""
+    payload: dict = {"buckets": (body or VerifyIn()).buckets}
+    if not user.local:
+        payload["requested_by"] = user.email or user.sub
+    return jobs.submit(_run(run_id).dir, "verify", payload).model_dump()
 
 
 @app.get("/api/runs/{run_id}/jobs/latest", dependencies=VIEW)

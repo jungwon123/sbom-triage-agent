@@ -9,8 +9,11 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import os
 import pathlib
 import re
+import shutil
+import uuid
 
 from . import cache, store
 from .models import BUCKET_ORDER, CombinedCheck, Decision, Finding, Proposal, Triage, VerifyStep
@@ -165,11 +168,35 @@ def export(run, together: bool = False, setup_cmd: str | None = None) -> dict:
     together=True applies every approved change in one sandbox pass and exports that single patch
     instead of one patch per change.
     """
-    out_dir = run.dir / "export"
-    out_dir.mkdir(exist_ok=True)
-    for old in out_dir.iterdir():
-        if old.is_file():
-            old.unlink()
+    # Written beside the folder and swapped in at the end: the API and a worker can export the same run
+    # at once (other pods, one shared volume), and a reader must never see half of each.
+    final_dir = run.dir / "export"
+    out_dir = run.dir / f".export-{uuid.uuid4().hex[:8]}"
+    out_dir.mkdir()
+    try:
+        return _export_into(run, out_dir, final_dir, together, setup_cmd)
+    finally:
+        shutil.rmtree(out_dir, ignore_errors=True)
+
+
+def _swap(new_dir: pathlib.Path, final_dir: pathlib.Path) -> None:
+    for _ in range(5):
+        aside = final_dir.with_name(f".export-old-{uuid.uuid4().hex[:8]}")
+        try:
+            os.replace(final_dir, aside)
+        except FileNotFoundError:
+            pass
+        try:
+            os.replace(new_dir, final_dir)       # atomic on one filesystem
+            return
+        except OSError:                          # another export put its folder there first: move it aside too
+            continue
+        finally:
+            shutil.rmtree(aside, ignore_errors=True)
+    raise RuntimeError("could not put the export folder in place")
+
+
+def _export_into(run, out_dir: pathlib.Path, final_dir: pathlib.Path, together: bool, setup_cmd: str | None) -> dict:
     approved = [p for p in proposals(run) if p.decision and p.decision.status == "approved"
                 and p.verification and p.verification.patch_file]
     files = []
@@ -193,9 +220,10 @@ def export(run, together: bool = False, setup_cmd: str | None = None) -> dict:
     if approved:
         (out_dir / "PR_DRAFT.md").write_text(pr_draft(run, approved, combined))
         files.append("PR_DRAFT.md")
+    _swap(out_dir, final_dir)
     run.emit({"type": "export", "approved": [p.target for p in approved], "files": files,
               "combined": combined.verdict if combined else None})
-    return {"dir": str(out_dir), "approved": [p.target for p in approved], "files": files,
+    return {"dir": str(final_dir), "approved": [p.target for p in approved], "files": files,
             "combined": combined.model_dump() if combined else None, "combined_skipped": skipped}
 
 

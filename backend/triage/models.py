@@ -122,6 +122,7 @@ class VerifyStep(Strict):
     failed_tests: list[str] = Field(default_factory=list)
     tests_run: int = 0
     timed_out: bool = False
+    infra: bool = False              # the step failed because the Docker daemon was unreachable, not because of the change
 
 
 class VerificationBaseline(Strict):
@@ -178,7 +179,7 @@ class Job(Strict):
     """One queued piece of slow work (a sandbox pass). Kept by the storage layer; a worker claims it."""
     id: str
     run_id: str = ""
-    kind: Literal["export_together", "service_check"]
+    kind: Literal["export_together", "service_check", "verify"]
     status: Literal["queued", "running", "done", "failed", "interrupted"]
     payload: dict = {}                       # plain values only: the worker is another process
     created_at: str
