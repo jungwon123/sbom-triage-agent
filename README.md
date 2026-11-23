@@ -114,6 +114,7 @@ out/              실행 결과 (git 제외)
 | [docs/labeling-guide.md](docs/labeling-guide.md) | 정답 라벨을 매기는 기준 | 현행 |
 | [docs/finals/](docs/finals/) | 본선 현장에서 채우는 문서 틀 (과제 정리, 차이 분석, 결정 등) | 대부분 비어 있음 |
 | [kit/README.md](kit/README.md) | 본선용 하네스 키트 설명 | 현행 |
+| [kit/CODEX.md](kit/CODEX.md) | Codex CLI로 이어 갈 때의 준비 과정: 설치, 권한 설정, 사전 확인, 본선 당일의 첫 문장 | 현행. 사람용 |
 | [docs/architecture/](docs/architecture/) | 아키텍처 다이어그램 (HTML 파일을 브라우저로 엽니다) | 2026-11-23 기준 |
 
 ## 7. 확인한 것과 하지 않은 것

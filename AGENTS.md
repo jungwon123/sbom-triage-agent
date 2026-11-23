@@ -84,7 +84,7 @@ Codex에는 스킬 기능이 없으므로 아래 파일을 직접 읽고 그 절
 
 서브에이전트도 없다. `data-scout`(자료 요약)와 `reviewer`(점검)의 일은 `kit/claude/agents/*.md`의 지시를 읽고 직접 하되, 그 일을 하는 동안에는 파일을 고치지 않는다.
 
-`kit/PLAYBOOK.md`와 `kit/prompts.md`는 사람용이므로 읽지 않는다.
+`kit/PLAYBOOK.md`, `kit/prompts.md`, `kit/CODEX.md`는 사람용이므로 읽지 않는다.
 
 ## 6. 자료가 어떤 형식으로 오든
 

@@ -25,6 +25,7 @@
 | `START.md` | 에이전트가 읽고 그대로 수행하는 현장 시작 절차 |
 | `PLAYBOOK.md` | **사람용** 1박 2일 일정표, 줄이는 순서, 안 될 때 |
 | `prompts.md` | **사람용** 단계별 프롬프트 (P0 ~ P10) |
+| `CODEX.md` | **사람용** Codex CLI 준비 과정: 설치, 권한 설정, 사전 확인, 당일 첫 문장 |
 | `claude/settings.json` | 권한: 제공 자료와 대상 레포 편집, `.env` 읽기, 강제 push, `rm -rf` 차단. AI 기여자 표기 끔 |
 | `claude/skills/` | `task-intake`, `data-check`, `adapt-input`, `agent-eval`, `verify-run`, `demo`, `review`, `handoff` |
 | `claude/agents/` | `data-scout`(자료 요약, 읽기 전용), `reviewer`(규칙과 완료 조건 점검, 읽기 전용) |
