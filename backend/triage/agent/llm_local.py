@@ -2,7 +2,7 @@
 (Ollama, vLLM, LM Studio). Used as the model that is allowed to read source code.
 
 LOCAL_LLM_BASE_URL (default http://localhost:11434/v1) and LOCAL_LLM_MODEL come from .env.
-Not exercised against a live server yet; check with `python -m triage doctor --llm`.
+Run against Ollama with qwen2.5:7b on 2026-11-23 (HANDOFF D35); check a server with `python -m triage doctor --llm`.
 """
 from __future__ import annotations
 
