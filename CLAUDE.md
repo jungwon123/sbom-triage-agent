@@ -49,7 +49,8 @@ sbom-triage/
 │     ├─ doctor.py       # 환경 점검
 │     └─ api.py          # FastAPI
 ├─ web/                  # ⑦ React(Vite) 대시보드
-├─ deploy/               # docker-compose.yml (PostgreSQL)
+├─ Dockerfile            # API와 작업자가 함께 쓰는 이미지 (.dockerignore가 .env, out/, 대상 레포를 뺀다)
+├─ deploy/               # docker-compose.yml (PostgreSQL), k8s/ (쿠버네티스 매니페스트, k8s/README.md 참고)
 ├─ kit/                  # 본선용 하네스 키트 (절차서, 문서 틀, 점검 스크립트). kit/README.md 참고
 ├─ scripts/gen_types.py  # 스키마에서 프론트 타입 생성
 ├─ fixtures/
@@ -94,6 +95,8 @@ uv run python -m triage seed --kev kev.json --epss epss.csv.gz   # 받은 취약
 uv run python -m triage run fixtures/demo-repo --setup "npx prisma generate"   # ①~⑥ 한 번에
 uv run python -m triage agent out/<run_id>             # ⑤
 docker compose -f deploy/docker-compose.yml up -d postgres   # 운영 저장소 띄우기 (로컬은 127.0.0.1:54329)
+docker build -t sbom-triage:dev .                      # API와 작업자 이미지
+kubectl kustomize deploy/k8s/overlays/local            # 쿠버네티스 매니페스트 렌더링 (올리기: kubectl apply -k, 절차는 deploy/k8s/README.md)
 uv run python -m triage db init                        # 테이블 생성 (DATABASE_URL 필요, 여러 번 실행해도 안전)
 uv run python -m triage db import --cache              # 파일로 쌓인 실행과 캐시를 DB로 복사 (db status로 건수 확인)
 uv run python -m triage worker                         # 대기 중인 작업을 실행하는 작업자 (PostgreSQL 모드에서 필요, --once는 큐를 비우고 종료)
