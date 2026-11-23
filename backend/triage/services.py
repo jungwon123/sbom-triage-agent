@@ -34,6 +34,7 @@ log = logging.getLogger(__name__)
 KIND = "service_check"
 MAX_CHANGES = 200            # changes kept on the record; counts are always complete
 ALERT_KINDS = ("added", "raised", "kev_added")
+OSV_MAX_AGE = 3600.0         # a check asks OSV again when its cached answer is older than this (live mode only)
 
 
 class ServiceError(Exception):
@@ -185,7 +186,11 @@ def check(root: pathlib.Path, service_id: str) -> ServiceCheck:
         target = pathlib.Path(svc.target)
         if not target.exists():
             raise ServiceError(f"대상 경로가 없습니다: {svc.target}")
-        fresh = runner.collect(target, lambda e: events.append({"ts": round(time.time(), 3), **e}))
+        # Same way of building the SBOM as the run it is compared with: Syft and the lock file parser
+        # disagree on a few components, and that difference is not a change in the service.
+        same_as_base = base is None or base.meta.get("sbom_source") != "lockfile"
+        fresh = runner.collect(target, lambda e: events.append({"ts": round(time.time(), 3), **e}),
+                               use_syft=same_as_base, osv_max_age=OSV_MAX_AGE)
         changes = diff(base.findings(), base.triage(), fresh.findings, fresh.triage) if base else []
         if base is not None and not changes:
             result = ServiceCheck(at=_now(), result="no_change", run_id=base.id, compared_to=base.id)
@@ -220,13 +225,17 @@ def check(root: pathlib.Path, service_id: str) -> ServiceCheck:
 # ---------- schedule ----------
 
 def due(root: pathlib.Path, now: dt.datetime | None = None) -> list[Service]:
-    """Services whose interval has passed since the last check (or that were never checked)."""
+    """Services whose interval has passed since the last check. One that was never checked is due at
+    once, unless it was registered with a run to start from: that run was just chosen by a person, so
+    its first check waits one interval from the registration."""
     now = now or dt.datetime.now(dt.timezone.utc)
     out = []
     for svc in list_all(root):
         if svc.check_hours is None:
             continue
         last = dt.datetime.fromisoformat(svc.last_check.at) if svc.last_check else None
+        if last is None and svc.current_run:
+            last = dt.datetime.fromisoformat(svc.created_at)
         if last is None or now - last >= dt.timedelta(hours=svc.check_hours):
             out.append(svc)
     return out

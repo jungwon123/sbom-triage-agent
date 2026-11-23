@@ -238,6 +238,14 @@ def generate(repo: pathlib.Path, use_syft: bool = True) -> tuple[dict, str]:
     return to_cyclonedx(merged, "syft"), "syft"
 
 
+VEX_CLEARED = ("not_affected", "false_positive", "resolved", "resolved_with_pedigree")
+
+
+def vex_cleared(vuln: dict) -> bool:
+    """A VEX entry whose author says the component is not affected, or that it is already fixed."""
+    return str((vuln.get("analysis") or {}).get("state", "")).lower() in VEX_CLEARED
+
+
 def _prop(c: dict, name: str) -> str | None:
     return next((p.get("value") for p in c.get("properties", []) if p.get("name") == name), None)
 
@@ -262,7 +270,7 @@ def components_from_cyclonedx(bom: dict) -> list[Component]:
 
     reported: dict[str, list[Reported]] = {}       # bom-ref or purl -> what the file's vulnerabilities section says
     for v in bom.get("vulnerabilities") or []:
-        if not v.get("id"):
+        if not v.get("id") or vex_cleared(v):
             continue
         ratings = [r for r in v.get("ratings") or [] if isinstance(r, dict)]
         scores = [r["score"] for r in ratings if isinstance(r.get("score"), (int, float)) and 0 <= r["score"] <= 10]

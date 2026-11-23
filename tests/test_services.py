@@ -39,8 +39,9 @@ def world(st, tmp_path, monkeypatch, make_finding):  # noqa: F811
     w.repo.mkdir(parents=True)
     w.root.mkdir()
 
-    def collect(target, emit, use_syft=True):
+    def collect(target, emit, use_syft=True, **kw):
         w.scans += 1
+        w.asked = {"use_syft": use_syft, **kw}
         emit({"type": "stage", "stage": "scan", "status": "done"})
         return runner.Scanned(target, target, {"components": []}, "test", list(w.findings),
                               agent_run.run(w.findings, None, None, target), {"components": 0}, 0.1)
@@ -114,7 +115,7 @@ def test_a_failed_scan_is_recorded_and_keeps_the_current_run(world, monkeypatch)
     world.findings = [world.finding(1)]
     first = services.check(world.root, "shop")
 
-    def boom(target, emit, use_syft=True):
+    def boom(target, emit, use_syft=True, **kw):
         raise RuntimeError("OSV unavailable")
     monkeypatch.setattr(runner, "collect", boom)
     res = services.check(world.root, "shop")
@@ -213,3 +214,27 @@ def test_registering_needs_admin_and_checking_needs_approver(world, idp):  # noq
     made = c.post("/api/services", json=body)
     assert made.status_code == 201 and made.json()["created_by"] == "kim@example.com"
     assert c.delete("/api/services/pay").status_code == 200
+
+
+# ---------- review 2 (docs/reviews/design-critique-2.md) ----------
+
+def test_a_service_registered_with_a_run_waits_one_interval_before_its_first_check(world):
+    world.findings = [world.finding(1)]
+    base = services.check(world.root, "shop").run_id
+    other = world.repo.parent / "pay"
+    other.mkdir()
+    services.register(world.root, "pay", "결제", str(other), check_hours=24, current_run=base)
+    services.register(world.root, "new", "새 서비스", str(other), check_hours=24)
+    assert [s.id for s in services.due(world.root)] == ["new"]               # no run yet: checked at once
+    later = dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=25)
+    assert {s.id for s in services.due(world.root, later)} == {"new", "pay", "shop"}
+
+
+def test_a_check_builds_the_sbom_the_way_its_base_run_did_and_asks_osv_again(world):
+    world.findings = [world.finding(1)]
+    first = runner.Run(world.root / services.check(world.root, "shop").run_id)
+    assert world.asked == {"use_syft": True, "osv_max_age": services.OSV_MAX_AGE}
+    meta = first.meta
+    first.write("meta.json", {**meta, "sbom_source": "lockfile"})
+    services.check(world.root, "shop")
+    assert world.asked["use_syft"] is False                                    # Syft would name a few components differently

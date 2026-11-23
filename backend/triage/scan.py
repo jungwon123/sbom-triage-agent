@@ -52,12 +52,12 @@ def severity(detail: dict) -> tuple[float | None, str]:
     return (LABEL[label], "label") if label in LABEL else (None, "none")
 
 
-def query_osv(components: list[Component]) -> list[tuple[Component, str]] | None:
+def query_osv(components: list[Component], max_age: float | None = None) -> list[tuple[Component, str]] | None:
     hits: list[tuple[Component, str]] = []
     for i in range(0, len(components), 500):
         chunk = components[i:i + 500]
         body = {"queries": [{"package": {"ecosystem": c.ecosystem, "name": c.name}, "version": c.version} for c in chunk]}
-        res = cache.fetch_json(OSV_BATCH, body)
+        res = cache.fetch_json(OSV_BATCH, body, max_age=max_age)
         if res is None:
             return None
         for c, r in zip(chunk, res.get("results", [])):
@@ -65,8 +65,18 @@ def query_osv(components: list[Component]) -> list[tuple[Component, str]] | None
     return hits
 
 
-def scan(components: list[Component], repo: pathlib.Path | None) -> tuple[list[Finding], dict]:
-    hits = query_osv(components)
+def _affects(detail: dict, comp: Component) -> bool:
+    """Does the advisory list this package at all? True when it lists nothing (nothing to compare with)."""
+    listed = {(str((a.get("package") or {}).get("ecosystem", "")).split(":")[0].lower(),
+               str((a.get("package") or {}).get("name", "")).lower()) for a in detail.get("affected") or []}
+    return not listed or (comp.ecosystem.lower(), comp.name.lower()) in listed
+
+
+def scan(components: list[Component], repo: pathlib.Path | None, max_age: float | None = None) -> tuple[list[Finding], dict]:
+    """max_age (seconds): OSV answers older than this are fetched again in live mode. The default keeps
+    them for good, which is what a recorded demo needs; a service re-check passes a short one so that an
+    advisory published since the last look is seen."""
+    hits = query_osv(components, max_age)
     # what the input file itself reported: kept even when OSV does not list it or cannot be reached
     told = {(c.purl, r.id): r for c in components for r in c.reported if r.id}
     osv_ok = hits is not None
@@ -79,8 +89,9 @@ def scan(components: list[Component], repo: pathlib.Path | None) -> tuple[list[F
     hits = hits + [(c, r.id) for c in components for r in c.reported if r.id]     # after OSV's, so OSV wins a tie
     ids = sorted({vid for _, vid in hits})
     with cf.ThreadPoolExecutor(8) as ex:
-        details = dict(zip(ids, ex.map(lambda i: cache.fetch_json(OSV_VULN + i) or {}, ids)))
+        details = dict(zip(ids, ex.map(lambda i: cache.fetch_json(OSV_VULN + i, max_age=max_age) or {}, ids)))
     cve_of = {i: next((a for a in [i, *d.get("aliases", [])] if a.startswith("CVE-")), None) for i, d in details.items()}
+    told_canon = {(purl, cve_of.get(vid) or vid) for purl, vid in told}
     epss = epss_mod.lookup([c for c in cve_of.values() if c])
     kev = kev_mod.catalog()
     file_cache: dict[str, list[tuple[str, str]]] = {}
@@ -95,10 +106,13 @@ def scan(components: list[Component], repo: pathlib.Path | None) -> tuple[list[F
         if d.get("withdrawn") or (canon, comp.name, comp.version) in seen:
             continue
         seen.add((canon, comp.name, comp.version))
-        only_input += n >= from_osv
+        from_input = n >= from_osv
+        only_input += from_input
         missing = []
         if not d:
             missing.append("osv_detail")
+        elif from_input and not _affects(d, comp):
+            missing.append("osv_mismatch")   # the input names an advisory that is about some other package
         cve = cve_of.get(vid)
         e = epss.get(cve) if cve else None
         if e is None:
@@ -129,6 +143,7 @@ def scan(components: list[Component], repo: pathlib.Path | None) -> tuple[list[F
             bump=semver.bump(comp.version, lo),
             import_sites=usages.find(comp.name, comp.ecosystem, file_cache[comp.ecosystem]) if comp.direct else [],
             missing=missing,
+            source="input" if from_input else "both" if (comp.purl, canon) in told_canon else "osv",
         ))
     # D29 / F8-12: the default target is the version that fixes every known finding of the package
     top: dict[tuple[str, str], str] = {}

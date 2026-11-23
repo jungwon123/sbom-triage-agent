@@ -100,8 +100,10 @@ class Scanned:
 
 
 def collect(target: pathlib.Path, emit: Callable[[dict], None], use_syft: bool = True,
-            columns: dict[str, str] | None = None, ecosystem: str | None = None) -> Scanned:
-    """①~④ without recording a run. target is a repo directory or an SBOM file (CycloneDX / SPDX JSON)."""
+            columns: dict[str, str] | None = None, ecosystem: str | None = None,
+            osv_max_age: float | None = None) -> Scanned:
+    """①~④ without recording a run. target is a repo directory or an input file (SBOM, scanner result,
+    lock file, table). osv_max_age: see scan.scan."""
     target = target.resolve()
     start = time.time()
     emit({"type": "stage", "stage": "sbom", "status": "start"})
@@ -112,6 +114,8 @@ def collect(target: pathlib.Path, emit: Callable[[dict], None], use_syft: bool =
     else:
         bom, source = sbom.generate(target, use_syft=use_syft and not cache.replay_mode())
         repo = target
+        from . import ingest
+        notes = ingest.repo_components(target)[1]   # which dependency files were read and what they lack
     components = sbom.components_from_cyclonedx(bom)
     skipped = sbom.unsupported_purls(bom)
     if skipped:
@@ -120,7 +124,7 @@ def collect(target: pathlib.Path, emit: Callable[[dict], None], use_syft: bool =
           "unsupported": skipped})
 
     emit({"type": "stage", "stage": "scan", "status": "start"})
-    findings, coverage = scan_mod.scan(components, repo)
+    findings, coverage = scan_mod.scan(components, repo, osv_max_age)
     coverage["unsupported"] = skipped
     coverage["kev_list"] = kev_mod.version()
     if notes:

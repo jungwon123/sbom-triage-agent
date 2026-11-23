@@ -39,9 +39,16 @@ def exploit_weight(percentile: float | None) -> float:
     return max(0.0, (percentile - EPSS_FLOOR) / (1 - EPSS_FLOOR))
 
 
+def unconfirmed(f: Finding) -> bool:
+    """Only the input file claims this, and the advisory it names is about another package (scan.py)."""
+    return "osv_mismatch" in f.missing
+
+
 def breakdown(f: Finding, reach: Reachability) -> dict[str, float]:
     sev = (f.cvss if f.cvss is not None else DEFAULT_CVSS) / 10 * 25
-    exploit_raw = 1.0 if f.kev else exploit_weight(f.epss_percentile)
+    # an unconfirmed claim does not get the advisory's KEV listing for free: a scanner false positive
+    # naming a famous CVE would otherwise land in NOW by itself
+    exploit_raw = 1.0 if f.kev and not unconfirmed(f) else exploit_weight(f.epss_percentile)
     reach_w = NO_SOURCE_W if reach == "unknown" and "source" in f.missing else REACH_W[reach]
     exp = SCOPE_W[f.scope] * PATH_W[f.direct] * reach_w * 50
     return {"severity": round(sev, 2), "exploit": round(exploit_raw * 25, 2), "exposure": round(exp, 2)}
@@ -75,7 +82,7 @@ def floor(f: Finding) -> Bucket | None:
     """
     if is_malicious(f):
         return "NOW"
-    if f.kev:
+    if f.kev and not unconfirmed(f):
         return "NOW" if f.scope == "prod" else "NEXT"
     return None
 
@@ -97,7 +104,7 @@ def needs_review(f: Finding, rule_bucket: Bucket | None = None, guards: Guards =
     """
     runtime = any(s.kind == "runtime" for s in f.import_sites)
     hot = (f.epss_percentile or 0) >= guards.epss_review_percentile
-    return f.kev or is_malicious(f) or (hot and (runtime or rule_bucket == "NOW"))
+    return f.kev or is_malicious(f) or unconfirmed(f) or (hot and (runtime or rule_bucket == "NOW"))
 
 
 @dataclass(frozen=True)

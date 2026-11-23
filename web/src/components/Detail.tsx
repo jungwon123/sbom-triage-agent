@@ -75,6 +75,13 @@ export default function Detail({ item, runId, proposal, me, onDecided }: Props) 
             코드 사용 여부: {codeReadLabel[t.code_read_by ?? "rule"]}
             {(t.evidence_files ?? []).length > 0 && ` (근거 파일: ${(t.evidence_files ?? []).join(", ")})`}
           </p>
+          {f.source === "input" && (
+            <p role="alert" className="mt-2 rounded border-l-4 border-next bg-paper px-3 py-1.5 text-sm">
+              {(f.missing ?? []).includes("osv_mismatch")
+                ? "입력 파일만 보고한 취약점이고, 그 권고가 다루는 패키지 목록에 이 패키지가 없습니다. 오탐일 수 있어 KEV 등재를 점수에 넣지 않았습니다. 담당자 확인이 필요합니다."
+                : "입력 파일만 보고한 취약점입니다. 공개 데이터(OSV)의 조회 결과에는 없어 확인되지 않았습니다."}
+            </p>
+          )}
           {(f.missing ?? []).length > 0 && (
             <p className="mt-2 text-sm text-dim">확보하지 못한 데이터: {(f.missing ?? []).join(", ")}</p>
           )}

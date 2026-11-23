@@ -107,6 +107,27 @@ function DataNotes({ run }: { run: RunDetail }) {
           컴포넌트 {skipped}개는 패키지 식별자가 없거나 지원하지 않는 종류라 조회하지 못했습니다. 이 결과에 포함되지 않았습니다.
         </p>
       )}
+      {c.osv === false && (
+        <p role="alert" className="rounded border-l-4 border-now bg-sheet px-3 py-1.5">
+          공개 취약점 데이터(OSV)에 닿지 못한 실행입니다. 입력 파일이 보고한 취약점만 들어 있고, 입력에 없는 취약점은 빠져 있습니다.
+        </p>
+      )}
+      {(c.only_in_input ?? 0) > 0 && (
+        <p role="alert" className="rounded border-l-4 border-next bg-sheet px-3 py-1.5">
+          {c.only_in_input}건은 입력 파일만 보고한 취약점입니다. 공개 데이터의 조회 결과에는 없어 확인되지 않은 주장이며, 항목마다
+          표시되어 있습니다.
+        </p>
+      )}
+      {(c.input_notes ?? []).length > 0 && (
+        <details className="text-dim">
+          <summary className="cursor-pointer">입력 자료의 한계 {c.input_notes!.length}가지</summary>
+          <ul className="mt-1 list-disc space-y-0.5 pl-5">
+            {c.input_notes!.map((n) => (
+              <li key={n}>{n}</li>
+            ))}
+          </ul>
+        </details>
+      )}
     </div>
   );
 }

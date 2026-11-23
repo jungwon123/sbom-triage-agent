@@ -1,5 +1,6 @@
 """Input formats (ingest.py): each sample is a cut-down version of what the tool or file really looks like."""
 import json
+import pathlib
 
 import pytest
 
@@ -325,3 +326,179 @@ def test_a_table_goes_through_the_whole_scan_and_the_run_says_what_the_input_lac
         assert src.read_text().startswith("package,version")          # the handed-over file is only read
     finally:
         store.use(None)
+
+
+# ---------- review 2 (docs/reviews/design-critique-2.md) ----------
+
+def test_osv_answers_are_refreshed_only_when_a_caller_asks(monkeypatch):
+    seen = []
+
+    def fetch(url, data=None, **kw):
+        seen.append((url.split("/v1/")[-1].split("/")[0], kw.get("max_age")))
+        return {"results": [{"vulns": []}]} if url == scan.OSV_BATCH else None
+    monkeypatch.setattr(cache, "fetch_json", fetch)
+    comp = ingest.component("npm", "qs", "6.5.2", reported=[Reported(id="CVE-2022-24999")])
+    scan.scan([comp], None)
+    assert ("querybatch", None) in seen and ("vulns", None) in seen           # a plain scan keeps cached answers
+    seen.clear()
+    scan.scan([comp], None, max_age=3600)
+    assert ("querybatch", 3600) in seen and ("vulns", 3600) in seen            # a re-check asks again after an hour
+
+
+def test_cached_osv_answer_is_fetched_again_once_it_is_older_than_max_age(monkeypatch, tmp_path):
+    import os, time
+    from triage import store
+    from triage.store.files import FileStore
+    monkeypatch.setattr(cache, "CACHE_DIR", tmp_path)
+    monkeypatch.delenv("DEMO_MODE", raising=False)
+    store.use(FileStore())
+    try:
+        body = {"queries": [{"package": {"ecosystem": "npm", "name": "qs"}, "version": "6.5.2"}]}
+        cache.seed(scan.OSV_BATCH, {"results": [{"vulns": []}]}, body)
+        path = tmp_path / f"{cache.key(scan.OSV_BATCH, body)}.json"
+        os.utime(path, (time.time() - 40 * 86400,) * 2)
+
+        class Client:
+            def __init__(self, **kw): pass
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+            def post(self, url, json=None):
+                class R:
+                    def raise_for_status(self): pass
+                    def json(self): return {"results": [{"vulns": [{"id": "GHSA-new"}]}]}
+                return R()
+        monkeypatch.setattr(cache.httpx, "Client", Client)
+        comp = ingest.component("npm", "qs", "6.5.2")
+        assert scan.query_osv([comp]) == []                                    # forty days old, still used
+        assert [v for _, v in scan.query_osv([comp], max_age=3600)] == ["GHSA-new"]
+    finally:
+        store.use(None)
+
+
+def test_dependency_files_below_the_root_and_beside_each_other_are_all_read(tmp_path):
+    (tmp_path / "package-lock.json").write_text(json.dumps({"lockfileVersion": 3, "packages": {
+        "": {"devDependencies": {"husky": "^8"}}, "node_modules/husky": {"version": "8.0.0", "dev": True}}}))
+    pom = '<project><dependencies><dependency><groupId>g</groupId><artifactId>{a}</artifactId><version>1.0</version></dependency></dependencies></project>'
+    (tmp_path / "pom.xml").write_text("<project><modules><module>api</module></modules></project>")   # parent of a multi-module build
+    (tmp_path / "api").mkdir()
+    (tmp_path / "api" / "pom.xml").write_text(pom.format(a="api-lib"))
+    (tmp_path / "py").mkdir()
+    (tmp_path / "py" / "requirements.txt").write_text("-r base.txt\nflask==2.0.1\n")
+    (tmp_path / "jvm").mkdir()
+    (tmp_path / "jvm" / "pom.xml").write_text(pom.format(a="ignored"))
+    (tmp_path / "jvm" / "gradle.lockfile").write_text("g:resolved:2.0=runtimeClasspath\n")
+    comps, notes = ingest.repo_components(tmp_path)
+    assert {c.name for c in comps} == {"husky", "g:api-lib", "flask", "g:resolved"}
+    assert any("-r, -c" in n for n in notes) and "여러 개" in notes[0] and "api/pom.xml" in notes[0]
+
+
+def test_yarn_lock_uses_the_package_json_beside_it(tmp_path):
+    (tmp_path / "yarn.lock").write_text('ejs@^3.1.6:\n  version "3.1.6"\n\njest@^29.0.0:\n  version "29.0.0"\n\nansi@^1:\n  version "1.0.0"\n')
+    (tmp_path / "package.json").write_text(json.dumps({"dependencies": {"ejs": "^3.1.6"}, "devDependencies": {"jest": "^29.0.0"}}))
+    c = {x.name: x for x in ingest.repo_components(tmp_path)[0]}
+    assert (c["ejs"].scope, c["ejs"].direct) == ("prod", True) and (c["jest"].scope, c["jest"].direct) == ("dev", True)
+    assert (c["ansi"].scope, c["ansi"].direct) == ("prod", False)
+    berry = '"resolve@patch:resolve@^1.20.0#~builtin<compat/resolve>":\n  version: 1.22.0\n\n"lodash4@npm:lodash@^4.17.20":\n  version: 4.17.21\n'
+    assert names(ingest.parse_yarn_lock(berry)) == {("npm", "lodash", "4.17.21")}
+
+
+def test_go_mod_blocks_and_gem_platforms():
+    gomod = "module x\n\nrequire a.io/used v1.2.0\n\nreplace (\n\ta.io/b v1.0.0 => a.io/c v1.1.0\n)\n\nexclude (\n\tx.io/y v0.9.0\n)\nreplace a.io/d v1.0.0 => ../d\n"
+    assert names(ingest.parse_go_mod(gomod)) == {("Go", "a.io/used", "1.2.0")}
+    gem = "GEM\n  specs:\n    nokogiri (1.15.4-x86_64-linux)\n    rails (7.0.0.rc1)\n"
+    assert names(ingest.parse_gemfile_lock(gem)) == {("RubyGems", "nokogiri", "1.15.4"), ("RubyGems", "rails", "7.0.0.rc1")}
+
+
+def test_trivy_package_list_gives_scope_and_direct_to_the_vulnerability_rows():
+    doc = {"SchemaVersion": 2, "Results": [{"Type": "npm", "Packages": [
+        {"Name": "jest", "Version": "29.0.0", "Dev": True, "Relationship": "direct", "Identifier": {"PURL": "pkg:npm/jest@29.0.0"}},
+        {"Name": "qs", "Version": "6.5.2", "Relationship": "indirect", "Identifier": {"PURL": "pkg:npm/qs@6.5.2"}}],
+        "Vulnerabilities": [{"VulnerabilityID": "CVE-2024-1", "PkgName": "jest", "InstalledVersion": "29.0.0",
+                             "PkgIdentifier": {"PURL": "pkg:npm/jest@29.0.0"}}]}]}
+    p = ingest.parse_trivy(doc)
+    c = {x.name: x for x in p.components}
+    assert (c["jest"].scope, c["jest"].direct, c["jest"].reported[0].id) == ("dev", True, "CVE-2024-1")
+    assert (c["qs"].scope, c["qs"].direct) == ("prod", False) and not any("구분" in n for n in p.notes)
+
+
+def test_snyk_licence_items_and_unknown_managers_are_counted_not_turned_into_findings():
+    doc = {"packageManager": "gomodules", "projectName": "x", "vulnerabilities": [
+        {"id": "snyk:lic:golang:foo:GPL-3.0", "type": "license", "packageName": "foo", "version": "1.0.0", "severity": "medium"},
+        {"id": "SNYK-GOLANG-1", "packageName": "golang.org/x/net", "version": "0.7.0", "identifiers": {"CVE": ["CVE-2023-44487"]},
+         "from": ["app@1.0.0", "golang.org/x/net@0.7.0"]},
+        {"id": "SNYK-X-2", "packageName": "thing", "version": "1.0.0", "packageManager": "cocoapods"}]}
+    p = ingest.parse_snyk(doc)
+    [c] = p.components
+    assert (c.ecosystem, c.name, c.direct, c.reported[0].id) == ("Go", "golang.org/x/net", True, "CVE-2023-44487")
+    assert any("라이선스" in n and "1건" in n for n in p.notes) and any("cocoapods" in n for n in p.notes)
+
+
+def test_a_table_keeps_vulnerability_numbers_of_other_schemes_and_says_so():
+    text = "package,version,type,vuln,severity\nejs,3.1.6,npm,KVE-2023-0001,High\nlodash,4.17.20,npm,\"SNYK-JS-LODASH-1, ghsa-35JH-r3h4-6jhm\",High\nqs,6.5.2,npm,없음,\n"
+    p = ingest.parse_table(text)
+    c = {x.name: x for x in p.components}
+    assert [r.id for r in c["ejs"].reported] == ["KVE-2023-0001"] and c["qs"].reported == []
+    assert [r.id for r in c["lodash"].reported] == ["GHSA-35jh-r3h4-6jhm", "SNYK-JS-LODASH-1"]
+    assert any("2건" in n and "그대로" in n for n in p.notes)
+
+
+def test_vex_entries_marked_not_affected_are_not_reported(tmp_path):
+    bom = {"bomFormat": "CycloneDX", "components": [{"bom-ref": "c1", "name": "log4j-core", "version": "2.14.1",
+                                                    "purl": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1"}],
+           "vulnerabilities": [{"id": "CVE-2021-44228", "analysis": {"state": "not_affected"}, "affects": [{"ref": "c1"}]},
+                               {"id": "CVE-2021-45046", "analysis": {"state": "exploitable"}, "affects": [{"ref": "c1"}]}]}
+    assert [r.id for r in sbom.components_from_cyclonedx(bom)[0].reported] == ["CVE-2021-45046"]
+    (tmp_path / "vex.json").write_text(json.dumps(bom))
+    assert any("1건" in n for n in ingest.load(tmp_path / "vex.json")[2])
+    xml = '''<bom xmlns="http://cyclonedx.org/schema/bom/1.5"><components>
+<component type="library" bom-ref="q"><name>qs</name><version>6.5.2</version><purl>pkg:npm/qs@6.5.2</purl></component></components>
+<vulnerabilities><vulnerability><id>CVE-2022-24999</id><analysis><state>false_positive</state></analysis>
+<affects><target><ref>q</ref></target></affects></vulnerability></vulnerabilities></bom>'''
+    (tmp_path / "bom.xml").write_text(xml)
+    b, _, notes = ingest.load(tmp_path / "bom.xml")
+    assert sbom.components_from_cyclonedx(b)[0].reported == [] and any("1건" in n for n in notes)
+
+
+LOG4SHELL = {"id": "GHSA-jfh8-c2jp-5v3q", "aliases": ["CVE-2021-44228"], "summary": "Remote code injection in Log4j",
+             "severity": [{"type": "CVSS_V3", "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H"}],
+             "affected": [{"package": {"ecosystem": "Maven", "name": "org.apache.logging.log4j:log4j-core"}}]}
+
+
+def test_a_claim_that_names_another_packages_advisory_is_marked_and_not_raised_by_kev(monkeypatch):
+    from triage import score
+    from triage.agent import run as agent_run
+    from triage.enrich import kev
+
+    def responses(url, data):
+        if url == scan.OSV_BATCH:
+            return {"results": [{"vulns": []} for _ in data["queries"]]}
+        if url.endswith("GHSA-jfh8-c2jp-5v3q"):
+            return LOG4SHELL
+        if url == kev.URL:
+            return {"catalogVersion": "t", "vulnerabilities": [{"cveID": "CVE-2021-44228"}]}
+        return None
+    offline(monkeypatch, responses)
+    wrong = ingest.component("npm", "left-pad", "1.3.0", reported=[Reported(id="GHSA-jfh8-c2jp-5v3q")])
+    right = ingest.component("Maven", "org.apache.logging.log4j:log4j-core", "2.14.1", reported=[Reported(id="GHSA-jfh8-c2jp-5v3q")])
+    fw, fr = scan.scan([wrong, right], None)[0]
+    assert (fw.source, fw.kev, "osv_mismatch" in fw.missing) == ("input", True, True)
+    assert (fr.source, "osv_mismatch" in fr.missing) == ("input", False)        # the advisory does list this package
+    rw, rr = score.score(fw), score.score(fr)
+    assert rw.bucket != "NOW" and rw.risk_breakdown["exploit"] < 25 and score.floor(fw) is None
+    assert rr.bucket == "NOW" and score.floor(fr) == "NOW"
+    tw, tr = agent_run.run([fw, fr], None, None, pathlib.Path("."))
+    assert tw.needs_review and tw.final_bucket != "NOW"                         # left to a person, not raised by itself
+
+
+def test_findings_say_whether_osv_the_input_or_both_reported_them(monkeypatch):
+    detail = {"id": "GHSA-hrpp-h998-j3pp", "aliases": ["CVE-2022-24999"], "affected": [{"package": {"ecosystem": "npm", "name": "qs"}}]}
+
+    def responses(url, data):
+        if url == scan.OSV_BATCH:
+            return {"results": [{"vulns": [{"id": "GHSA-hrpp-h998-j3pp"}]}, {"vulns": [{"id": "GHSA-hrpp-h998-j3pp"}]}]}
+        return detail if url.endswith("GHSA-hrpp-h998-j3pp") else None
+    offline(monkeypatch, responses)
+    a = ingest.component("npm", "qs", "6.5.2", reported=[Reported(id="CVE-2022-24999"), Reported(id="KVE-2023-0001", severity="HIGH")])
+    b = ingest.component("npm", "qs", "6.5.1")
+    by = {(f.version, f.vuln_id): f.source for f in scan.scan([a, b], None)[0]}
+    assert by == {("6.5.2", "CVE-2022-24999"): "both", ("6.5.2", "KVE-2023-0001"): "input", ("6.5.1", "CVE-2022-24999"): "osv"}

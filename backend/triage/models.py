@@ -76,6 +76,9 @@ class Finding(Strict):
     bump: Literal["patch", "minor", "major", "none"]
     import_sites: list[CodeRef]
     missing: list[str] = Field(default_factory=list)   # external data we could not get
+    # who says this package has this vulnerability: OSV's lookup, the input file (scanner result, VEX,
+    # CVE column), or both. "input" alone is a claim nobody checked.
+    source: Literal["osv", "input", "both"] = "osv"
 
 
 class RemediationProposal(Strict):     # what the LLM may propose

@@ -41,14 +41,16 @@ MAX_BYTES = 200_000_000
 # what people and tools call an ecosystem -> the OSV name the pipeline uses
 ECOSYSTEMS = {
     "npm": "npm", "node": "npm", "nodejs": "npm", "node.js": "npm", "javascript": "npm", "js": "npm", "yarn": "npm",
-    "pnpm": "npm", "node-pkg": "npm", "typescript": "npm",
+    "pnpm": "npm", "node-pkg": "npm", "typescript": "npm", "npmjs": "npm",
     "pypi": "PyPI", "pip": "PyPI", "python": "PyPI", "poetry": "PyPI", "pipenv": "PyPI", "python-pkg": "PyPI", "uv": "PyPI",
     "maven": "Maven", "gradle": "Maven", "java": "Maven", "jar": "Maven", "pom": "Maven", "java-archive": "Maven",
-    "kotlin": "Maven", "jvm": "Maven",
-    "go": "Go", "golang": "Go", "gomod": "Go", "gobinary": "Go", "go-module": "Go",
+    "kotlin": "Maven", "jvm": "Maven", "sbt": "Maven", "scala": "Maven", "mvn": "Maven",
+    "go": "Go", "golang": "Go", "gomod": "Go", "gobinary": "Go", "go-module": "Go", "gomodules": "Go",
+    "golangdep": "Go", "govendor": "Go", "gomodule": "Go",
     "cargo": "crates.io", "rust": "crates.io", "crates.io": "crates.io", "rust-crate": "crates.io",
-    "nuget": "NuGet", "dotnet": "NuGet", ".net": "NuGet", "dotnet-core": "NuGet", "c#": "NuGet",
-    "gem": "RubyGems", "bundler": "RubyGems", "ruby": "RubyGems", "rubygems": "RubyGems", "gemspec": "RubyGems",
+    "nuget": "NuGet", "dotnet": "NuGet", ".net": "NuGet", "dotnet-core": "NuGet", "c#": "NuGet", "paket": "NuGet",
+    "csharp": "NuGet",
+    "gem": "RubyGems", "bundler": "RubyGems", "ruby": "RubyGems", "rubygems": "RubyGems", "gemspec": "RubyGems", "gemfile": "RubyGems",
     "composer": "Packagist", "php": "Packagist", "packagist": "Packagist", "php-composer": "Packagist",
 }
 PURL_TYPE = {"npm": "npm", "PyPI": "pypi", "Maven": "maven", "Go": "golang", "crates.io": "cargo", "NuGet": "nuget",
@@ -126,19 +128,32 @@ NO_SCOPE = "운영용과 개발용 구분이 없어 모두 운영 의존성으�
 
 # ---------- dependency files ----------
 
-def parse_yarn_lock(text: str) -> Parsed:
-    rows, names = [], []
+def parse_yarn_lock(text: str, manifest: dict | None = None) -> Parsed:
+    """`manifest` is the package.json beside the lock file; with it direct and dev-only packages are told apart."""
+    rows, name = [], None
     for line in text.splitlines():
         if line and not line[0].isspace() and not line.startswith("#") and line.rstrip().endswith(":"):
             first = line.rstrip()[:-1].split(",")[0].strip().strip('"')
-            at = first.rfind("@")                           # "@scope/name@^1.0.0" or "name@npm:^1.0.0"
-            names = [first[:at]] if at > 0 else []
-        elif names and (m := re.match(r'^\s+version:?\s+"?([^"\s]+)"?\s*$', line)):
-            rows.append((names[0], m.group(1)))
-            names = []
+            name = None
+            if "@patch:" in first:                          # a patched copy of a package listed on its own line
+                continue
+            if "@npm:" in first:                            # berry: "name@npm:^1.0.0", alias: "alias@npm:real@^1.0.0"
+                rest = first.split("@npm:", 1)[1]
+                at = rest.rfind("@")
+                name = rest[:at] if at > 0 else first.split("@npm:", 1)[0]
+            else:
+                at = first.rfind("@")                       # "@scope/name@^1.0.0"
+                name = first[:at] if at > 0 else None
+        elif name and (m := re.match(r'^\s+version:?\s+"?([^"\s]+)"?\s*$', line)):
+            rows.append((name, m.group(1)))
+            name = None
     rows = [(n, v) for n, v in rows if n != "__metadata" and not v.startswith("0.0.0-use.local")]
-    comps = _merge([component("npm", n, v) for n, v in rows])
-    return Parsed("yarn.lock", comps, [NO_GRAPH + " (package.json과 함께 보면 구분할 수 있습니다)", NO_SCOPE])
+    prod = set((manifest or {}).get("dependencies") or {}) | set((manifest or {}).get("optionalDependencies") or {})
+    dev = set((manifest or {}).get("devDependencies") or {}) - prod
+    comps = _merge([component("npm", n, v, "dev" if n in dev else "prod", n in prod or n in dev) for n, v in rows])
+    if manifest is None:
+        return Parsed("yarn.lock", comps, [NO_GRAPH + " (package.json과 함께 보면 구분할 수 있습니다)", NO_SCOPE])
+    return Parsed("yarn.lock", comps, ["직접 의존성과 개발용 여부는 package.json에 적힌 패키지만 구분합니다. 개발용 패키지의 간접 의존성은 운영으로 봅니다."])
 
 
 def parse_pnpm_lock(text: str) -> Parsed:
@@ -162,9 +177,12 @@ def parse_pnpm_lock(text: str) -> Parsed:
 
 
 def parse_requirements(text: str) -> Parsed:
-    rows, loose = [], 0
+    rows, loose, included = [], 0, 0
     for line in text.splitlines():
         line = line.split("#")[0].split(";")[0].strip()
+        if line.startswith(("-r", "--requirement", "-c", "--constraint")):
+            included += 1
+            continue
         if not line or line.startswith(("-", "git+", "http")):
             continue
         m = re.match(r"^([A-Za-z0-9][A-Za-z0-9._-]*)(?:\[[^\]]*\])?\s*==\s*([A-Za-z0-9.!+_-]+)", line)
@@ -173,6 +191,8 @@ def parse_requirements(text: str) -> Parsed:
         else:
             loose += 1
     notes = [f"버전이 고정되지 않은(== 가 아닌) 줄 {loose}개는 어떤 버전이 설치되는지 알 수 없어 뺐습니다."] if loose else []
+    if included:
+        notes.append(f"다른 파일을 끌어오는 줄(-r, -c) {included}개는 따라가지 않았습니다. 그 파일도 따로 입력해야 합니다.")
     return Parsed("requirements.txt", _merge(rows), notes + ["간접 의존성은 pip freeze 결과나 lock 파일이 있어야 보입니다.", NO_SCOPE])
 
 
@@ -209,8 +229,19 @@ def parse_pipfile_lock(text: str) -> Parsed:
 
 
 def parse_go_mod(text: str) -> Parsed:
-    rows = []
-    for line in re.sub(r"\brequire\s*\(", "", text).splitlines():
+    rows, block = [], None
+    for line in text.splitlines():
+        code = line.split("//")[0].strip()
+        if block:                                           # inside "require ( ... )", "replace ( ... )", ...
+            if code == ")":
+                block = None
+                continue
+        elif (m := re.match(r"^(\w+)\s*\($", code)):
+            block = m.group(1)
+            continue
+        directive = block or (code.split()[0] if code else "")
+        if directive != "require":                          # replace and exclude lines name versions that are not used
+            continue
         m = re.match(r"^\s*(?:require\s+)?([\w./~-]+\.[\w./~-]+)\s+(v[\w.+-]+)(\s*//\s*indirect)?", line)
         if m:
             rows.append(component("Go", m.group(1), m.group(2), direct=not m.group(3)))
@@ -225,7 +256,8 @@ def parse_go_sum(text: str) -> Parsed:
 
 
 def parse_gemfile_lock(text: str) -> Parsed:
-    rows = [component("RubyGems", m.group(1), m.group(2)) for line in text.splitlines()
+    # "nokogiri (1.15.4-x86_64-linux)": the part after the dash is the platform of a prebuilt gem, not the version
+    rows = [component("RubyGems", m.group(1), m.group(2).split("-")[0]) for line in text.splitlines()
             if (m := re.match(r"^ {4}([A-Za-z0-9_.-]+) \(([^)\s]+)\)\s*$", line))]
     return Parsed("Gemfile.lock", _merge(rows), [NO_GRAPH, NO_SCOPE])
 
@@ -299,12 +331,20 @@ def _from_purl(purl: str | None, reported: list[Reported] | None = None) -> Comp
 
 def parse_trivy(doc: dict) -> Parsed:
     rows, lost = [], Counter()
+    meta: dict[str, tuple[str, bool]] = {}                  # purl -> (scope, direct), from the package list
     for res in doc.get("Results") or []:
         eco = ecosystem_of(res.get("Type"))
         for p in res.get("Packages") or []:                      # present with --list-all-pkgs
             c = _from_purl((p.get("Identifier") or {}).get("PURL")) or (
                 component(eco, p.get("Name", ""), p.get("Version", "")) if eco else None)
+            if c is not None:
+                direct = str(p.get("Relationship", "")).lower() == "direct" or p.get("Indirect") is False
+                c = c.model_copy(update={"scope": "dev" if p.get("Dev") else "prod", "direct": direct,
+                                         "paths": [[c.name]] if direct else []})
+                meta[c.purl] = (c.scope, c.direct)
             rows.append(c)
+    for res in doc.get("Results") or []:
+        eco = ecosystem_of(res.get("Type"))
         for v in res.get("Vulnerabilities") or []:
             scores = [_score(x.get("V3Score")) for x in (v.get("CVSS") or {}).values() if isinstance(x, dict)]
             rep = [Reported(id=v.get("VulnerabilityID", ""), cvss=max((s for s in scores if s is not None), default=None),
@@ -313,8 +353,13 @@ def parse_trivy(doc: dict) -> Parsed:
                 component(eco, v.get("PkgName", ""), v.get("InstalledVersion", ""), reported=rep) if eco else None)
             if c is None:
                 lost[res.get("Type") or "?"] += 1
+            elif c.purl in meta:                             # the vulnerability row itself carries no scope
+                scope, direct = meta[c.purl]
+                c = c.model_copy(update={"scope": scope, "direct": direct, "paths": [[c.name]] if direct else []})
             rows.append(c)
-    notes = ["스캐너 결과에는 취약점이 있는 패키지만 들어 있을 수 있습니다(Trivy는 --list-all-pkgs로 전체를 냅니다).", NO_GRAPH, NO_SCOPE]
+    notes = ["스캐너 결과에는 취약점이 있는 패키지만 들어 있을 수 있습니다(Trivy는 --list-all-pkgs로 전체를 냅니다)."]
+    if not meta:
+        notes += [NO_GRAPH, NO_SCOPE]
     if lost:
         notes.append(f"지원하지 않는 종류라 뺀 취약점: {dict(lost)} (OS 패키지 등)")
     return Parsed("trivy", _merge(rows), notes)
@@ -347,18 +392,29 @@ def parse_osv_scanner(doc: dict) -> Parsed:
 
 
 def parse_snyk(doc: dict | list) -> Parsed:
-    rows = []
+    rows, licenses, no_eco = [], 0, Counter()
     for project in doc if isinstance(doc, list) else [doc]:
         default = ecosystem_of(project.get("packageManager"))
         for v in project.get("vulnerabilities") or []:
+            if v.get("type") == "license" or str(v.get("id", "")).startswith("snyk:lic:"):
+                licenses += 1                                # a licence policy hit, not a vulnerability
+                continue
             ids = (v.get("identifiers") or {})
             vid = next(iter(ids.get("CVE") or ids.get("GHSA") or []), None) or v.get("id", "")
             rep = [Reported(id=vid, cvss=_score(v.get("cvssScore")), severity=v.get("severity"), fixed=_first_version(v.get("fixedIn")))]
-            eco = ecosystem_of(v.get("packageManager")) or default
+            eco = ecosystem_of(v.get("packageManager")) if v.get("packageManager") else default
+            if eco is None:
+                no_eco[str(v.get("packageManager") or project.get("packageManager") or "?")] += 1
+                continue
+            direct = isinstance(v.get("from"), list) and len(v["from"]) == 2      # [project, this package]
             rows.append(component(eco, v.get("packageName") or v.get("moduleName") or "", v.get("version", ""),
-                                  reported=rep) if eco else None)
-    return Parsed("snyk", _merge(rows), ["스캐너 결과에는 취약점이 있는 패키지만 들어 있습니다.", NO_GRAPH, NO_SCOPE]
-                  + _skipped(len(rows), sum(r is not None for r in rows), "취약점"))
+                                  direct=direct, reported=rep))
+    notes = ["스캐너 결과에는 취약점이 있는 패키지만 들어 있습니다.", NO_SCOPE]
+    if licenses:
+        notes.append(f"라이선스 정책 항목 {licenses}건은 취약점이 아니어서 뺐습니다.")
+    if no_eco:
+        notes.append(f"패키지 관리자를 알아보지 못해 뺀 취약점: {dict(no_eco)}")
+    return Parsed("snyk", _merge(rows), notes + _skipped(len(rows), sum(r is not None for r in rows), "취약점"))
 
 
 def parse_dependency_check(doc: dict) -> Parsed:
@@ -407,10 +463,14 @@ def parse_cyclonedx_xml(text: str) -> Parsed:
         ratings = [{"score": _score(txt(r, "score")), "severity": txt(r, "severity")}
                    for r in (kid(v, "ratings") if kid(v, "ratings") is not None else [])]
         affects = [{"ref": txt(t, "ref")} for t in (kid(v, "affects") if kid(v, "affects") is not None else [])]
-        vulns.append({"id": txt(v, "id"), "ratings": ratings, "affects": affects})
+        entry = {"id": txt(v, "id"), "ratings": ratings, "affects": affects}
+        analysis = kid(v, "analysis")
+        if analysis is not None and txt(analysis, "state"):
+            entry["analysis"] = {"state": txt(analysis, "state")}
+        vulns.append(entry)
     if vulns:
         bom["vulnerabilities"] = vulns
-    return Parsed("cyclonedx-xml", bom=bom, notes=[] if deps else [NO_GRAPH])
+    return Parsed("cyclonedx-xml", bom=bom, notes=([] if deps else [NO_GRAPH]) + _vex_notes(bom))
 
 
 def parse_spdx_tag_value(text: str) -> Parsed:
@@ -452,7 +512,7 @@ ALIASES = {
                 "사용버전", "설치버전"],
     "ecosystem": ["ecosystem", "type", "packagetype", "packagemanager", "manager", "language", "lang", "pkgtype", "생태계",
                   "언어", "유형", "종류", "패키지관리자"],
-    "vuln": ["vulnerability", "vulnerabilityid", "vulnid", "cve", "cveid", "cves", "advisory", "id", "취약점", "취약점id",
+    "vuln": ["vuln", "vulns", "vulnerabilities", "vulnerability", "vulnerabilityid", "vulnid", "cve", "cveid", "cves", "advisory", "id", "취약점", "취약점id",
              "취약점번호", "cve번호"],
     "severity": ["severity", "risk", "level", "심각도", "위험도", "등급"],
     "cvss": ["cvss", "cvssscore", "cvssv3", "cvss3", "score", "basescore", "점수"],
@@ -461,6 +521,19 @@ ALIASES = {
     "scope": ["scope", "dev", "environment", "env", "범위", "용도"],
     "direct": ["direct", "isdirect", "dependencytype", "relationship", "직접", "직접의존", "의존유형"],
 }
+
+
+OTHER_ID = re.compile(r"^[A-Za-z][A-Za-z0-9]*[-:][A-Za-z0-9:._-]{2,}$")     # KVE-2023-0001, SNYK-JS-EJS-1, an in-house number
+
+
+def vuln_ids(cell: str) -> tuple[list[str], int]:
+    """Ids named in a vulnerability cell. -> (ids, how many of them are not CVE, GHSA or another OSV scheme).
+    Ids of other schemes are kept as written: dropping them would read the row as "no vulnerability"."""
+    known = [m.group(0) for m in VULN_ID.finditer(cell)]
+    rest = VULN_ID.sub(" ", cell)
+    other = [t for t in re.split(r"[\s,;|/]+", rest) if OTHER_ID.match(t)]
+    fixed = [("GHSA-" + i[5:].lower()) if i.upper().startswith("GHSA-") else i.upper() for i in known]
+    return list(dict.fromkeys(fixed + other)), len(set(other))
 
 
 def _norm(header: str) -> str:
@@ -498,9 +571,10 @@ def parse_records(records: list[dict], fmt: str, columns: dict[str, str] | None 
             f"패키지 이름과 버전 열을 찾지 못했습니다. 파일의 열: {headers[:20]}. "
             "--columns name=<열>,version=<열> 로 지정하세요 (ecosystem, group, vuln, severity, cvss, fixed, scope 도 지정 가능).")
     get = lambda r, f: str(r.get(cols[f]) if f in cols and r.get(cols[f]) is not None else "").strip()  # noqa: E731
-    rows, no_eco = [], 0
+    rows, no_eco, odd_ids = [], 0, 0
     for r in records:
-        ids = list(dict.fromkeys(m.upper() if m.upper().startswith("CVE") else m for m in VULN_ID.findall(get(r, "vuln"))))
+        ids, odd = vuln_ids(get(r, "vuln"))
+        odd_ids += odd
         rep = [Reported(id=i, cvss=_score(get(r, "cvss")), severity=get(r, "severity") or None,
                         fixed=_first_version(get(r, "fixed"))) for i in ids]
         c = _from_purl(get(r, "purl"), rep)
@@ -523,6 +597,8 @@ def parse_records(records: list[dict], fmt: str, columns: dict[str, str] | None 
     if no_eco:
         notes.append(f"{no_eco}행은 생태계(npm, Maven, PyPI 등)를 알 수 없어 뺐습니다. --ecosystem 으로 기본값을 주거나 ecosystem 열을 지정하세요.")
     notes += _skipped(len(rows) - no_eco, sum(r is not None for r in rows), "행")
+    if odd_ids:
+        notes.append(f"CVE나 GHSA가 아닌 취약점 번호 {odd_ids}건은 적힌 그대로 실었습니다. 공개 데이터와 대조할 수 없어 심각도와 수정 버전은 표의 값만 씁니다.")
     if "direct" not in cols:
         notes.append(NO_GRAPH)
     if "scope" not in cols:
@@ -539,6 +615,11 @@ def parse_table(text: str, columns: dict[str, str] | None = None, ecosystem: str
 
 
 # ---------- detection ----------
+
+def _vex_notes(bom: dict) -> list[str]:
+    n = sum(sbom.vex_cleared(v) for v in bom.get("vulnerabilities") or [])
+    return [f"SBOM의 취약점 절에서 영향 없음이나 해결됨으로 표시된 {n}건은 보고된 취약점으로 싣지 않았습니다."] if n else []
+
 
 def _records_in(doc) -> list[dict] | None:
     """A JSON array of flat objects, at the top or under one obvious key."""
@@ -560,7 +641,7 @@ def _sniff(name: str, text: str, columns: dict[str, str] | None, ecosystem: str 
             raise UnsupportedInput(f"JSON으로 읽지 못했습니다: {e}") from e
         if isinstance(doc, dict):
             if doc.get("bomFormat") == "CycloneDX":
-                return Parsed("cyclonedx", bom=doc, notes=[] if doc.get("dependencies") else [NO_GRAPH])
+                return Parsed("cyclonedx", bom=doc, notes=([] if doc.get("dependencies") else [NO_GRAPH]) + _vex_notes(doc))
             if str(doc.get("spdxVersion", "")).startswith("SPDX"):
                 return Parsed("spdx", bom=sbom.spdx_to_cyclonedx(doc), notes=[] if doc.get("relationships") else [NO_GRAPH])
             if "Results" in doc and ("SchemaVersion" in doc or "ArtifactName" in doc):
@@ -641,18 +722,19 @@ def load(path: pathlib.Path, columns: dict[str, str] | None = None, ecosystem: s
 
 
 def repo_files(repo: pathlib.Path, depth: int = 3) -> list[pathlib.Path]:
-    """Dependency files of a repository: the root's if it has any, otherwise those up to `depth` levels down."""
+    """Dependency files of a repository: the root's and those up to `depth` levels down. A monorepo keeps
+    one per service, and a root package-lock.json that holds only tooling must not hide them."""
     def here(d: pathlib.Path) -> list[pathlib.Path]:
         names = [n for n in BY_NAME if (d / n).is_file()]
         names += sorted(p.name for p in d.glob("requirements*.txt") if p.name not in names)
         names = [n for n in names if SHADOWED.get(n) not in names and not (n.startswith("requirements") and "poetry.lock" in names)]
-        lock = [n for n in names if n != "pom.xml" or len(names) == 1]      # a lock file beats a bare pom.xml
-        return [d / n for n in lock]
+        if "gradle.lockfile" in names:                       # the same JVM project, resolved: the pom adds nothing
+            names = [n for n in names if n != "pom.xml"]
+        return [d / n for n in names]
 
-    found = here(repo)
-    if found or depth <= 0:
-        return found
-    out: list[pathlib.Path] = []
+    out = here(repo)
+    if depth <= 0:
+        return out
     for sub in sorted(p for p in repo.iterdir() if p.is_dir() and p.name not in SKIP_DIRS and not p.name.startswith(".")):
         out += repo_files(sub, depth - 1)
     return out
@@ -664,7 +746,11 @@ def repo_components(repo: pathlib.Path) -> tuple[list[Component], list[str]]:
     parts, notes = [], []
     for f in files:
         try:
-            p = BY_NAME.get(f.name, parse_requirements)(f.read_text(encoding="utf-8-sig"))
+            text = f.read_text(encoding="utf-8-sig")
+            if f.name == "yarn.lock" and (f.parent / "package.json").is_file():
+                p = parse_yarn_lock(text, json.loads((f.parent / "package.json").read_text(encoding="utf-8-sig")))
+            else:
+                p = BY_NAME.get(f.name, parse_requirements)(text)
         except Exception as e:  # one unreadable file must not hide the others
             notes.append(f"{f.relative_to(repo)}: 읽지 못함 ({type(e).__name__})")
             continue

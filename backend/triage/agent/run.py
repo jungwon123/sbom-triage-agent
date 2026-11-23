@@ -111,7 +111,7 @@ def merge(f: Finding, r: score.RuleResult, v: AgentVerdict | None, decided_by: s
         rule_bucket=r.bucket, reachability=reach,
         final_bucket=final, override_reason=reason,
         rationale=fill(v.rationale, fill_values(f, r.risk)) if v is not None else rule_rationale(f, r, reach),
-        remediation=apply.build(proposal, f), needs_review=held,
+        remediation=apply.build(proposal, f), needs_review=held or score.unconfirmed(f),
         decided_by=decided_by,
         evidence_files=code.evidence_files[:10] if code is not None else [],
         code_read_by="local_agent" if code is not None else "agent" if v is not None and "source" not in f.missing else "rule",

@@ -90,6 +90,7 @@ export interface Finding {
   bump: "patch" | "minor" | "major" | "none";
   import_sites: CodeRef[];
   missing?: string[];
+  source?: "osv" | "input" | "both";
 }
 
 export interface RemediationProposal {
