@@ -37,7 +37,7 @@ sbom-triage/
 │     ├─ agent/          # ⑤ llm.py(인터페이스), llm_anthropic.py, llm_openai.py, llm_replay.py, tools.py, prompts.py, run.py
 │     ├─ verify/         # ⑥ sandbox.py(Docker), apply.py(명령 조립), run.py(판정)
 │     ├─ models.py       # Finding, Triage, Remediation, Verification (단일 진실 원천)
-│     ├─ store/          # 저장 계층: base.py(인터페이스), files.py, postgres.py, schema.sql, migrate.py(파일 → DB 가져오기)
+│     ├─ store/          # 저장 계층: base.py(인터페이스), files.py, postgres.py(연결 풀), schema.sql, migrations/(버전별 변경 SQL), migrate.py(파일 → DB 가져오기)
 │     ├─ cache.py        # 외부 응답 캐시 (저장 계층 경유)
 │     ├─ runner.py       # 단계 호출 순서와 이벤트 기록 (CLI·API 공용)
 │     ├─ eval.py         # golden 일치율, NOW 누락
