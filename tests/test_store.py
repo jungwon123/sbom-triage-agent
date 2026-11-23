@@ -126,6 +126,7 @@ def test_run_object_and_decisions_work_on_either_store(st, tmp_path, make_findin
 
 
 def test_import_copies_a_file_run_into_postgres(tmp_path, make_finding, monkeypatch):
+    pytest.importorskip("psycopg", reason="needs the postgres extra: uv sync --extra postgres")
     from triage.store import migrate
     monkeypatch.setattr(cache, "CACHE_DIR", tmp_path / "cache")
     src, pg = FileStore(), postgres()
@@ -146,6 +147,7 @@ def test_import_copies_a_file_run_into_postgres(tmp_path, make_finding, monkeypa
 
 def test_writes_are_visible_to_another_connection(tmp_path):
     """Guards against writes that sit in an open transaction and vanish when the process exits."""
+    pytest.importorskip("psycopg", reason="needs the postgres extra: uv sync --extra postgres")
     import psycopg
     pg = postgres()
     d = tmp_path / "20261119-000000-svc"
@@ -160,6 +162,7 @@ def test_writes_are_visible_to_another_connection(tmp_path):
 
 
 def test_a_migration_file_is_applied_once_in_version_order(tmp_path, monkeypatch):
+    pytest.importorskip("psycopg", reason="needs the postgres extra: uv sync --extra postgres")
     from triage.store import postgres as pg_mod
     pg = postgres()
     try:

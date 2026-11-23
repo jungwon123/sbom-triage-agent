@@ -201,6 +201,7 @@ def test_result_is_kept_when_the_database_connections_die_during_the_job(tmp_pat
 
 def test_tables_can_be_created_by_several_processes_at_once():
     """Critique 3, 2-6: CREATE TABLE IF NOT EXISTS alone fails when two callers race."""
+    pytest.importorskip("psycopg", reason="needs the postgres extra: uv sync --extra postgres")
     from tests.test_store import TEST_URL, postgres
     from triage.store.postgres import PostgresStore
     postgres().close()
