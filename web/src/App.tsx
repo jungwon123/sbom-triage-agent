@@ -4,6 +4,7 @@ import ItemList from "./components/ItemList";
 import Overview from "./components/Overview";
 import Changes from "./components/Changes";
 import Decisions from "./components/Decisions";
+import AgentStart from "./components/AgentStart";
 import VerifyStart from "./components/VerifyStart";
 import Services from "./components/Services";
 import {
@@ -203,6 +204,7 @@ export default function App() {
               <Changes changes={run.meta.changes} onSelect={setSelected} />
             </section>
           )}
+          <AgentStart runId={run.id} me={me} changed={(run.meta.changes ?? []).filter((c) => c.kind !== "removed").length} onDone={reloadRun} />
           <VerifyStart runId={run.id} me={me} hasRepo={Boolean(run.meta.repo)} verified={run.meta.summary?.verified ?? 0} onDone={reloadRun} />
           <Decisions runId={run.id} proposals={proposals} me={me} onSelect={setSelected} />
           <main className="mt-8 grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(420px,520px)]">

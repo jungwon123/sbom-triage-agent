@@ -179,7 +179,7 @@ class Job(Strict):
     """One queued piece of slow work (a sandbox pass). Kept by the storage layer; a worker claims it."""
     id: str
     run_id: str = ""
-    kind: Literal["export_together", "service_check", "verify"]
+    kind: Literal["export_together", "service_check", "verify", "agent"]
     status: Literal["queued", "running", "done", "failed", "interrupted"]
     payload: dict = {}                       # plain values only: the worker is another process
     created_at: str

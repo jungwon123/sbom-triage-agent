@@ -242,3 +242,47 @@ def test_verify_is_a_queued_job_and_reports_why_it_was_skipped(st, tmp_path, mon
     jobs.submit(run.dir, "verify", {"buckets": ["NOW"]})
     done = jobs.work_once(tmp_path, "w1", st)
     assert done.status == "done" and done.result["skipped"] == "replay mode"
+
+
+def _empty_run(st, tmp_path, meta=None):
+    from triage import runner
+    run = runner.Run(tmp_path / "r1")
+    run.dir.mkdir(exist_ok=True)
+    st.put_doc(run.dir, "meta", {"name": "r1", "summary": {}, "stages": [], **(meta or {})})
+    st.put_doc(run.dir, "findings", [])
+    st.put_doc(run.dir, "triage", [])
+    return run
+
+
+@pytest.mark.parametrize("env,payload,why", [
+    ({"DEMO_MODE": "replay", "LLM_PROVIDER": "anthropic"}, {"scope": "all"}, "replay mode"),
+    ({"DEMO_MODE": "live", "LLM_PROVIDER": "none"}, {"scope": "all"}, "no model"),
+    ({"DEMO_MODE": "live", "LLM_PROVIDER": "anthropic"}, {"scope": "changed"}, "nothing to judge"),
+])
+def test_agent_job_is_skipped_with_a_reason_instead_of_falling_back_to_rules(st, tmp_path, monkeypatch, env, payload, why):
+    """Without a model the job must not run rule-only: that would overwrite earlier AI judgments."""
+    from triage import runner
+    for k, v in env.items():
+        monkeypatch.setenv(k, v)
+    monkeypatch.setattr(runner, "agent", lambda *a, **k: pytest.fail("the model step must not start"))
+    run = _empty_run(st, tmp_path)
+    jobs.submit(run.dir, "agent", payload)
+    done = jobs.work_once(tmp_path, "w1", st)
+    assert done.status == "done" and done.result["skipped"] == why and done.result["judged"] == 0
+
+
+def test_agent_job_passes_scope_and_limit_as_values(st, tmp_path, monkeypatch):
+    from triage import runner
+    monkeypatch.setenv("DEMO_MODE", "live")
+    monkeypatch.setenv("LLM_PROVIDER", "anthropic")
+    seen = {}
+
+    def fake(run, limit=None, only=None, **kw):
+        seen.update(limit=limit, only=only)
+        return run
+    monkeypatch.setattr(runner, "agent", fake)
+    run = _empty_run(st, tmp_path, {"changes": [{"finding_id": "a", "kind": "added"}, {"finding_id": "b", "kind": "removed"}]})
+    jobs.submit(run.dir, "agent", {"scope": "changed", "limit": 5})
+    done = jobs.work_once(tmp_path, "w1", st)
+    assert done.status == "done" and done.result["skipped"] is None
+    assert seen == {"limit": 5, "only": {"a"}}

@@ -63,10 +63,41 @@ def _verify(run_dir: pathlib.Path, payload: dict) -> dict:
     return {"summary": run.meta.get("summary"), "skipped": last.get("why") if last.get("status") == "skipped" else None}
 
 
+
+def _agent(run_dir: pathlib.Path, payload: dict) -> dict:
+    """The AI judgment for a run. Calls the configured model, so it is skipped (never downgraded to
+    rule-only, which would overwrite earlier judgments) when no model can be called."""
+    from . import cache, runner
+    from .agent import llm as llm_mod
+    run = runner.Run(run_dir)
+
+    def skipped(why: str) -> dict:
+        run.emit({"type": "stage", "stage": "agent", "status": "skipped", "why": why})
+        return {"summary": run.meta.get("summary"), "skipped": why, "judged": 0}
+
+    if cache.replay_mode() or llm_mod.provider() == "replay":
+        return skipped("replay mode")
+    if llm_mod.provider() == "none":
+        return skipped("no model")
+    scope, only = payload.get("scope") or "all", None
+    if scope == "changed":
+        only = {c["finding_id"] for c in run.meta.get("changes", []) if c["kind"] != "removed"}
+    elif scope == "failed":
+        only = {t.finding_id for t in run.triage() if t.decided_by == "agent_fallback"}
+    if only is not None and not only:
+        return skipped("nothing to judge")
+    run = runner.agent(run, payload.get("limit"), only=only)
+    triage = run.triage()
+    return {"summary": run.meta.get("summary"), "skipped": None, "llm": run.meta.get("llm"),
+            "judged": sum(1 for t in triage if t.decided_by == "agent" and (only is None or t.finding_id in only)),
+            "fallbacks": sum(1 for t in triage if t.decided_by == "agent_fallback")}
+
+
 # kind -> handler(run_dir, payload) -> result. Handlers get plain values, never a closure.
 HANDLERS: dict[str, Callable[[pathlib.Path, dict], dict]] = {"export_together": _export_together,
                                                              "service_check": _service_check,
-                                                             "verify": _verify}
+                                                             "verify": _verify,
+                                                             "agent": _agent}
 
 
 def _now() -> str:

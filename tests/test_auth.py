@@ -154,6 +154,7 @@ def test_a_viewer_reads_but_cannot_decide_or_export(site, idp):
     assert res.status_code == 403 and "승인 권한" in res.json()["detail"]
     assert c.post(f"/api/runs/{rid}/export").status_code == 403
     assert c.post(f"/api/runs/{rid}/export/together").status_code == 403
+    assert c.post(f"/api/runs/{rid}/agent").status_code == 403           # a model call costs money: approver only
     assert decide.proposals(r)[0].decision is None
 
 

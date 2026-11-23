@@ -103,6 +103,13 @@ export type VerifyJob = Omit<Job, "result"> & { result?: { summary: Summary | nu
 export const startVerify = (id: string) => post<VerifyJob>(`${base(id)}/verify`);
 export const latestVerifyJob = (id: string) => get<VerifyJob | null>(`${base(id)}/jobs/latest?kind=verify`);
 export const getVerifyJob = (id: string, jobId: string) => get<VerifyJob>(`${base(id)}/jobs/${encodeURIComponent(jobId)}`);
+export type AgentScope = "all" | "changed";
+export type AgentJob = Omit<Job, "result"> & {
+  result?: { summary: Summary | null; skipped: string | null; judged: number; fallbacks?: number } | null;
+};
+export const startAgent = (id: string, scope: AgentScope) => post<AgentJob>(`${base(id)}/agent`, { scope });
+export const latestAgentJob = (id: string) => get<AgentJob | null>(`${base(id)}/jobs/latest?kind=agent`);
+export const getAgentJob = (id: string, jobId: string) => get<AgentJob>(`${base(id)}/jobs/${encodeURIComponent(jobId)}`);
 export const listRuns = () => get<RunListItem[]>("/api/runs");
 export const getRun = (id: string) => get<RunDetail>(`/api/runs/${encodeURIComponent(id)}`);
 

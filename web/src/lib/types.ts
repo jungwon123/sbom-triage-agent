@@ -207,7 +207,7 @@ export interface CombinedCheck {
 export interface Job {
   id: string;
   run_id?: string;
-  kind: "export_together" | "service_check" | "verify";
+  kind: "export_together" | "service_check" | "verify" | "agent";
   status: "queued" | "running" | "done" | "failed" | "interrupted";
   payload?: Record<string, unknown>;
   created_at: string;

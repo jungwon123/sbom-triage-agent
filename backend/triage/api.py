@@ -132,6 +132,23 @@ def verify_start(run_id: str, body: VerifyIn | None = None, user: auth.User = De
     return jobs.submit(_run(run_id).dir, "verify", payload).model_dump()
 
 
+class AgentIn(BaseModel):
+    scope: Literal["all", "changed", "failed"] = "all"   # changed: what a re-check reported; failed: earlier model errors
+    limit: int | None = Field(default=None, ge=1, le=500)
+
+
+@app.post("/api/runs/{run_id}/agent", status_code=202, dependencies=APPROVE)
+def agent_start(run_id: str, body: AgentIn | None = None, user: auth.User = Depends(auth.approver)) -> dict:
+    """Queue the AI judgment of a run. The worker calls the model (the API process never does); poll the job."""
+    body = body or AgentIn()
+    payload: dict = {"scope": body.scope}
+    if body.limit:
+        payload["limit"] = body.limit
+    if not user.local:
+        payload["requested_by"] = user.email or user.sub
+    return jobs.submit(_run(run_id).dir, "agent", payload).model_dump()
+
+
 @app.get("/api/runs/{run_id}/jobs/latest", dependencies=VIEW)
 def latest_job(run_id: str, kind: str = "export_together") -> dict | None:
     job = jobs.latest(_run(run_id).dir, kind)
