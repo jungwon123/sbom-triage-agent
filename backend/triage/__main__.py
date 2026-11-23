@@ -330,7 +330,8 @@ def main(argv: list[str] | None = None) -> int:
         run.write("eval.json", result)
         print(json.dumps(result, ensure_ascii=False, indent=1)); return 0
     meta = run.meta
-    print(json.dumps({"run_dir": str(run.dir.relative_to(ROOT)), "sbom_source": meta["sbom_source"],
+    shown = run.dir.relative_to(ROOT) if run.dir.is_relative_to(ROOT) else run.dir   # a run kept outside the repository
+    print(json.dumps({"run_dir": str(shown), "sbom_source": meta["sbom_source"],
                       "coverage": meta["coverage"], "summary": meta["summary"], "llm": meta.get("llm"),
                       "seconds": meta["seconds"]}, ensure_ascii=False, indent=1))
     return 0
