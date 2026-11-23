@@ -207,6 +207,27 @@ class PostgresStore:
     def workers(self, root: pathlib.Path) -> list[dict]:
         return [r["body"] for r in self._conn().execute("SELECT body FROM workers ORDER BY id").fetchall()]
 
+    # ---- registered services ----
+    def service_add(self, root: pathlib.Path, service: dict) -> bool:
+        row = self._conn().execute("INSERT INTO services (id, body) VALUES (%s, %s) ON CONFLICT DO NOTHING RETURNING id",
+                                   (service["id"], Jsonb(service))).fetchone()
+        return row is not None
+
+    def service_get(self, root: pathlib.Path, service_id: str) -> dict | None:
+        row = self._conn().execute("SELECT body FROM services WHERE id = %s", (service_id,)).fetchone()
+        return row["body"] if row else None
+
+    def service_list(self, root: pathlib.Path) -> list[dict]:
+        return [r["body"] for r in self._conn().execute("SELECT body FROM services ORDER BY id").fetchall()]
+
+    def service_update(self, root: pathlib.Path, service_id: str, patch: dict) -> dict | None:
+        row = self._conn().execute("UPDATE services SET body = body || %s, updated_at = now() WHERE id = %s RETURNING body",
+                                   (Jsonb(patch), service_id)).fetchone()
+        return row["body"] if row else None
+
+    def service_delete(self, root: pathlib.Path, service_id: str) -> bool:
+        return self._conn().execute("DELETE FROM services WHERE id = %s RETURNING id", (service_id,)).fetchone() is not None
+
     # ---- across runs ----
     def search(self, root: pathlib.Path, package: str | None = None, vuln_id: str | None = None,
                limit: int = 200) -> list[dict]:

@@ -10,6 +10,8 @@ Who runs the worker (TRIAGE_WORKER):
 - "inline": a thread inside the API process running the same loop. Default with the file store,
   so the offline demo needs one process and no database.
 
+Between jobs a worker also queues the checks of registered services that are due (services.py).
+
 A worker renews the job's heartbeat while it works. A running job whose heartbeat stopped (the
 worker was killed) is put back in the queue once, then reported as "interrupted". A worker that
 was only presumed dead cannot overwrite the job afterwards: updates are checked against the
@@ -33,6 +35,7 @@ from .models import Job
 log = logging.getLogger(__name__)
 
 ACTIVE = ("queued", "running")
+SCHEDULE_EVERY = 60.0   # seconds between looks at which registered services are due for a check
 BEAT = 5.0              # seconds between heartbeats
 STALE = 30.0            # a running job this long without a heartbeat has lost its worker
 WORKER_ALIVE = 15.0     # a worker seen within this many seconds counts as alive
@@ -45,8 +48,14 @@ def _export_together(run_dir: pathlib.Path, payload: dict) -> dict:
     return decide.export_view(runner.Run(run_dir), together=True)
 
 
+def _service_check(scope_dir: pathlib.Path, payload: dict) -> dict:
+    from . import services
+    return services.check(scope_dir.parent, payload["service_id"]).model_dump()
+
+
 # kind -> handler(run_dir, payload) -> result. Handlers get plain values, never a closure.
-HANDLERS: dict[str, Callable[[pathlib.Path, dict], dict]] = {"export_together": _export_together}
+HANDLERS: dict[str, Callable[[pathlib.Path, dict], dict]] = {"export_together": _export_together,
+                                                             "service_check": _service_check}
 
 
 def _now() -> str:
@@ -166,10 +175,15 @@ def serve(root: pathlib.Path, stop: threading.Event | None = None, poll: float =
     """The worker loop. -> jobs handled. With once=True it empties the queue and returns."""
     stop, me, started, handled = stop or threading.Event(), me or new_worker_id(), _now(), 0
     st = store.get()                      # the queue this worker belongs to, fixed for its lifetime
+    planned = 0.0
     while not stop.is_set():
         job = None
         try:
             st.worker_beat(root, _info(me, started))
+            if time.time() - planned >= SCHEDULE_EVERY:      # several workers asking at once queue one job
+                planned = time.time()
+                from . import services
+                services.submit_due(root)
             job = work_once(root, me, st)
         except Exception:  # the store being away for a moment must not end the worker
             log.exception("worker pass failed")

@@ -142,6 +142,49 @@ class FileStore:
     def workers(self, root: pathlib.Path) -> list[dict]:
         return [json.loads(p.read_text()) for p in (root / ".workers").glob("*.json")]
 
+    # ---- registered services: one file each under <root>/.services/ ----
+    def _service_path(self, root: pathlib.Path, service_id: str) -> pathlib.Path:
+        return root / ".services" / f"svc-{service_id}.json"
+
+    def _service_write(self, root: pathlib.Path, service: dict) -> None:
+        path = self._service_path(root, service["id"])
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(service, ensure_ascii=False, indent=1))
+        tmp.replace(path)
+
+    def service_add(self, root: pathlib.Path, service: dict) -> bool:
+        with self._queue_lock(root):
+            if self._service_path(root, service["id"]).exists():
+                return False
+            self._service_write(root, service)
+            return True
+
+    def service_get(self, root: pathlib.Path, service_id: str) -> dict | None:
+        path = self._service_path(root, service_id)
+        return json.loads(path.read_text()) if path.is_file() else None
+
+    def service_list(self, root: pathlib.Path) -> list[dict]:
+        rows = [json.loads(p.read_text()) for p in (root / ".services").glob("svc-*.json")]
+        return sorted(rows, key=lambda r: r["id"])
+
+    def service_update(self, root: pathlib.Path, service_id: str, patch: dict) -> dict | None:
+        with self._queue_lock(root):
+            service = self.service_get(root, service_id)
+            if service is None:
+                return None
+            service = {**service, **patch}
+            self._service_write(root, service)
+            return service
+
+    def service_delete(self, root: pathlib.Path, service_id: str) -> bool:
+        with self._queue_lock(root):
+            path = self._service_path(root, service_id)
+            if not path.exists():
+                return False
+            path.unlink()
+            return True
+
     def search(self, root: pathlib.Path, package: str | None = None, vuln_id: str | None = None,
                limit: int = 200) -> list[dict]:
         """Reads every run from disk: fine for a laptop, the reason the operating store is a database."""

@@ -1,4 +1,4 @@
-"""CLI: python -m triage <scan|agent|verify|run|worker|db|eval|doctor|schema> ..."""
+"""CLI: python -m triage <scan|agent|verify|run|services|worker|db|eval|doctor|schema> ..."""
 from __future__ import annotations
 
 import argparse
@@ -49,15 +49,47 @@ def db_command(a: argparse.Namespace) -> int:
     if a.action == "status":
         conn = pg._conn()
         counts = {t: conn.execute(f"SELECT count(*) AS n FROM {t}").fetchone()["n"]
-                  for t in ("runs", "findings", "triage", "events", "decisions", "http_cache", "jobs", "workers")}
+                  for t in ("runs", "findings", "triage", "events", "decisions", "http_cache", "jobs", "workers", "services")}
         print(json.dumps(counts, indent=1)); return 0
     pg.init()
     src = FileStore()
     dirs = a.run_dirs or [p.parent for p in sorted(runner.OUT.glob("*/meta.json"))]
     out = {d.name: migrate.import_run(src, pg, d.resolve()) for d in dirs}
+    if not a.run_dirs:     # a full import also brings the registered services; ones already there are kept
+        out["services"] = sum(pg.service_add(runner.OUT, s) for s in src.service_list(runner.OUT))
     if a.cache:
         out["http_cache"] = migrate.import_cache(pg)
     print(json.dumps(out, ensure_ascii=False, indent=1)); return 0
+
+
+def services_command(a: argparse.Namespace) -> int:
+    """Register services and re-check them. `check` runs here, in this process (handy for cron)."""
+    from . import runner, services
+    root = runner.OUT
+    try:
+        if a.action == "add":
+            if not a.id or not a.target:
+                print("사용: triage services add <id> <target> [--name ...]"); return 2
+            baseline = a.baseline.resolve().name if a.baseline else None
+            svc = services.register(root, a.id, a.name or a.id, a.target, context_of(a), a.owner,
+                                    None if a.every == 0 else a.every, created_by="cli", current_run=baseline)
+            print(svc.model_dump_json(indent=1)); return 0
+        if a.action == "remove":
+            ok = services.remove(root, a.id or "")
+            print("등록을 지웠습니다. 실행 기록은 그대로 있습니다." if ok else "등록되지 않은 서비스입니다."); return 0 if ok else 1
+        if a.action == "check":
+            ids = [s.id for s in (services.due(root) if a.due else services.list_all(root))] if (a.all or a.due) else [a.id]
+            if ids == [None]:
+                print("사용: triage services check <id> | --all | --due"); return 2
+            out = {i: services.check(root, i).model_dump(exclude={"changes"}) for i in ids}
+            print(json.dumps(out, ensure_ascii=False, indent=1))
+            return 1 if any(r["result"] == "failed" for r in out.values()) else 0
+    except services.ServiceError as e:
+        print(f"거절: {e}"); return 1
+    rows = [{"id": s.id, "name": s.name, "target": s.target, "check_hours": s.check_hours, "current_run": s.current_run,
+             "last_check": s.last_check and {"at": s.last_check.at, "result": s.last_check.result, **s.last_check.counts}}
+            for s in services.list_all(root)]
+    print(json.dumps(rows, ensure_ascii=False, indent=1)); return 0
 
 
 def worker_command(a: argparse.Namespace) -> int:
@@ -102,11 +134,22 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("agent"); p.add_argument("run_dir", type=pathlib.Path); p.add_argument("--limit", type=int)
     p.add_argument("--labeled", action="store_true", help="judge only the findings that have a golden label")
     p.add_argument("--retry-failed", action="store_true", help="judge only the findings whose last LLM call failed")
+    p.add_argument("--changed", action="store_true", help="judge only the findings a service re-check reported as new or moved")
     context_args(p)
     p = sub.add_parser("db", help="operating store (PostgreSQL): create tables, import file runs")
     p.add_argument("action", choices=["init", "import", "status"])
     p.add_argument("run_dirs", nargs="*", type=pathlib.Path, help="for import: run directories (default: every run under out/)")
     p.add_argument("--cache", action="store_true", help="for import: also copy fixtures/cache into the database")
+    p = sub.add_parser("services", help="registered services: add, list, check (re-triage), remove")
+    p.add_argument("action", choices=["add", "list", "check", "remove"])
+    p.add_argument("id", nargs="?"); p.add_argument("target", nargs="?", help="for add: repo directory or SBOM file")
+    p.add_argument("--name", help="for add: display name (default: the id)")
+    p.add_argument("--owner", help="for add: team or person responsible")
+    p.add_argument("--every", type=int, default=24, help="for add: hours between automatic checks, 0 = only on request")
+    p.add_argument("--baseline", type=pathlib.Path, help="for add: an existing run directory to use as the current run")
+    p.add_argument("--all", action="store_true", help="for check: every registered service")
+    p.add_argument("--due", action="store_true", help="for check: only services whose interval has passed")
+    context_args(p)
     p = sub.add_parser("worker", help="run queued jobs (sandbox passes started from the dashboard)")
     p.add_argument("--once", action="store_true", help="empty the queue and exit")
     p.add_argument("--poll", type=float, default=1.0, help="seconds between looks at an empty queue")
@@ -141,6 +184,8 @@ def main(argv: list[str] | None = None) -> int:
         return db_command(a)
     if a.cmd == "worker":
         return worker_command(a)
+    if a.cmd == "services":
+        return services_command(a)
     if a.cmd == "doctor":
         return doctor.main(a.llm)
     if a.cmd == "schema":
@@ -172,6 +217,9 @@ def main(argv: list[str] | None = None) -> int:
         if a.retry_failed:
             failed = {t.finding_id for t in run.triage() if t.decided_by == "agent_fallback"}
             only = failed if only is None else only & failed
+        if a.changed:
+            moved = {c["finding_id"] for c in run.meta.get("changes", []) if c["kind"] != "removed"}
+            only = moved if only is None else only & moved
         run = runner.agent(run, a.limit, only=only)
     elif a.cmd == "rescore":
         run = runner.rescore(runner.Run(a.run_dir))

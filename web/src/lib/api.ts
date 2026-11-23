@@ -1,4 +1,4 @@
-import type { CombinedCheck, Decision, Finding, Job, Me, Proposal, ServiceContext, Triage } from "./types";
+import type { Change, CombinedCheck, Decision, Finding, Job, Me, Proposal, Service, ServiceContext, Triage } from "./types";
 
 export type Bucket = Triage["final_bucket"];
 export type Counts = Record<Bucket, number>;
@@ -33,6 +33,9 @@ export interface RunDetail {
     coverage: { components: number; epss_pct: number; kev_feed: boolean; kev_hits: number; unsupported?: Record<string, number>; kev_list?: { catalog_version: string | null; date_released: string | null; count: number } | null };
     summary: Summary;
     stages: string[];
+    service?: string;
+    previous_run?: string;
+    changes?: Change[];
     llm?: {
       provider: string;
       model: string | null;
@@ -97,3 +100,23 @@ export const getJob = (id: string, jobId: string) => get<ExportJob>(`${base(id)}
 export const latestExportJob = (id: string) => get<ExportJob | null>(`${base(id)}/jobs/latest?kind=export_together`);
 export const listRuns = () => get<RunListItem[]>("/api/runs");
 export const getRun = (id: string) => get<RunDetail>(`/api/runs/${encodeURIComponent(id)}`);
+
+/** A registered service with its current run's counts and the check in progress, if any. */
+export type ServiceRow = Service & { summary: Summary | null; job: Omit<Job, "result" | "payload"> | null };
+export interface ServiceInput {
+  id: string;
+  name: string;
+  target: string;
+  owner: string | null;
+  check_hours: number | null;
+  context: ServiceContext;
+}
+export const listServices = () => get<ServiceRow[]>("/api/services");
+export const addService = (body: ServiceInput) => post<ServiceRow>("/api/services", body);
+export const checkService = (id: string) => post<ServiceRow>(`/api/services/${encodeURIComponent(id)}/check`);
+export async function removeService(id: string): Promise<void> {
+  const res = await fetch(`/api/services/${encodeURIComponent(id)}`, { method: "DELETE" });
+  if (!res.ok) await fail(res);
+}
+/** Registering a service points the scanner at a path on the server, so it needs the admin role. */
+export const canAdmin = (me: Me) => me.role === "admin";

@@ -10,7 +10,7 @@ import sys
 from triage import models
 
 OUT = pathlib.Path(__file__).resolve().parents[1] / "web/src/lib/types.ts"
-ROOTS = [models.CodeRef, models.Component, models.ServiceContext, models.Finding, models.RemediationProposal,
+ROOTS = [models.Change, models.ServiceCheck, models.Service, models.CodeRef, models.Component, models.ServiceContext, models.Finding, models.RemediationProposal,
          models.AgentVerdict, models.Remediation, models.VerifyStep, models.Verification, models.Triage,
          models.Decision, models.Proposal, models.CombinedCheck, models.Job, models.Me]
 

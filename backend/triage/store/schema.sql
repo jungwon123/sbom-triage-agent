@@ -101,5 +101,13 @@ CREATE TABLE IF NOT EXISTS workers (
     body  jsonb NOT NULL
 );
 
+-- Registered services. Their runs are rows of `runs`; `body.current_run` names the one in use.
+CREATE TABLE IF NOT EXISTS services (
+    id          text PRIMARY KEY,
+    updated_at  timestamptz NOT NULL DEFAULT now(),
+    body        jsonb NOT NULL
+);
+
 INSERT INTO schema_version (version) VALUES (1) ON CONFLICT DO NOTHING;
 INSERT INTO schema_version (version) VALUES (2) ON CONFLICT DO NOTHING;
+INSERT INTO schema_version (version) VALUES (3) ON CONFLICT DO NOTHING;

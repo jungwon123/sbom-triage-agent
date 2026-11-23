@@ -1,5 +1,5 @@
 import type { Bucket, Item } from "./api";
-import type { Triage, Verification } from "./types";
+import type { Change, Triage, Verification } from "./types";
 
 export const BUCKETS: Bucket[] = ["NOW", "NEXT", "MONITOR"];
 
@@ -65,3 +65,20 @@ export const codeReadLabel: Record<NonNullable<Triage["code_read_by"]>, string> 
   agent: "AI가 코드를 읽고 판단",
   local_agent: "사내 모델이 코드를 읽고 판단, 코드는 외부로 보내지 않음",
 };
+
+export const changeLabel: Record<Change["kind"], string> = {
+  kev_added: "KEV 등재",
+  raised: "등급 상승",
+  added: "새로 발견",
+  fix_released: "수정 버전 공개",
+  lowered: "등급 하락",
+  removed: "해소",
+};
+
+export function when(iso?: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime())
+    ? iso
+    : d.toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}

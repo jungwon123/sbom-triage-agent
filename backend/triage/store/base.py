@@ -47,6 +47,17 @@ class Store(Protocol):
         """Record that a worker is alive: {"id", "host", "pid", "started_at", "seen"}."""
     def workers(self, root: pathlib.Path) -> list[dict]: ...
 
+    # ---- registered services (services.py owns the meaning of the fields) ----
+    def service_add(self, root: pathlib.Path, service: dict) -> bool:
+        """False when a service with this id already exists; nothing is written then."""
+    def service_get(self, root: pathlib.Path, service_id: str) -> dict | None: ...
+    def service_list(self, root: pathlib.Path) -> list[dict]:
+        """Ordered by id."""
+    def service_update(self, root: pathlib.Path, service_id: str, patch: dict) -> dict | None:
+        """Merge `patch` into the record in one step. -> the record after the merge, None if missing."""
+    def service_delete(self, root: pathlib.Path, service_id: str) -> bool:
+        """Remove the registration only; the service's runs stay."""
+
     # ---- across runs ----
     def search(self, root: pathlib.Path, package: str | None = None, vuln_id: str | None = None,
                limit: int = 200) -> list[dict]:

@@ -10,7 +10,7 @@ from triage import cache, decide, runner, store
 from triage.store.files import FileStore
 
 TEST_URL = os.environ.get("TEST_DATABASE_URL", "postgresql://triage:triage_dev@127.0.0.1:54329/triage")
-TABLES = "runs, findings, triage, events, decisions, http_cache, jobs, workers"
+TABLES = "runs, findings, triage, events, decisions, http_cache, jobs, workers, services"
 
 
 def postgres():

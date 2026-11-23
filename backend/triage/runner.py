@@ -4,12 +4,14 @@ out/<run_id>/: sbom.cdx.json, findings.json, triage.json, meta.json, events.json
 """
 from __future__ import annotations
 
+import dataclasses
 import datetime as dt
 import json
 import logging
 import pathlib
 import re
 import time
+from collections.abc import Callable
 
 from . import cache, sbom, scan as scan_mod, score, store
 from .agent import llm as llm_mod, run as agent_run
@@ -84,44 +86,82 @@ def summarize(findings: list[Finding], triage: list[Triage]) -> dict:
             "verified": sum(bool(t.verification and t.verification.verdict == "verified") for t in triage)}
 
 
-def scan(target: pathlib.Path, name: str | None = None, context: ServiceContext | None = None,
-         use_syft: bool = True) -> Run:
-    """①~④. target is a repo directory or an SBOM file (CycloneDX / SPDX JSON)."""
+@dataclasses.dataclass
+class Scanned:
+    """What ①~④ produce before anything is recorded (services.py decides whether it becomes a run)."""
+    target: pathlib.Path
+    repo: pathlib.Path | None
+    bom: dict
+    source: str
+    findings: list[Finding]
+    triage: list[Triage]            # rule only
+    coverage: dict
+    seconds: float
+
+
+def collect(target: pathlib.Path, emit: Callable[[dict], None], use_syft: bool = True) -> Scanned:
+    """①~④ without recording a run. target is a repo directory or an SBOM file (CycloneDX / SPDX JSON)."""
     target = target.resolve()
-    name = name or re.sub(r"[^A-Za-z0-9_.-]", "_", target.stem if target.is_file() else target.name)
-    run = Run(OUT / f"{dt.datetime.now():%Y%m%d-%H%M%S}-{name}")
     start = time.time()
-    run.emit({"type": "stage", "stage": "sbom", "status": "start"})
+    emit({"type": "stage", "stage": "sbom", "status": "start"})
     if target.is_file():
         bom, source = sbom.load_file(target)
         repo = None
     else:
         bom, source = sbom.generate(target, use_syft=use_syft and not cache.replay_mode())
         repo = target
-    run.write("sbom.cdx.json", bom)
     components = sbom.components_from_cyclonedx(bom)
     skipped = sbom.unsupported_purls(bom)
     if skipped:
         log.warning("SBOM components not scanned (unsupported or missing purl): %s", skipped)
-    run.emit({"type": "stage", "stage": "sbom", "status": "done", "source": source, "components": len(components),
-              "unsupported": skipped})
+    emit({"type": "stage", "stage": "sbom", "status": "done", "source": source, "components": len(components),
+          "unsupported": skipped})
 
-    run.emit({"type": "stage", "stage": "scan", "status": "start"})
+    emit({"type": "stage", "stage": "scan", "status": "start"})
     findings, coverage = scan_mod.scan(components, repo)
     coverage["unsupported"] = skipped
     coverage["kev_list"] = kev_mod.version()
-    run.write("findings.json", [f.model_dump() for f in findings])
-    run.emit({"type": "stage", "stage": "scan", "status": "done", **coverage})
+    emit({"type": "stage", "stage": "scan", "status": "done", **coverage})
+    triage = agent_run.run(findings, repo, None, target)   # rule only: no model, nothing written
+    return Scanned(target, repo, bom, source, findings, triage, coverage, round(time.time() - start, 1))
 
-    triage = agent_run.run(findings, repo, None, run.dir)   # rule only
-    run.save_triage(triage)
-    meta = {"name": name, "target": str(target), "repo": str(repo) if repo else None, "sbom_source": source,
-            "coverage": coverage, "context": (context or ServiceContext()).model_dump(),
-            "seconds": round(time.time() - start, 1), "summary": summarize(findings, triage),
-            "stages": ["sbom", "scan", "score"]}
+
+def new_run(name: str, root: pathlib.Path | None = None) -> Run:
+    """A run directory named by the clock; a second one in the same second gets a suffix."""
+    root = root or OUT
+    stem, n = f"{dt.datetime.now():%Y%m%d-%H%M%S}-{name}", 1
+    path = root / stem
+    while path.exists() or store.get().has_run(path):
+        n += 1
+        path = root / f"{stem}-{n}"
+    return Run(path)
+
+
+def record(run: Run, s: Scanned, name: str, context: ServiceContext | None = None, extra: dict | None = None) -> Run:
+    """Write a collected scan as the run's SBOM, findings, rule triage and meta."""
+    run.write("sbom.cdx.json", s.bom)
+    run.write("findings.json", [f.model_dump() for f in s.findings])
+    run.save_triage(s.triage)
+    meta = {"name": name, "target": str(s.target), "repo": str(s.repo) if s.repo else None, "sbom_source": s.source,
+            "coverage": s.coverage, "context": (context or ServiceContext()).model_dump(),
+            "seconds": s.seconds, "summary": summarize(s.findings, s.triage),
+            "stages": ["sbom", "scan", "score"], **(extra or {})}
     run.write("meta.json", meta)
     run.emit({"type": "stage", "stage": "score", "status": "done", **meta["summary"]})
     return run
+
+
+def safe_name(text: str) -> str:
+    return re.sub(r"[^A-Za-z0-9_.-]", "_", text)
+
+
+def scan(target: pathlib.Path, name: str | None = None, context: ServiceContext | None = None,
+         use_syft: bool = True) -> Run:
+    """①~④, recorded as a new run."""
+    target = target.resolve()
+    name = name or safe_name(target.stem if target.is_file() else target.name)
+    run = new_run(name)
+    return record(run, collect(target, run.emit, use_syft), name, context)
 
 
 def _llm_meta(llm, code_llm) -> dict:

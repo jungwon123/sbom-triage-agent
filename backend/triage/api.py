@@ -2,7 +2,8 @@
 decisions on proposed changes and queues slow work. Writes go through the storage layer (decisions,
 events, jobs) and to out/<run_id>/export/; the analysed repository is never touched. Slow work is
 only queued here: a worker runs it (jobs.py). Who may call what is decided by auth.py: reading
-needs the viewer role, deciding and exporting need approver. With login off (the default, for the
+needs the viewer role, deciding, exporting and re-checking a service need approver, registering a
+service needs admin. With login off (the default, for the
 offline demo) everything is open and the name on a decision is whatever the person typed."""
 from __future__ import annotations
 
@@ -16,7 +17,8 @@ from fastapi.responses import PlainTextResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from fastapi.staticfiles import StaticFiles
 
-from . import auth, decide, jobs, runner, store
+from . import auth, decide, jobs, runner, services, store
+from .models import ServiceContext
 from .__main__ import load_env
 
 load_env()
@@ -33,7 +35,7 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="SBOM Triage", lifespan=lifespan)
 app.include_router(auth.router)
 RUN_ID = re.compile(r"^[A-Za-z0-9_.-]+$")
-VIEW, APPROVE = [Depends(auth.viewer)], [Depends(auth.approver)]
+VIEW, APPROVE, ADMIN = [Depends(auth.viewer)], [Depends(auth.approver)], [Depends(auth.admin)]
 
 
 def _run(run_id: str) -> runner.Run:
@@ -128,6 +130,66 @@ def job(run_id: str, job_id: str) -> dict:
     if found is None:
         raise HTTPException(404, "job not found")
     return found.model_dump()
+
+
+class ServiceIn(BaseModel):
+    id: str = Field(max_length=40)
+    name: str = Field(max_length=80)
+    target: str = Field(max_length=500)                # must be under TRIAGE_SERVICE_ROOTS
+    owner: str | None = Field(default=None, max_length=80)
+    check_hours: int | None = Field(default=24, ge=1, le=720)
+    context: ServiceContext = ServiceContext()
+    current_run: str | None = Field(default=None, max_length=200)
+
+
+def _service_view(svc) -> dict:
+    """The record plus what the list needs: the current run's summary and the check in progress, if any."""
+    st, summary = store.get(), None
+    if svc.current_run and RUN_ID.match(svc.current_run) and st.has_run(runner.OUT / svc.current_run):
+        summary = st.get_doc(runner.OUT / svc.current_run, "meta").get("summary")
+    job = services.latest_job(runner.OUT, svc.id)
+    return {**svc.model_dump(), "summary": summary, "job": job.model_dump(exclude={"result", "payload"}) if job else None}
+
+
+def _service(service_id: str):
+    svc = services.get(runner.OUT, service_id) if re.fullmatch(r"[a-z0-9][a-z0-9-]{0,39}", service_id) else None
+    if svc is None:
+        raise HTTPException(404, "service not found")
+    return svc
+
+
+@app.get("/api/services", dependencies=VIEW)
+def service_list() -> list[dict]:
+    return [_service_view(s) for s in services.list_all(runner.OUT)]
+
+
+@app.post("/api/services", status_code=201, dependencies=ADMIN)
+def service_add(body: ServiceIn, user: auth.User = Depends(auth.admin)) -> dict:
+    """Register a service. The target is a path on the server, so this needs the admin role."""
+    if body.current_run is not None and not RUN_ID.match(body.current_run):
+        raise HTTPException(422, "실행 식별자가 올바르지 않습니다.")
+    try:
+        svc = services.register(runner.OUT, body.id, body.name, body.target, body.context, body.owner, body.check_hours,
+                                created_by=None if user.local else (user.email or user.sub),
+                                current_run=body.current_run, restricted=True)
+    except services.ServiceError as e:
+        raise HTTPException(422, str(e)) from e
+    return _service_view(svc)
+
+
+@app.delete("/api/services/{service_id}", dependencies=ADMIN)
+def service_remove(service_id: str) -> dict:
+    """Removes the registration only; the service's runs stay."""
+    services.remove(runner.OUT, _service(service_id).id)
+    return {"ok": True}
+
+
+@app.post("/api/services/{service_id}/check", status_code=202, dependencies=APPROVE)
+def service_check(service_id: str, user: auth.User = Depends(auth.approver)) -> dict:
+    """Queue a re-check now (scan and compare, no model call). The service list shows the job."""
+    svc = _service(service_id)
+    services.submit(runner.OUT, svc.id, None if user.local else (user.email or user.sub))
+    return _service_view(svc)
 
 
 @app.get("/api/search", dependencies=VIEW)

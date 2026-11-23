@@ -63,6 +63,34 @@ def build_message(name: str, findings: list[Finding], triage: list[Triage], link
     return {"text": head, "blocks": blocks}
 
 
+CHANGE = {"added": "새로 발견", "raised": "등급 상승", "kev_added": "KEV 등재", "fix_released": "수정 버전 공개",
+          "lowered": "등급 하락", "removed": "해소"}
+
+
+def build_change_message(name: str, changes: list, total: int, link: str | None = None) -> dict:
+    """Pure function: what a scheduled re-check found -> Slack payload. `changes` are models.Change rows
+    worth an alert; `total` is every change of that check."""
+    head = f"[SBOM Triage] {name}: 다시 확인한 결과 바로 볼 변경이 {len(changes)}건 있습니다."
+    lines = []
+    for c in changes[:MAX_ITEMS]:
+        parts = [f"*{c.package}* {c.version}", c.vuln_id, CHANGE[c.kind]]
+        if c.before and c.after and c.before != c.after:
+            parts.append(f"{c.before} → {c.after}")
+        elif c.after:
+            parts.append(c.after)
+        lines.append("• " + ", ".join(parts))
+    if len(changes) > MAX_ITEMS:
+        lines.append(f"외 {len(changes) - MAX_ITEMS}건")
+    blocks: list[dict] = [
+        {"type": "section", "text": {"type": "mrkdwn", "text": f"*{head}*"}},
+        {"type": "section", "text": {"type": "mrkdwn", "text": "\n".join(lines)}},
+        {"type": "context", "elements": [{"type": "mrkdwn", "text": f"이번 확인의 전체 변경 {total}건. 새 항목은 규칙 결과이며 AI 판단은 아직 하지 않았습니다."}]},
+    ]
+    if link:
+        blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": f"<{link}|대시보드에서 변경 내용 보기>"}})
+    return {"text": head, "blocks": blocks}
+
+
 def send(payload: dict, dry_run: bool = False) -> tuple[bool, str]:
     """-> (sent, detail). Never raises: a failed notification must not fail the run."""
     url = os.environ.get("SLACK_WEBHOOK_URL", "")

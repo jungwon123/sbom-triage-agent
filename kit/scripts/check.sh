@@ -41,7 +41,7 @@ hits=$(grep -rnE "['\"](claude-[a-z0-9-]+|gpt-[a-z0-9.-]+|o[0-9]-[a-z0-9-]+)['\"
 open_routes=$(grep -nE '^@app\.(get|post|put|delete|patch)\(' $SRC/api.py | grep -v "dependencies=" | grep -vE '"/api/(health|runs/\{run_id\}/(decisions|export/together))"' | head -5)
 [ -z "$open_routes" ] && ok "규칙 11: API 경로에 역할 검사가 달려 있음" || { ng "규칙 11: 역할 검사가 없는 API 경로"; echo "$open_routes" | sed 's/^/      /'; }
 grep -q "risk" <(sed -n '/^class AgentVerdict/,/^class /p' $SRC/models.py) && ng "규칙 2: AgentVerdict에 점수 필드가 있음" || ok "규칙 2: AgentVerdict에 점수 필드 없음"
-for t in test_writer_gets_no_code_and_no_tools test_two_step_jump_rejected test_kev_downgrade_rejected test_raw_number_in_rationale_rejected test_shell_metacharacters_rejected test_symlink_escape_rejected test_original_untouched_and_network_blocked test_nothing_is_readable_without_a_session test_a_viewer_reads_but_cannot_decide_or_export test_a_bad_id_token_gives_no_session; do
+for t in test_writer_gets_no_code_and_no_tools test_two_step_jump_rejected test_kev_downgrade_rejected test_raw_number_in_rationale_rejected test_shell_metacharacters_rejected test_symlink_escape_rejected test_original_untouched_and_network_blocked test_nothing_is_readable_without_a_session test_a_viewer_reads_but_cannot_decide_or_export test_a_bad_id_token_gives_no_session test_a_target_over_the_api_must_be_under_an_allowed_root test_registering_needs_admin_and_checking_needs_approver; do
   grep -rq "def $t" tests 2>/dev/null || ng "안전장치 테스트 없음: $t"
 done
 if [ -d web/src ]; then

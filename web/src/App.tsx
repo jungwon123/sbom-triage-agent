@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import Detail from "./components/Detail";
 import ItemList from "./components/ItemList";
 import Overview from "./components/Overview";
+import Changes from "./components/Changes";
 import Decisions from "./components/Decisions";
+import Services from "./components/Services";
 import {
   SIGNED_OUT, getMe, getProposals, getRun, listRuns, loginUrl, logout, roleLabel, type RunDetail, type RunListItem,
 } from "./lib/api";
@@ -10,6 +12,12 @@ import type { Me, Proposal } from "./lib/types";
 import { byCvss, byPriority } from "./lib/format";
 
 export type SortMode = "priority" | "cvss";
+
+type View = "run" | "services";
+
+function viewFromUrl(): View {
+  return new URLSearchParams(window.location.search).get("view") === "services" ? "services" : "run";
+}
 
 function runFromUrl(): string | null {
   return new URLSearchParams(window.location.search).get("run");
@@ -42,6 +50,7 @@ export default function App() {
   const [selected, setSelected] = useState<string | null>(null);
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [me, setMe] = useState<Me | null>(null);
+  const [view, setView] = useState<View>(viewFromUrl);
   const [loginError] = useState(takeLoginError);
   const locked = me?.mode === "oidc" && !me.signed_in;
   const ready = me !== null && !locked;
@@ -89,8 +98,20 @@ export default function App() {
   function pickRun(id: string) {
     const url = new URL(window.location.href);
     url.searchParams.set("run", id);
+    url.searchParams.delete("view");
     window.history.replaceState(null, "", url);
     setRunId(id);
+    setView("run");
+    // a run made by a re-check is not in the list loaded at start
+    if (!runs.some((r) => r.id === id)) listRuns().then(setRuns).catch(() => undefined);
+  }
+
+  function pickView(v: View) {
+    const url = new URL(window.location.href);
+    if (v === "services") url.searchParams.set("view", v);
+    else url.searchParams.delete("view");
+    window.history.replaceState(null, "", url);
+    setView(v);
   }
 
   async function signOut() {
@@ -107,7 +128,20 @@ export default function App() {
     <div className="mx-auto max-w-[1440px] px-4 pb-16 sm:px-8">
       <header className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-rule py-4">
         <h1 className="text-[17px] font-semibold">SBOM Triage</h1>
-        <label className="flex items-center gap-2 text-sm text-dim">
+        <nav aria-label="화면" className="flex gap-1 text-sm">
+          {(["run", "services"] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              aria-current={view === v ? "page" : undefined}
+              className={`rounded px-2.5 py-1 ${view === v ? "bg-ink font-semibold text-white" : "text-ink underline"}`}
+              onClick={() => pickView(v)}
+            >
+              {v === "run" ? "분석 결과" : "서비스"}
+            </button>
+          ))}
+        </nav>
+        <label className={`flex items-center gap-2 text-sm text-dim ${view === "run" ? "" : "hidden"}`}>
           분석 실행
           <select
             className="max-w-[60vw] rounded border border-rule bg-sheet px-2 py-1 text-ink"
@@ -122,9 +156,9 @@ export default function App() {
             ))}
           </select>
         </label>
-        {run && <Context run={run} />}
+        {run && view === "run" && <Context run={run} />}
         {me?.signed_in && (
-          <p className={`flex items-center gap-2 text-sm ${run ? "" : "ml-auto"}`}>
+          <p className={`flex items-center gap-2 text-sm ${run && view === "run" ? "" : "ml-auto"}`}>
             <span title={me.email ?? undefined}>{me.name}</span>
             {me.role && <span className="rounded bg-monitor-soft px-1.5 py-0.5 text-[13px]">{roleLabel[me.role]} 권한</span>}
             <button type="button" className="text-link underline" onClick={signOut}>
@@ -134,23 +168,35 @@ export default function App() {
         )}
       </header>
 
-      {error && (
+      {view === "services" && me && ready && <Services me={me} onOpenRun={pickRun} />}
+
+      {view === "run" && error && (
         <p role="alert" className="mt-10 max-w-xl text-[15px] leading-relaxed">
           분석 결과를 불러오지 못했습니다 ({error}). API가 실행 중인지 확인하세요:{" "}
           <code className="rounded bg-sheet px-1.5 py-0.5 font-mono text-[13px]">uv run uvicorn triage.api:app</code>
         </p>
       )}
-      {!error && !run && (runId || !ready) && <p className="mt-10 text-dim">불러오는 중입니다.</p>}
-      {!error && ready && !runId && runs.length === 0 && (
+      {view === "run" && !error && !run && (runId || !ready) && <p className="mt-10 text-dim">불러오는 중입니다.</p>}
+      {view === "run" && !error && ready && !runId && runs.length === 0 && (
         <p className="mt-10 max-w-xl text-[15px] leading-relaxed">
           아직 분석 결과가 없습니다. 먼저 스캔을 실행하세요:{" "}
           <code className="rounded bg-sheet px-1.5 py-0.5 font-mono text-[13px]">uv run python -m triage scan &lt;레포 경로&gt;</code>
         </p>
       )}
 
-      {run && me && (
+      {view === "run" && run && me && (
         <>
           <Overview run={run} items={items} mode={mode} onMode={setMode} selected={selected} onSelect={setSelected} />
+          {run.meta.changes && run.meta.changes.length > 0 && (
+            <section aria-label="지난 확인 이후 변경" className="mt-6 rounded-md bg-sheet px-5 py-4 ring-1 ring-rule">
+              <h2 className="text-[15px] font-semibold">지난 확인 이후 달라진 것 {run.meta.changes.length}건</h2>
+              <p className="mt-1 text-sm text-dim">
+                비교한 이전 실행은 <span className="font-mono text-[12.5px]">{run.meta.previous_run}</span>입니다. 새로
+                생기거나 움직인 항목은 AI 판단을 다시 받기 전까지 규칙 결과입니다.
+              </p>
+              <Changes changes={run.meta.changes} onSelect={setSelected} />
+            </section>
+          )}
           <Decisions runId={run.id} proposals={proposals} me={me} onSelect={setSelected} />
           <main className="mt-8 grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(420px,520px)]">
             <ItemList items={items} mode={mode} selected={selected} onSelect={setSelected} />

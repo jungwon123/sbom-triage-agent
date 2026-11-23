@@ -166,7 +166,7 @@ class Job(Strict):
     """One queued piece of slow work (a sandbox pass). Kept by the storage layer; a worker claims it."""
     id: str
     run_id: str = ""
-    kind: Literal["export_together"]
+    kind: Literal["export_together", "service_check"]
     status: Literal["queued", "running", "done", "failed", "interrupted"]
     payload: dict = {}                       # plain values only: the worker is another process
     created_at: str
@@ -212,8 +212,54 @@ class Triage(Strict):
     code_read_by: Literal["rule", "agent", "local_agent"] = "rule"  # who set reachability
 
 
+class Change(Strict):
+    """One difference between a service's current run and a fresh scan of the same target."""
+    finding_id: str
+    package: str
+    version: str
+    vuln_id: str
+    # added / removed: the finding appeared or went away. raised / lowered: the rule bucket moved.
+    # kev_added: newly on the KEV list. fix_released: a fixed version exists now.
+    kind: Literal["added", "removed", "raised", "lowered", "kev_added", "fix_released"]
+    before: Bucket | None = None             # rule bucket in the current run
+    after: Bucket | None = None              # rule bucket in the fresh scan
+    kev: bool = False
+
+
+class ServiceCheck(Strict):
+    """Result of one re-triage pass over a registered service (services.py)."""
+    at: str                                  # ISO 8601
+    # first: no earlier run, the scan became the current run. changed: a new run was recorded.
+    # no_change: nothing that matters moved, no run was recorded. failed: see `error`.
+    result: Literal["first", "changed", "no_change", "failed"]
+    run_id: str | None = None                # the service's current run after this check
+    compared_to: str | None = None           # the run the fresh scan was compared with
+    changes: list[Change] = Field(default_factory=list)   # capped; `counts` has the full numbers
+    counts: dict[str, int] = Field(default_factory=dict)  # per change kind
+    carried: int = 0                         # earlier AI judgments reused for unchanged findings
+    needs_judgment: int = 0                  # new or moved NOW/NEXT candidates with no AI judgment yet
+    notified: str | None = None              # what happened to the alert ("http 200", "not sent: ...")
+    error: str | None = None
+    seconds: float = 0
+
+
+class Service(Strict):
+    """A registered service: where its code or SBOM is, who owns it and how often it is re-checked."""
+    id: str = Field(pattern=r"^[a-z0-9][a-z0-9-]{0,39}$")
+    name: str = Field(min_length=1, max_length=80)
+    target: str                              # repo directory or SBOM file, as the worker sees it
+    context: ServiceContext = Field(default_factory=ServiceContext)
+    owner: str | None = Field(default=None, max_length=80)
+    check_hours: int | None = Field(default=24, ge=1, le=720)   # None = only when someone asks
+    created_at: str
+    created_by: str | None = None
+    current_run: str | None = None           # the run the dashboard shows for this service
+    last_check: ServiceCheck | None = None
+
+
 def schema_json() -> str:
-    models = [Component, Finding, AgentVerdict, Remediation, Verification, Triage, ServiceContext, Decision, Proposal, CombinedCheck, Job]
+    models = [Component, Finding, AgentVerdict, Remediation, Verification, Triage, ServiceContext, Decision, Proposal,
+              CombinedCheck, Job, Change, ServiceCheck, Service]
     return json.dumps({m.__name__: m.model_json_schema() for m in models}, ensure_ascii=False, indent=1)
 
 
