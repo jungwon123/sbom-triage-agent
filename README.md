@@ -108,6 +108,8 @@ out/              실행 결과 (git 제외)
 | [HANDOFF.md](HANDOFF.md) | 결정 이력 D1 ~ D53과 이유 | 2장만 현행. 나머지는 초기 기록 |
 | [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | 요구사항 원본. 문서가 충돌하면 이 문서가 우선 | 현행 |
 | [deploy/k8s/README.md](deploy/k8s/README.md) | 쿠버네티스 구성, 운영에 올릴 때 바꿀 것, 확인한 것과 한계 | 현행 |
+| [docs/keywords.md](docs/keywords.md) | 키워드 사전. 개념의 뜻과 이 저장소에서 쓰이는 곳, 스스로 확인하는 질문 | 현행. 공부용 |
+| [docs/reading-list.md](docs/reading-list.md) | 주제별로 읽을 자료 | 2026-11-18 기준. 저장 계층, 작업 큐, 로그인, 쿠버네티스 자료는 없음 |
 | [docs/onprem-llm.md](docs/onprem-llm.md) | 사내 LLM과 2단계 모드의 배경 | 참고 |
 | [docs/reviews/](docs/reviews/) | 설계 비판 검토 3회와 지적 사항 | 이력. 수정 내용은 HANDOFF D50, D52 |
 | [docs/poc-results.md](docs/poc-results.md) | 초기 실험 결과 | 이력 |
