@@ -13,7 +13,7 @@
 | 기간 | 약 1주, 원격 | 1박 2일 현장 (11/24 ~ 11/25 13:00) |
 | 출발점 | 빈 프로젝트 + starter | **이미 구현된 파이프라인**. 현장에서는 과제와 자료에 맞추는 작업만 한다 |
 | 과제 | 미리 공개 | **당일 공개**. 첫 단계가 과제 정리와 차이 분석이다 |
-| 도구 | Claude Code | Claude Code 또는 Codex. 규칙은 `CLAUDE.md`와 `AGENTS.md` 양쪽에서 읽힌다 |
+| 도구 | Claude Code | Claude Code 또는 Codex. Codex는 `AGENTS.md`만으로 시작할 수 있다(규칙 요약, 금지 행동, 절차서 위치, 입력 형식 대응) |
 | 자료 | CSV | 미정. 레포, SBOM 파일, 스캐너 결과, 서비스 목록 중 무엇이든 올 수 있다 |
 | 핵심 위험 | 운영 루프 미완성 | LLM 교체(OpenAI), npm이 아닌 생태계, 네트워크와 Docker 제한 |
 | 증명 | 테스트 + 시연 영상 | 테스트 + 현장 시연 + 질의응답. 수치는 `out/evidence.md`와 일치해야 한다 |
@@ -30,7 +30,7 @@
 | `claude/agents/` | `data-scout`(자료 요약, 읽기 전용), `reviewer`(규칙과 완료 조건 점검, 읽기 전용) |
 | `templates/` | TASK, GAP, DATA_NOTES, DECISIONS, SCENARIOS, DEMO_SCRIPT, QA, HANDOFF, SUBMIT_CHECKLIST |
 | `scripts/apply.sh` | 키트를 `.claude/`와 `docs/finals/`에 복사 (덮어쓰지 않음) |
-| `scripts/profile_input.py` | 제공 자료가 무엇인지 요약: lockfile 종류, SBOM 형식, 스캐너 결과, CSV, 지원 여부 |
+| `scripts/profile_input.py` | 제공 자료가 무엇인지 요약: 파일 종류와 개수, 문서 목록. 형식 판별과 지원 여부는 `uv run python -m triage inspect <경로>`가 실제 파서로 알려 준다 |
 | `scripts/data_guard.sh` | 제공 자료 해시 기록(`init`)과 무수정 확인(`verify`) |
 | `scripts/check.sh` | 테스트, 절대 규칙 정적 점검, 오프라인 리플레이, git(AI 기여자 표기 포함), 키 하드코딩, 환경, 문서 |
 | `scripts/evidence.py` | 발표용 근거 수집: 커밋 흐름, 실행별 수치, 에이전트 통계, 검증 판정, 일치율 → `out/evidence.md` |

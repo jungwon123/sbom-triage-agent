@@ -49,6 +49,11 @@ if [ -d web/src ]; then
   [ -z "$hits" ] && ok "프론트는 out/ 을 직접 읽지 않음" || { ng "프론트가 out/ 을 직접 참조"; echo "$hits" | sed 's/^/      /'; }
 fi
 
+[ -f AGENTS.md ] && for s in kit/claude/skills/*/; do
+  grep -q "kit/claude/skills/$(basename "$s")/SKILL.md" AGENTS.md || ng "AGENTS.md에 절차서가 빠짐: $(basename "$s") (Codex는 AGENTS.md로만 찾는다)"
+done
+[ -f AGENTS.md ] && grep -q "triage inspect" AGENTS.md && ok "AGENTS.md: 절차서 위치와 입력 형식 대응이 적혀 있음" || ng "AGENTS.md가 없거나 입력 형식 대응이 빠짐"
+
 echo "== 3. 오프라인 리플레이"
 if [ $FAST -eq 1 ]; then note "--fast: 건너뜀"; elif [ -f fixtures/demo-repo/package-lock.json ]; then
   if DEMO_MODE=replay uv run python -m triage scan fixtures/demo-repo --name check >$LOG/replay.json 2>$LOG/replay.err; then

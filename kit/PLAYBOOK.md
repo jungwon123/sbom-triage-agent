@@ -45,10 +45,12 @@
 | Anthropic 키를 못 씀 | `.env`의 `LLM_PROVIDER=openai`, `OPENAI_MODEL`에 현장 모델명. `triage doctor --llm`으로 확인 |
 | OpenAI 어댑터가 요청 오류 | 오류 메시지를 그대로 붙여 고치게 한다. 30분 안에 안 되면 `LLM_PROVIDER=none`(규칙만)으로 한 줄기를 먼저 완성 |
 | 외부 LLM으로 자료 전송 금지 | `LLM_PROVIDER=none` 또는 현장 제공 모델. 보내는 데이터 범위(CVE ID, 패키지, 코드 조각)를 설명 |
-| 네트워크가 막힘 | `DEMO_MODE=replay`. 현장 자료의 취약점 DB 스냅샷이 제공되면 캐시로 넣는 어댑터를 만든다 |
+| 네트워크가 막힘 | `DEMO_MODE=replay`. KEV와 EPSS 파일을 받으면 `triage seed --kev <파일> --epss <파일>`. OSV에 닿지 못해도 스캐너 결과나 CVE 열이 있는 표는 그 취약점으로 분류가 돈다(근거에 "확보하지 못한 데이터"로 표시) |
 | Docker를 못 씀 | 검증은 미리 돌린 실행 결과로 보여 주고, 현장에서는 건너뜀 표시가 나오는 것을 그대로 보여 준다 |
-| 자료가 Java/Gradle | SBOM 파일이 있으면 그대로 입력. 없으면 Syft로 SBOM 생성. 샌드박스는 "npm만 구현, Maven은 설계"라고 말한다 |
-| 자료가 스캐너 결과뿐 | `adapt-input`으로 Finding 변환 어댑터. EPSS, KEV 보강은 그대로 쓴다 |
+| 자료가 Java/Gradle | SBOM 파일이나 `gradle.lockfile`이 있으면 그대로 입력. 없으면 Syft로 SBOM 생성(`pom.xml`만 있으면 직접 의존성만). 샌드박스는 "npm만 구현, Maven은 설계"라고 말한다 |
+| 자료가 스캐너 결과뿐 | Trivy, Grype, OSV-Scanner, Snyk, Dependency-Check JSON은 `triage scan <파일>`로 바로 읽는다. 다른 도구면 `triage inspect`로 확인하고 표처럼 `--columns`로 읽어 본다 |
+| 자료가 엑셀이나 CSV 목록 | 엑셀은 CSV로 저장한다. `triage inspect <파일>`이 읽은 열을 보여 준다. 틀리면 `--columns name=<열>,version=<열>`과 `--ecosystem`으로 지정한다 |
+| 처음 보는 형식 | `triage inspect`의 안내 → `--columns` → `adapt-input` 절차로 파서 추가(30분 안에 안 되면 자료를 CSV로 바꿔 읽는다) |
 | 소스 없이 SBOM만 | 코드 사용 여부는 unknown. NOW가 늘어나는 것이 정상이고 그 이유를 설명한다 |
 | 과제가 완전히 다른 주제 | `task-intake`로 재사용 가능한 부분(규칙+AI 구조, 검증 루프, 안전장치)부터 추린다 |
 | 시연 중 실패 | 미리 녹화한 실행을 `?run=<id>`로 연다. 화면은 저장된 결과만 읽으므로 네트워크와 무관하다 |

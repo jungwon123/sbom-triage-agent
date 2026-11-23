@@ -17,13 +17,21 @@ SKIP = {".git", "node_modules", "target", "build", "dist", ".gradle", ".venv", "
 LOCKS = {
     "package-lock.json": ("npm", "지원"),
     "pom.xml": ("Maven", "직접 의존성만 지원, 샌드박스 미지원"),
-    "yarn.lock": ("npm(yarn)", "미지원: Syft 경유 또는 어댑터 필요"),
-    "pnpm-lock.yaml": ("npm(pnpm)", "미지원: Syft 경유 또는 어댑터 필요"),
-    "build.gradle": ("Gradle", "미지원: Syft 경유 또는 SBOM 파일 필요"),
-    "build.gradle.kts": ("Gradle", "미지원: Syft 경유 또는 SBOM 파일 필요"),
-    "requirements.txt": ("PyPI", "미지원: ecosystem 추가 필요"),
-    "poetry.lock": ("PyPI", "미지원: ecosystem 추가 필요"),
-    "go.sum": ("Go", "미지원: ecosystem 추가 필요"),
+    "yarn.lock": ("npm(yarn)", "지원 (직접과 간접 구분 없음), 샌드박스 미지원"),
+    "pnpm-lock.yaml": ("npm(pnpm)", "지원, 샌드박스 미지원"),
+    "gradle.lockfile": ("Gradle", "지원, 샌드박스 미지원"),
+    "build.gradle": ("Gradle", "버전이 고정되지 않음: gradle.lockfile, SBOM 파일 또는 Syft 필요"),
+    "build.gradle.kts": ("Gradle", "버전이 고정되지 않음: gradle.lockfile, SBOM 파일 또는 Syft 필요"),
+    "requirements.txt": ("PyPI", "지원 (== 로 고정된 줄만), import 검색과 샌드박스 미지원"),
+    "poetry.lock": ("PyPI", "지원, import 검색과 샌드박스 미지원"),
+    "uv.lock": ("PyPI", "지원, import 검색과 샌드박스 미지원"),
+    "Pipfile.lock": ("PyPI", "지원, import 검색과 샌드박스 미지원"),
+    "go.mod": ("Go", "지원, import 검색과 샌드박스 미지원"),
+    "go.sum": ("Go", "지원 (go.mod가 있으면 그쪽을 씀)"),
+    "Cargo.lock": ("Rust", "지원, import 검색과 샌드박스 미지원"),
+    "Gemfile.lock": ("Ruby", "지원, import 검색과 샌드박스 미지원"),
+    "composer.lock": ("PHP", "지원, import 검색과 샌드박스 미지원"),
+    "packages.lock.json": ("NuGet", "지원, import 검색과 샌드박스 미지원"),
 }
 
 
@@ -44,13 +52,13 @@ def classify_json(path: Path) -> str | None:
         return f"SPDX SBOM: 패키지 {len(doc.get('packages', []))}개 → `triage scan <파일>` 지원"
     if "Results" in doc and "SchemaVersion" in doc:
         n = sum(len(r.get("Vulnerabilities") or []) for r in doc.get("Results", []))
-        return f"Trivy 결과: 취약점 {n}건 → 미지원, Finding 변환 어댑터 필요"
+        return f"Trivy 결과: 취약점 {n}건 → `triage scan <파일>` 지원"
     if "matches" in doc and "descriptor" in doc:
-        return f"Grype 결과: {len(doc['matches'])}건 → 미지원, Finding 변환 어댑터 필요"
+        return f"Grype 결과: {len(doc['matches'])}건 → `triage scan <파일>` 지원"
     if "auditReportVersion" in doc or "advisories" in doc:
-        return "npm audit 결과 → 미지원, Finding 변환 어댑터 필요"
+        return "npm audit 결과 → 설치 버전이 없어 미지원. 같은 프로젝트의 package-lock.json을 입력으로 쓴다"
     if "vulnerabilities" in doc and "catalogVersion" in doc:
-        return f"CISA KEV 스냅샷: {len(doc['vulnerabilities'])}건 → cache에 넣어 오프라인 사용 가능"
+        return f"CISA KEV 스냅샷: {len(doc['vulnerabilities'])}건 → `triage seed --kev <파일>`로 넣어 오프라인 사용"
     return None
 
 
@@ -70,7 +78,9 @@ def profile(root: Path) -> list[str]:
     out += [f"- `{p}`: {c}" for p, c in found[:40]] or ["- 없음"]
     out.append("")
 
-    out.append("## 표 형식 자료")
+    out.append("(정확한 판별은 `uv run python -m triage inspect <경로>`: Snyk, OSV-Scanner, Dependency-Check, CycloneDX XML, SPDX tag-value도 읽는다)")
+    out.append("")
+    out.append("## 표 형식 자료 (`triage scan <파일> --columns name=<열>,version=<열> --ecosystem <이름>`으로 읽는다)")
     tables = [p for p in files if p.suffix.lower() in (".csv", ".tsv")]
     for p in tables[:20]:
         try:

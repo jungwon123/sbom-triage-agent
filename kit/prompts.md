@@ -31,7 +31,8 @@ data-check 스킬로 data/ 를 점검해 docs/finals/DATA_NOTES.md를 채워 줘
 ## P3. 입력 맞추기
 ```
 adapt-input 스킬로 <자료 종류>를 파이프라인 입력으로 연결해.
-먼저 현장 자료의 실제 사례 2~3건으로 실패하는 테스트를 쓰고 계획 3줄만 보고해.
+먼저 `uv run python -m triage inspect data`로 판별하고, 읽히면 바로 스캔해. 표나 JSON 목록은 --columns로 읽어 봐.
+그래도 안 읽히는 것만 현장 자료의 실제 사례 2~3건으로 실패하는 테스트를 쓰고 계획 3줄만 보고해.
 제약: models.py의 Component 또는 Finding에 맞출 것, 외부 호출은 cache.py 경유, 기존 테스트 유지.
 완료 기준: `uv run python -m triage scan <현장 자료>`가 성공하고 coverage가 출력됨.
 ```

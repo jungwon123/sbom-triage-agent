@@ -8,16 +8,18 @@ description: 본선 제공 자료를 점검해 docs/finals/DATA_NOTES.md를 채�
 원본을 수정하지 않는다. 파일을 통째로 출력하거나 대화에 붙이지 않는다. 큰 탐색은 `data-scout` 서브에이전트에 맡긴다.
 
 ## 절차
-1. `python3 kit/scripts/profile_input.py data --out out/profile.md`
+1. `python3 kit/scripts/profile_input.py data --out out/profile.md`와 `uv run python -m triage inspect data`. 뒤의 것이 실제 파서로 판별한 결과이므로 지원 여부는 그쪽을 따른다.
 2. 파일 종류별로 확인한다.
    - **레포**: lockfile 종류와 버전, 소스 언어, 테스트 스크립트 유무(검증 강도에 영향), 빌드에 필요한 외부 서비스(DB 등)
    - **SBOM 파일**: 형식과 버전, purl 유무, 의존 그래프 유무(없으면 직접 의존성 구분 불가), scope 유무
-   - **스캐너 결과**: 도구와 형식, 취약점 ID 체계(CVE, GHSA), 패키지와 버전 표기
+   - **스캐너 결과**: 도구와 형식, 취약점 ID 체계(CVE, GHSA), 패키지와 버전 표기, 취약점이 없는 패키지도 들어 있는지
+   - **표(CSV, 엑셀)**: 한 행의 의미(패키지인지 취약점인지), `inspect`가 읽은 열이 맞는지, 생태계 열이 있는지
    - **서비스 목록**: 서비스 중요도, 외부 노출, 담당 부서. `ServiceContext`로 연결되며 점수에는 넣지 않는다
    - **취약점 데이터 스냅샷**: EPSS, KEV, OSV 형식인지. 네트워크 제한의 신호일 수 있다
    - **정답 라벨, 평가 자료**: 있으면 `agent-eval`의 입력이다
 3. 짧은 명령만 쓴다: `head -c 600`, `wc -l`, `python3 -c "import json;..."`으로 키 목록과 개수만.
-4. 가능한 입력은 `DEMO_MODE=replay uv run python -m triage scan <경로>`로 실제로 돌려 본다. 실패하면 오류 첫 줄과 원인을 적는다.
+4. `inspect`의 안내 문장(뺀 행 수, 의존 관계 없음, 운영과 개발 구분 없음)을 DATA_NOTES의 한계 칸에 그대로 옮긴다.
+5. 가능한 입력은 `DEMO_MODE=replay uv run python -m triage scan <경로>`로 실제로 돌려 본다. 실패하면 오류 첫 줄과 원인을 적는다.
 
 ## DATA_NOTES에 적을 것
 파일(또는 묶음)마다: 한 건의 의미 / 건수 / 형식 / 파이프라인 단계(①~⑦ 또는 평가) / 바로 읽히는지 / 한계 / 필요한 어댑터.
