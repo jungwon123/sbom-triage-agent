@@ -30,3 +30,36 @@ def test_not_sent_without_url_or_in_replay(monkeypatch):
     assert notify.send({"text": "x"})[0] is False
     monkeypatch.setenv("DEMO_MODE", "live")
     assert notify.send({"text": "x"}, dry_run=True) == (False, "dry run")
+
+
+def job(kind, status="done", result=None, error=None):
+    return {"id": "j1", "run_id": "20261124-000000-shop", "kind": kind, "status": status, "result": result, "error": error,
+            "payload": {"requested_by": "kim@example.com"}}
+
+
+def test_job_message_says_what_finished_and_how_it_went():
+    summary = {"final": {"NOW": 3, "NEXT": 2, "MONITOR": 9}, "verified": 3}
+    v = notify.build_job_message(job("verify", result={"summary": summary, "skipped": None}), "shop", "http://x/?run=1")
+    assert "샌드박스 검증" in v["text"] and "완료" in v["text"] and "shop" in v["text"]
+    body = json.dumps(v, ensure_ascii=False)
+    assert "검증을 통과한 조치안 3건" in body and "http://x/?run=1" in body
+    a = notify.build_job_message(job("agent", result={"summary": summary, "skipped": None, "judged": 5, "fallbacks": 1}), "shop")
+    assert "AI 판단" in a["text"] and "5건" in json.dumps(a, ensure_ascii=False) and "규칙 결과로 남은 항목 1건" in json.dumps(a, ensure_ascii=False)
+    e = notify.build_job_message(job("export_together", result={"approved": 2, "combined": {"verdict": "failed", "tests_run": 27, "targets": ["a@1", "b@2"]},
+                                                                "combined_skipped": None}), "shop")
+    assert "검증 실패" in json.dumps(e, ensure_ascii=False) and "테스트 27개" in json.dumps(e, ensure_ascii=False)
+
+
+def test_job_message_for_a_skipped_job_gives_the_reason():
+    m = notify.build_job_message(job("verify", result={"summary": {}, "skipped": "docker unavailable"}), "shop")
+    assert "실행하지 않음" in m["text"] and "Docker" in json.dumps(m, ensure_ascii=False)
+
+
+def test_job_message_never_carries_the_error_text_or_who_asked():
+    """An exception message can hold file paths or a log tail, and the requester is a person's address."""
+    m = notify.build_job_message(job("verify", status="failed", error=f"boom at /repos/shop/src/pay.ts {SECRET}"), "shop")
+    text = json.dumps(m, ensure_ascii=False)
+    assert "실패" in m["text"] and SECRET not in text and "pay.ts" not in text and "kim@example.com" not in text
+    assert "작업 기록" in text
+    i = notify.build_job_message(job("agent", status="interrupted", error="cut off"), "shop")
+    assert "중단" in i["text"]

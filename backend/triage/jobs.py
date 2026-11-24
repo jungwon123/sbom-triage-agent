@@ -116,8 +116,12 @@ def alive_workers(root: pathlib.Path) -> list[dict]:
     return [w for w in store.get().workers(root) if w.get("seen", 0) >= time.time() - WORKER_ALIVE]
 
 
-def reclaim(root: pathlib.Path, st: store.Store | None = None) -> None:
-    """Running jobs whose worker went silent: back to the queue, or interrupted once retried."""
+def reclaim(root: pathlib.Path, st: store.Store | None = None, announce_cut_off: bool = False) -> None:
+    """Running jobs whose worker went silent: back to the queue, or interrupted once retried.
+
+    Only a worker announces a job it found cut off (announce_cut_off): the API also calls this when
+    someone reads a job, and the API process sends nothing outside.
+    """
     st = st or store.get()
     for row in st.job_list(root, ("running",)):
         if (row.get("heartbeat") or 0) >= time.time() - STALE:
@@ -126,7 +130,33 @@ def reclaim(root: pathlib.Path, st: store.Store | None = None) -> None:
             patch = {"status": "queued", "worker": None, "started_at": None}
         else:
             patch = {"status": "interrupted", "error": CUT_OFF, "finished_at": _now()}
-        st.job_update(root / row["run_id"], row["id"], patch, worker=row.get("worker"))
+        changed = st.job_update(root / row["run_id"], row["id"], patch, worker=row.get("worker"))
+        if announce_cut_off and changed and patch["status"] == "interrupted":
+            announce(root, {**row, **patch}, st)
+
+
+def announce(root: pathlib.Path, row: dict, st: store.Store | None = None) -> str | None:
+    """Tell the team's channel that a job ended (notify.py). -> what happened to the alert, or None.
+
+    Never raises: an alert that cannot be sent must not change the job. A re-check that ended normally
+    is left out because services.py sends its own alert about what changed. TRIAGE_NOTIFY_JOBS=off
+    turns these alerts off; without SLACK_WEBHOOK_URL nothing is sent anyway.
+    """
+    if os.environ.get("TRIAGE_NOTIFY_JOBS", "on").lower() in ("off", "0", "false", "no"):
+        return None
+    if row["kind"] == "service_check" and row["status"] == "done":
+        return None
+    try:
+        from . import notify
+        run_dir = root / row["run_id"]
+        meta = (st or store.get()).get_doc(run_dir, "meta") or {}
+        base = os.environ.get("TRIAGE_PUBLIC_URL", "").strip().rstrip("/")
+        link = f"{base}/?run={row['run_id']}" if base and meta else None
+        sent, detail = notify.send(notify.build_job_message(row, meta.get("name") or row["run_id"], link))
+        return detail if sent else f"not sent: {detail}"
+    except Exception:
+        log.exception("job alert failed")
+        return None
 
 
 def _view(root: pathlib.Path, row: dict) -> Job:
@@ -180,7 +210,7 @@ def _info(me: str, started_at: str) -> dict:
 def work_once(root: pathlib.Path, me: str, st: store.Store | None = None) -> Job | None:
     """Claim and run one job. -> the finished job, or None when the queue is empty."""
     st = st or store.get()
-    reclaim(root, st)
+    reclaim(root, st, announce_cut_off=True)
     row = st.job_claim(root, {"worker": me, "started_at": _now(), "heartbeat": time.time()})
     if row is None:
         return None
@@ -211,6 +241,8 @@ def work_once(root: pathlib.Path, me: str, st: store.Store | None = None) -> Job
     if not kept:
         log.warning("job %s was taken away from this worker; its result is dropped", row["id"])
     done = _retry(lambda: st.job_get(run_dir, row["id"]))
+    if kept and done:
+        announce(root, done, st)
     return Job.model_validate(done) if done else None
 
 

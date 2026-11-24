@@ -287,3 +287,71 @@ def test_agent_job_passes_scope_and_limit_as_values(st, tmp_path, monkeypatch):
     done = jobs.work_once(tmp_path, "w1", st)
     assert done.status == "done" and done.result["skipped"] is None
     assert seen == {"limit": 5, "only": {"a"}}
+
+
+@pytest.fixture
+def slack(monkeypatch):
+    """Records what the worker would send, without a network call."""
+    from triage import notify
+    sent = []
+    monkeypatch.setenv("DEMO_MODE", "live")
+    monkeypatch.setattr(notify, "send", lambda payload, dry_run=False: (sent.append(payload), (True, "http 200"))[1])
+    return sent
+
+
+def test_a_finished_job_is_announced_once(st, tmp_path, monkeypatch, slack):
+    handler(monkeypatch, lambda run_dir, payload: {"approved": 1, "combined": None, "combined_skipped": "docker unavailable"})
+    run = _empty_run(st, tmp_path, {"name": "shop"})
+    jobs.submit(run.dir, KIND)
+    done = jobs.work_once(tmp_path, "w1", st)
+    assert done.status == "done" and len(slack) == 1
+    assert "shop" in slack[0]["text"] and "승인분 함께 검증" in slack[0]["text"]
+    assert jobs.work_once(tmp_path, "w1", st) is None and len(slack) == 1
+
+
+def test_a_failed_job_is_announced_without_its_error_text(st, tmp_path, monkeypatch, slack):
+    def boom(run_dir, payload):
+        raise RuntimeError("docker exploded at /repos/shop/secret.ts")
+    handler(monkeypatch, boom)
+    run = _empty_run(st, tmp_path, {"name": "shop"})
+    jobs.submit(run.dir, KIND)
+    assert jobs.work_once(tmp_path, "w1", st).status == "failed"
+    assert len(slack) == 1 and "실패" in slack[0]["text"] and "secret.ts" not in str(slack[0])
+
+
+def test_a_broken_alert_does_not_change_the_job(st, tmp_path, monkeypatch):
+    from triage import notify
+    monkeypatch.setenv("DEMO_MODE", "live")
+
+    def broken(payload, dry_run=False):
+        raise RuntimeError("slack is down")
+    monkeypatch.setattr(notify, "send", broken)
+    handler(monkeypatch, lambda run_dir, payload: {"approved": 0, "combined": None, "combined_skipped": None})
+    run = _empty_run(st, tmp_path)
+    jobs.submit(run.dir, KIND)
+    done = jobs.work_once(tmp_path, "w1", st)
+    assert done.status == "done" and done.result["approved"] == 0
+
+
+def test_job_alerts_can_be_turned_off_and_skip_a_clean_service_check(st, tmp_path, monkeypatch, slack):
+    handler(monkeypatch, lambda run_dir, payload: {"approved": 0, "combined": None, "combined_skipped": None})
+    monkeypatch.setenv("TRIAGE_NOTIFY_JOBS", "off")
+    run = _empty_run(st, tmp_path)
+    jobs.submit(run.dir, KIND)
+    assert jobs.work_once(tmp_path, "w1", st).status == "done" and slack == []
+    monkeypatch.setenv("TRIAGE_NOTIFY_JOBS", "on")
+    monkeypatch.setitem(jobs.HANDLERS, "service_check", lambda run_dir, payload: {"result": "no_change"})
+    jobs.submit(tmp_path / "svc-shop", "service_check", {"service_id": "shop"})
+    assert jobs.work_once(tmp_path, "w1", st).status == "done" and slack == []   # the re-check sends its own alert
+
+
+def test_a_job_cut_off_twice_is_announced_by_the_worker_only(st, tmp_path, monkeypatch, slack):
+    handler(monkeypatch, lambda run_dir, payload: {})
+    run = _empty_run(st, tmp_path, {"name": "shop"})
+    job = jobs.submit(run.dir, KIND)
+    st.job_update(run.dir, job.id, {"status": "running", "worker": "dead", "attempts": jobs.MAX_ATTEMPTS, "heartbeat": time.time() - 999})
+    assert jobs.get(run.dir, job.id).status == "interrupted" and slack == []      # the API reading it sends nothing
+    job2 = jobs.submit(run.dir, KIND)
+    st.job_update(run.dir, job2.id, {"status": "running", "worker": "dead", "attempts": jobs.MAX_ATTEMPTS, "heartbeat": time.time() - 999})
+    assert jobs.work_once(tmp_path, "w1", st) is None
+    assert len(slack) == 1 and "중단" in slack[0]["text"]
