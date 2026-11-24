@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SBOM Triage Agent 발표</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+html, body { margin: 0; height: 100%; background: #0A121F; overflow: hidden; }
+#stage { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px; transform-origin: 0 0; }
+#stage > section { position: absolute; inset: 0; width: 1920px; height: 1080px; display: none; overflow: hidden; }
+#stage > section.on { display: flex; }
+aside.notes { display: none; }
+#notes { position: fixed; left: 0; right: 0; bottom: 0; max-height: 34vh; overflow: auto; box-sizing: border-box; padding: 20px 28px;
+  background: #0A121F; color: #EEF2F6; font: 400 20px/1.7 'Noto Sans KR', Arial, sans-serif; border-top: 2px solid #2C3E57; display: none; }
+#notes.on { display: block; }
+#bar { position: fixed; right: 16px; top: 12px; color: #9FB0C3; font: 400 16px/1 'JetBrains Mono', 'Courier New', monospace; }
+@media print {
+  html, body { overflow: visible; height: auto; background: #fff; }
+  #stage { position: static; transform: none !important; width: 1920px; height: auto; }
+  #stage > section { position: relative; display: flex !important; page-break-after: always; }
+  #notes, #bar { display: none !important; }
+  .stage { animation: none !important; }
+  @page { size: 1920px 1080px; margin: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .stage { animation: none !important; } }
+/* SBOM Triage Agent. Palette: ink #0F1B2D, paper #F3F5F7, panel #FBFCFD, rule #D5DBE3, soft ink #3D4A5C.
+   Bucket colours are the product's own: NOW red, NEXT amber, MONITOR slate. */
+section {
+  --ink: #0F1B2D;
+  --paper: #F3F5F7;
+  --panel: #FBFCFD;
+  --rule: #D5DBE3;
+  --soft: #3D4A5C;
+  --now: #C8372D;
+  --next: #9A5B00;
+  --mon: #5B6776;
+  padding: 128px;
+  background: #F3F5F7;
+  color: #0F1B2D;
+  font-family: 'Noto Sans KR', Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+section.dark { background: #0F1B2D; color: #EEF2F6; }
+
+h1 { font-size: 112px; font-weight: 900; line-height: 1.15; margin: 0; }
+h2 { font-size: 60px; font-weight: 700; line-height: 1.25; margin: 0 0 56px 0; }
+h3 { font-size: 34px; font-weight: 700; line-height: 1.35; margin: 0 0 16px 0; }
+
+.lead { font-size: 40px; font-weight: 500; line-height: 1.5; color: #3D4A5C; margin: 0; }
+.dark .lead { color: #BFCBD9; }
+.body { font-size: 28px; font-weight: 400; line-height: 1.55; color: #3D4A5C; margin: 0; }
+.dark .body { color: #BFCBD9; }
+.source { font-size: 24px; font-weight: 400; line-height: 1.5; color: #5B6776; margin: 0; }
+.dark .source { color: #9FB0C3; }
+.mono { font-family: 'JetBrains Mono', 'Courier New', monospace; }
+.spacer { flex: 1; }
+
+.row { display: flex; gap: 32px; align-items: stretch; }
+.col { display: flex; flex-direction: column; gap: 24px; flex: 1; }
+
+.card { flex: 1; background: #FBFCFD; border: 2px solid #D5DBE3; border-radius: 16px; padding: 36px; box-sizing: border-box; }
+.card .body { font-size: 28px; }
+.card-now { border-color: #C8372D; }
+.card-next { border-color: #9A5B00; }
+.card-mon { border-color: #5B6776; }
+.dark .card { background: #17263B; border-color: #2C3E57; }
+
+.big { font-size: 200px; font-weight: 900; line-height: 1; margin: 0; }
+.mid { font-size: 112px; font-weight: 900; line-height: 1; margin: 0 0 12px 0; }
+.label { font-size: 28px; font-weight: 500; line-height: 1.4; color: #3D4A5C; margin: 0; }
+.dark .label { color: #BFCBD9; }
+
+.c-now { color: #C8372D; }
+.c-next { color: #9A5B00; }
+.c-mon { color: #5B6776; }
+.dark .c-now { color: #FF8A7E; }
+.dark .c-next { color: #F2B85C; }
+.dark .c-mon { color: #A9B7C8; }
+
+.tag { display: inline-block; font-size: 26px; font-weight: 700; line-height: 1; color: #FBFCFD; padding: 12px 20px; border-radius: 10px; margin: 0 0 20px 0; align-self: flex-start; }
+.tag-now { background: #C8372D; }
+.tag-next { background: #9A5B00; }
+.tag-mon { background: #5B6776; }
+
+.step { flex: 1; background: #FBFCFD; border: 2px solid #D5DBE3; border-radius: 14px; padding: 24px 20px; box-sizing: border-box; }
+.step .num { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 26px; font-weight: 700; color: #5B6776; margin: 0 0 12px 0; }
+.step .name { font-size: 28px; font-weight: 700; line-height: 1.35; color: #0F1B2D; margin: 0 0 10px 0; }
+.step .what { font-size: 24px; font-weight: 400; line-height: 1.45; color: #3D4A5C; margin: 0; }
+.step-ai { border-color: #0F1B2D; border-width: 4px; }
+
+table { width: 100%; font-family: 'Noto Sans KR', Arial, sans-serif; font-size: 28px; color: #0F1B2D; border-collapse: collapse; }
+th, td { text-align: left; padding: 18px 16px; border-bottom: 2px solid #D5DBE3; }
+th { font-weight: 700; }
+section { word-break: keep-all; }
+
+ul { font-size: 30px; line-height: 1.6; color: #3D4A5C; margin: 0; padding-left: 40px; }
+.dark ul { color: #BFCBD9; }
+
+@keyframes rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+.stage { animation: rise 420ms ease-out both; animation-delay: calc(var(--i) * 120ms); }
+
+</style>
+</head>
+<body>
+<div id="stage">
+<section id="cover" class="dark" data-transition="fade">
+<p class="source mono">SBOM Triage Agent</p>
+<div class="spacer"></div>
+<h1>취약점 목록이 아니라<br>이번 주에 고칠 것을<br>알려 줍니다</h1>
+<div class="spacer"></div>
+<div class="row">
+<p class="tag tag-now">NOW</p>
+<p class="tag tag-next">NEXT</p>
+<p class="tag tag-mon">MONITOR</p>
+</div>
+<p class="source">롯데이노베이트 SW 공급망 과제 [발표자 이름]</p>
+<aside class="notes">안녕하세요. SBOM Triage Agent를 발표하겠습니다. 취약점 스캐너는 이미 많습니다. 그런데 스캐너가 주는 것은 목록이고, 개발팀이 필요한 것은 그 목록 가운데 이번 주에 무엇을 고쳐야 하는지입니다. 이 에이전트는 취약점을 NOW, NEXT, MONITOR 세 칸으로 나누고, 왜 그 칸인지 근거를 붙이고, 고치는 방법이 실제로 되는지까지 확인해서 드립니다.</aside>
+</section>
+<section id="problem" data-transition="fade">
+<h2>스캐너는 목록을 줍니다. 순서는 주지 않습니다</h2>
+<div class="row">
+<div class="col stage" style="--i:0">
+<p class="big">119</p>
+<p class="label">공개 저장소 하나에서 나온 취약점</p>
+</div>
+<div class="col stage" style="--i:1">
+<p class="big c-now">59</p>
+<p class="label">그중 CVSS 7 이상, 곧 "높음"으로 표시되는 것</p>
+</div>
+</div>
+<div class="spacer"></div>
+<p class="lead">절반이 "높음"이면 높음은 아무것도 알려 주지 않습니다.</p>
+<p class="source">대상: 공개 npm 저장소(컴포넌트 733개). 2026-11-19 실행 기록</p>
+<aside class="notes">실제 숫자부터 보겠습니다. 공개된 npm 저장소 하나를 스캔했더니 컴포넌트가 733개였고 취약점이 119건 나왔습니다. 그 가운데 CVSS 7 이상, 그러니까 도구가 높음이라고 표시하는 것이 59건입니다. 절반이 높음이면 높음이라는 표시는 아무것도 알려 주지 않습니다. 담당자는 119건을 전부 볼 수도 없고, 위에서부터 59건을 볼 수도 없습니다. 이것을 경보 피로라고 부릅니다. 경고가 너무 많으면 결국 전부 무시하게 됩니다.</aside>
+</section>
+<section id="idea" data-transition="fade">
+<h2>심각도 하나가 아니라 세 가지를 함께 봅니다</h2>
+<div class="row">
+<div class="card stage" style="--i:0">
+<h3>실제로 공격에 쓰이는가</h3>
+<p class="body">EPSS는 앞으로 공격에 쓰일 확률의 예측값입니다. KEV는 이미 악용이 확인된 목록입니다.</p>
+</div>
+<div class="card stage" style="--i:1">
+<h3>우리 코드가 실제로 쓰는가</h3>
+<p class="body">운영에 들어가는 의존성인지, 취약한 기능을 코드가 호출하는지 확인합니다.</p>
+</div>
+<div class="card stage" style="--i:2">
+<h3>고치는 데 얼마나 드는가</h3>
+<p class="body">수정 버전이 있는지, 패치 수준인지 메이저 변경인지 봅니다.</p>
+</div>
+</div>
+<div class="spacer"></div>
+<div class="row">
+<div class="col"><p class="tag tag-now">NOW</p><p class="label">이번 주에 고칩니다</p></div>
+<div class="col"><p class="tag tag-next">NEXT</p><p class="label">다음 정기 작업에 넣습니다</p></div>
+<div class="col"><p class="tag tag-mon">MONITOR</p><p class="label">지켜봅니다</p></div>
+</div>
+<aside class="notes">CVSS는 이론상 최악의 경우에 얼마나 심각한지를 말합니다. 실제로 공격에 쓰이는지, 우리가 그 기능을 쓰는지는 말하지 않습니다. 그래서 세 가지를 함께 봅니다. 첫째는 악용 가능성입니다. EPSS라는 예측 점수와, 미국 CISA가 실제 악용을 확인한 KEV 목록을 씁니다. 둘째는 노출입니다. 운영에 들어가는 의존성인지, 취약한 기능을 우리 코드가 실제로 호출하는지를 봅니다. 셋째는 조치 비용입니다. 이 세 가지를 합쳐 NOW, NEXT, MONITOR 세 칸으로 나눕니다.</aside>
+</section>
+<section id="pipeline" data-transition="fade">
+<h2>일곱 단계로 흐릅니다</h2>
+<div class="row" style="gap:16px">
+<div class="step stage" style="--i:0"><p class="num">1</p><p class="name">SBOM</p><p class="what">부품 목록을 만듭니다</p></div>
+<div class="step stage" style="--i:1"><p class="num">2</p><p class="name">조회</p><p class="what">OSV에서 취약점을 찾습니다</p></div>
+<div class="step stage" style="--i:2"><p class="num">3</p><p class="name">보강</p><p class="what">EPSS, KEV, 수정 버전, import 위치</p></div>
+<div class="step stage" style="--i:3"><p class="num">4</p><p class="name">규칙 점수</p><p class="what">코드가 1차 버킷을 정합니다</p></div>
+<div class="step step-ai stage" style="--i:4"><p class="num">5</p><p class="name">AI 판단</p><p class="what">코드를 읽고 근거와 조치안을 씁니다</p></div>
+<div class="step stage" style="--i:5"><p class="num">6</p><p class="name">검증</p><p class="what">컨테이너에서 조치안을 적용해 봅니다</p></div>
+<div class="step stage" style="--i:6"><p class="num">7</p><p class="name">화면</p><p class="what">근거, 승인, 패치 내보내기</p></div>
+</div>
+<div class="spacer"></div>
+<p class="lead">AI가 들어가는 곳은 다섯 번째 단계 하나입니다.</p>
+<p class="source">입력: 저장소, SBOM 파일(CycloneDX, SPDX), 스캐너 결과, lock 파일, 표</p>
+<aside class="notes">전체 흐름은 일곱 단계입니다. 저장소나 SBOM 파일을 받아 부품 목록을 만들고, 공개 취약점 DB인 OSV에서 취약점을 찾고, EPSS와 KEV와 수정 버전 같은 정보를 붙입니다. 네 번째 단계에서 규칙이 점수를 내 1차 버킷을 정합니다. 여기까지는 AI가 없습니다. 같은 입력이면 항상 같은 결과가 나옵니다. AI는 다섯 번째 단계에서만 들어갑니다. 코드를 읽어 취약한 기능이 실제로 쓰이는지 판단하고, 근거와 조치안을 씁니다. 여섯 번째 단계에서 그 조치안을 일회용 컨테이너에서 실제로 적용해 봅니다.</aside>
+</section>
+<section id="boundary" data-transition="fade">
+<h2>점수는 코드가 내고, AI는 한 단계만 옮깁니다</h2>
+<div class="row">
+<div class="card stage" style="--i:0">
+<h3>규칙이 하는 일</h3>
+<ul>
+<li>위험 100점 = 심각도 25 + 악용 가능성 25 + 노출 50</li>
+<li>60점 이상 NOW, 30점 이상 NEXT</li>
+<li>같은 입력이면 같은 결과</li>
+<li>악성 패키지와 KEV 항목은 점수와 무관하게 올립니다</li>
+</ul>
+</div>
+<div class="card stage" style="--i:1">
+<h3>AI가 하는 일</h3>
+<ul>
+<li>코드를 읽어 취약한 기능이 실제로 호출되는지 판정합니다</li>
+<li>버킷을 한 단계까지만 옮기고 이유를 적습니다</li>
+<li>근거와 조치안(종류, 버전)을 씁니다</li>
+<li>점수는 내지 않습니다</li>
+</ul>
+</div>
+</div>
+<div class="spacer"></div>
+<p class="lead">AI가 틀려도 결과는 한 단계 안에서만 틀립니다.</p>
+<aside class="notes">이 구조에서 가장 중요한 것은 규칙과 AI의 경계입니다. 점수는 코드가 냅니다. 심각도 25점, 악용 가능성 25점, 노출 50점을 더해 100점이고 60점 이상이면 NOW입니다. 수식이라서 같은 입력이면 같은 결과가 나오고 테스트할 수 있습니다. AI는 숫자가 볼 수 없는 것을 봅니다. 코드를 읽어 취약한 기능이 실제로 호출되는지 판정하고, 그에 따라 버킷을 옮깁니다. 다만 한 단계까지만 옮길 수 있고 옮길 때는 이유를 적어야 합니다. AI의 출력 형식에는 점수 칸이 아예 없습니다. 그래서 AI가 틀려도 결과는 한 단계 안에서만 틀립니다.</aside>
+</section>
+<section id="contrast" data-transition="fade">
+<h2>CVSS 9.5는 내려가고 7.5가 올라갑니다</h2>
+<div class="row">
+<div class="card card-mon stage" style="--i:0">
+<p class="tag tag-mon">MONITOR</p>
+<h3 class="mono">form-data</h3>
+<p class="mid c-mon">9.5</p>
+<p class="label">CVSS</p>
+<p class="body" style="margin-top:24px">axios가 끌고 온 간접 의존성이고, axios는 테스트 파일에서만 씁니다. 판정: 사용하지 않음(unused). 규칙은 NEXT, AI가 한 단계 내렸습니다.</p>
+</div>
+<div class="card card-now stage" style="--i:1">
+<p class="tag tag-now">NOW</p>
+<h3 class="mono">body-parser</h3>
+<p class="mid c-now">7.5</p>
+<p class="label">CVSS</p>
+<p class="body" style="margin-top:24px">모든 요청이 지나가는 자리에서 호출됩니다. 판정: 실제 사용(used_symbol). 규칙은 NEXT, AI가 한 단계 올렸습니다.</p>
+</div>
+</div>
+<div class="spacer"></div>
+<p class="source">같은 실행의 두 항목. CVSS 순서로 정렬하면 순서가 반대가 됩니다</p>
+<aside class="notes">같은 저장소의 두 항목입니다. 왼쪽 form-data는 CVSS가 9.5입니다. CVSS 순서라면 맨 위에 옵니다. 그런데 form-data는 axios가 끌고 온 간접 의존성이고, 이 저장소에서 axios를 쓰는 곳은 테스트 파일뿐입니다. 운영 코드에서는 실행되지 않습니다. 그래서 AI가 한 단계 내려 MONITOR가 되었습니다. 오른쪽 body-parser는 CVSS가 7.5로 더 낮습니다. 하지만 서버로 들어오는 모든 요청이 이 패키지를 지나갑니다. 규칙은 NEXT로 두었고, AI가 코드를 읽어 실제로 호출된다는 것을 확인하고 한 단계 올려 NOW가 되었습니다. CVSS 순서로 보면 이 둘의 순서가 반대가 됩니다. 이것이 목록과 판단의 차이입니다.</aside>
+</section>
+<section id="result" class="dark" data-transition="fade">
+<h2>119건이 이번 주 4건이 됩니다</h2>
+<div class="row">
+<div class="col stage" style="--i:0">
+<p class="big c-now">4</p>
+<p class="label">NOW. 이번 주에 고칩니다</p>
+</div>
+<div class="col stage" style="--i:1">
+<p class="big c-next">13</p>
+<p class="label">NEXT. 다음 정기 작업에 넣습니다</p>
+</div>
+<div class="col stage" style="--i:2">
+<p class="big c-mon">102</p>
+<p class="label">MONITOR. 지켜봅니다</p>
+</div>
+</div>
+<div class="spacer"></div>
+<p class="lead">CVSS 7 이상 59건 가운데 48건이 MONITOR로 갔습니다.</p>
+<p class="source">규칙이 고른 후보 30건을 AI가 판단, 그중 17건의 버킷이 한 단계 움직였습니다. 나머지 89건은 규칙 결과 그대로입니다</p>
+<aside class="notes">결과입니다. 119건이 NOW 4건, NEXT 13건, MONITOR 102건으로 나뉘었습니다. 처음에 높음으로 표시되던 59건 가운데 48건이 MONITOR로 갔습니다. 버려진 것이 아니라, 지금 고칠 이유가 없다는 근거와 함께 지켜보는 칸에 들어간 것입니다. AI가 119건을 전부 본 것은 아닙니다. 규칙이 먼저 후보 30건을 골랐고 AI는 그 30건만 판단했습니다. 그중 17건의 버킷이 한 단계씩 움직였습니다. 나머지 89건은 규칙 결과 그대로입니다. 모델 호출 비용도 그만큼만 듭니다.</aside>
+</section>
+<section id="verify" data-transition="fade">
+<h2>조치안은 말이 아니라 실행으로 확인합니다</h2>
+<div class="row" style="gap:16px">
+<div class="step stage" style="--i:0"><p class="num">1</p><p class="name">복사</p><p class="what">저장소를 일회용 컨테이너에 복사합니다</p></div>
+<div class="step stage" style="--i:1"><p class="num">2</p><p class="name">기준선</p><p class="what">고치기 전의 설치, 빌드, 테스트 결과를 잽니다</p></div>
+<div class="step stage" style="--i:2"><p class="num">3</p><p class="name">적용</p><p class="what">body-parser를 1.20.9로 올립니다</p></div>
+<div class="step stage" style="--i:3"><p class="num">4</p><p class="name">다시 실행</p><p class="what">설치, 빌드, 테스트 27개</p></div>
+<div class="step stage" style="--i:4"><p class="num">5</p><p class="name">재스캔</p><p class="what">취약점이 사라졌는지 봅니다</p></div>
+</div>
+<div class="spacer"></div>
+<div class="row">
+<div class="col"><p class="tag tag-mon">verified</p><p class="label">새로 깨진 것이 없고 취약점이 사라졌습니다</p></div>
+<div class="col"><p class="tag tag-now">failed</p><p class="label">조치 때문에 무엇인가 깨졌습니다</p></div>
+<div class="col"><p class="tag tag-next">inconclusive</p><p class="label">판단할 수 없습니다. 이유를 남깁니다</p></div>
+</div>
+<p class="source" style="margin-top:32px">NOW 4건 모두 verified. 이 저장소는 고치기 전에도 실패하는 테스트가 있어서, 기준선과 비교해 새로 깨진 것만 봅니다</p>
+<aside class="notes">AI가 버전을 올리라고 말하는 것만으로는 부족합니다. 올렸더니 빌드가 깨질 수 있기 때문입니다. 그래서 조치안을 실제로 실행해 봅니다. 저장소를 일회용 컨테이너에 복사하고, 먼저 고치기 전의 설치와 빌드와 테스트 결과를 잽니다. 이것이 기준선입니다. 그다음 조치안을 적용하고 다시 돌린 뒤, 취약점이 사라졌는지 재스캔합니다. 이 저장소는 고치기 전에도 실패하는 테스트가 있었습니다. 그래서 통과 여부가 아니라 기준선과 비교해 새로 깨진 것이 있는지를 봅니다. NOW 4건은 모두 verified였고 테스트 27개가 실제로 실행되었습니다. 원본 저장소는 건드리지 않습니다. 변경은 컨테이너 안의 사본에만 적용하고 결과는 패치 파일로 남깁니다.</aside>
+</section>
+<section id="guard" data-transition="fade">
+<h2>AI를 믿지 않아도 되게 만들었습니다</h2>
+<div class="row">
+<div class="card stage" style="--i:0">
+<h3>AI가 쓴 명령을 실행하지 않습니다</h3>
+<p class="body">AI는 종류와 버전만 제안합니다. 명령은 검증된 값으로 코드가 조립합니다.</p>
+</div>
+<div class="card stage" style="--i:1">
+<h3>AI의 도구는 읽기 전용입니다</h3>
+<p class="body">저장소 밖과 자격 증명 파일은 읽지 못합니다. 쓰기와 실행 도구는 없습니다.</p>
+</div>
+<div class="card stage" style="--i:2">
+<h3>숫자는 코드가 채웁니다</h3>
+<p class="body">AI는 근거에 자리표시자를 쓰고, 값은 기록에서 가져옵니다.</p>
+</div>
+</div>
+<div class="row" style="margin-top:32px">
+<div class="card stage" style="--i:3">
+<h3>위험한 항목은 내리지 못합니다</h3>
+<p class="body">KEV 항목과 악성 패키지의 하향은 코드가 막습니다.</p>
+</div>
+<div class="card stage" style="--i:4">
+<h3>원본 저장소는 바뀌지 않습니다</h3>
+<p class="body">승인한 변경만 패치와 PR 초안으로 나갑니다. 푸시는 사람이 합니다.</p>
+</div>
+<div class="card stage" style="--i:5">
+<h3>설치 스크립트를 실행하지 않습니다</h3>
+<p class="body">빌드와 테스트는 네트워크 없이 돌고, 비밀값은 컨테이너에 전달하지 않습니다.</p>
+</div>
+</div>
+<aside class="notes">분석 대상의 코드와 취약점 권고문은 신뢰할 수 없는 입력입니다. 그 안에 AI를 속이는 문장이 들어 있을 수 있습니다. 그래서 AI가 속더라도 피해가 나지 않게 구조를 잡았습니다. AI가 쓴 문자열은 실행하지 않습니다. AI는 조치의 종류와 버전만 제안하고 실제 명령은 코드가 조립합니다. AI의 도구는 읽기 전용이고 저장소 밖은 읽지 못합니다. 근거에 들어가는 숫자는 AI가 쓰는 것이 아니라 코드가 기록에서 가져와 채웁니다. KEV에 오른 항목은 AI가 내릴 수 없습니다. 그리고 원본 저장소는 바뀌지 않습니다. 사람이 승인한 변경만 패치와 PR 초안으로 나갑니다.</aside>
+</section>
+<section id="measure" data-transition="fade">
+<h2>정답과 얼마나 맞는지 쟀습니다</h2>
+<table>
+<tr><th style="width:40%">정답 자료</th><th>CVSS 정렬</th><th>규칙 단독</th><th>규칙과 AI</th><th>NOW 누락</th></tr>
+<tr><td>블라인드 세트 45건</td><td>18건 일치</td><td>26건 일치</td><td>실행하지 않음</td><td>0건</td></tr>
+<tr><td>사람 라벨 10건</td><td>7건 일치</td><td>7건 일치</td><td>8건 일치</td><td>0건</td></tr>
+</table>
+<div class="spacer"></div>
+<div class="row">
+<div class="card">
+<h3>NOW 누락을 따로 봅니다</h3>
+<p class="body">정답이 NOW인데 MONITOR로 간 건수입니다. 놓치는 것이 과잉 경고보다 비싸기 때문입니다.</p>
+</div>
+<div class="card">
+<h3>이 수치의 한계</h3>
+<p class="body">표본이 작습니다. 블라인드 세트의 정답은 사람이 아니라 별도 AI 세션이 만들었습니다. 규칙은 과대평가 쪽으로 기울어 있습니다.</p>
+</div>
+</div>
+<p class="source" style="margin-top:32px">블라인드 세트: 규칙을 보지 않고 따로 만든 SBOM 2개(npm, Maven)와 정답. 2026-11-18, 11-19 측정</p>
+<aside class="notes">정답과 얼마나 맞는지 쟀습니다. 첫 줄은 블라인드 세트입니다. 규칙을 보지 않은 별도 세션이 SBOM과 정답 45건을 만들었습니다. CVSS 순서로 나누면 18건이 맞고 규칙으로 나누면 26건이 맞았습니다. 둘째 줄은 데모 저장소에 사람이 직접 매긴 라벨 10건입니다. CVSS 정렬과 규칙 단독이 7건, 규칙과 AI가 8건 맞았습니다. 두 자료 모두 NOW 누락은 0건이었습니다. NOW 누락은 정답이 NOW인데 MONITOR로 보낸 경우이고, 가장 비싼 실수라서 따로 봅니다. 이 수치의 한계도 말씀드립니다. 표본이 작습니다. 블라인드 세트의 정답은 사람이 아니라 AI가 만들었습니다. 그리고 지금 규칙은 실제보다 높게 분류하는 쪽으로 기울어 있습니다.</aside>
+</section>
+<section id="ops" data-transition="fade">
+<h2>한 번 돌리고 끝나지 않게 만들었습니다</h2>
+<div class="row">
+<div class="card stage" style="--i:0">
+<h3>계속 지켜봅니다</h3>
+<p class="body">등록한 서비스를 주기마다 다시 스캔합니다. 코드가 그대로여도 새 취약점이 공개되거나 KEV에 오르면 알립니다.</p>
+</div>
+<div class="card stage" style="--i:1">
+<h3>코드를 밖으로 내보내지 않을 수 있습니다</h3>
+<p class="body">2단계 모드에서는 사내 모델만 소스코드를 읽습니다. 외부 모델은 패키지, 점수, 판독 결과만 받습니다.</p>
+</div>
+<div class="card stage" style="--i:2">
+<h3>같은 코드가 세 가지로 돕니다</h3>
+<p class="body">노트북 한 대, 서버 한 대(Compose), 쿠버네티스. 오래 걸리는 일은 큐에 넣고 작업자가 실행합니다.</p>
+</div>
+</div>
+<div class="spacer"></div>
+<div class="row">
+<div class="col"><p class="mid">282</p><p class="label">통과하는 테스트</p></div>
+<div class="col"><p class="mid">0</p><p class="label">외부 모델로 나간 요청 6건에 든 코드와 파일 이름</p></div>
+<div class="col"><p class="mid">3</p><p class="label">시험 클러스터의 노드 수(k3s)</p></div>
+</div>
+<aside class="notes">프로토타입으로 끝나지 않게 운영을 전제로 만들었습니다. 세 가지만 말씀드리겠습니다. 첫째, 한 번 분석하고 끝나지 않습니다. 서비스를 등록해 두면 주기마다 다시 스캔합니다. 코드가 그대로여도 새 취약점이 공개되거나 KEV에 오르면 분류가 바뀌고 알림이 갑니다. 둘째, 소스코드를 밖으로 내보내지 않을 수 있습니다. 2단계 모드에서는 사내 모델만 코드를 읽고 외부 모델은 사실만 받습니다. 실제로 돌려서 외부로 나간 요청 6건에 코드와 파일 이름이 없는 것을 확인했습니다. 다만 작은 사내 모델의 판독 정확도는 낮았고 이 부분은 더 큰 모델로 다시 재야 합니다. 셋째, 같은 코드가 노트북 한 대에서도, 쿠버네티스에서도 돕니다.</aside>
+</section>
+<section id="close" class="dark" data-transition="fade">
+<h2>아직 하지 못한 것과, 그래도 남는 것</h2>
+<div class="row">
+<div class="card">
+<h3>아직 하지 못한 것</h3>
+<ul>
+<li>샌드박스 검증은 npm 방식 저장소만 됩니다 (yarn, pnpm은 분류까지)</li>
+<li>정답 자료의 표본이 작습니다</li>
+<li>사내 모델의 판독 정확도를 재지 않았습니다</li>
+<li>쿠버네티스는 시험 클러스터에서만 확인했습니다</li>
+</ul>
+</div>
+<div class="card">
+<h3>그래도 남는 것</h3>
+<ul>
+<li>목록이 아니라 순서와 근거를 줍니다</li>
+<li>AI가 틀려도 한 단계 안에서만 틀립니다</li>
+<li>조치안은 실행해 본 것만 내놓습니다</li>
+<li>마지막 결정은 사람이 합니다</li>
+</ul>
+</div>
+</div>
+<div class="spacer"></div>
+<p class="lead">119건을 주는 도구가 아니라, 이번 주의 4건과 그 이유를 주는 도구입니다.</p>
+<p class="source mono">github.com/jungwon123/sbom-triage-agent</p>
+<aside class="notes">마지막으로 한계부터 말씀드리겠습니다. 샌드박스 검증은 지금 npm 명령과 package-lock.json을 쓰는 저장소만 됩니다. yarn과 pnpm 저장소는 분류와 조치안까지 나오고 검증은 아직 안 됩니다. 정답 자료의 표본이 작습니다. 사내 모델의 판독 정확도는 재지 않았습니다. 쿠버네티스 구성은 시험 클러스터에서만 확인했습니다. 그래도 남는 것은 네 가지입니다. 목록이 아니라 순서와 근거를 줍니다. AI가 틀려도 한 단계 안에서만 틀립니다. 조치안은 실제로 실행해 본 것만 내놓습니다. 그리고 마지막 결정은 사람이 합니다. 119건을 주는 도구가 아니라, 이번 주의 4건과 그 이유를 주는 도구입니다. 감사합니다.</aside>
+</section>
+</div>
+<div id="bar"></div>
+<div id="notes"></div>
+<script>
+(function () {
+  var stage = document.getElementById('stage'), list = stage.querySelectorAll(':scope > section');
+  var notes = document.getElementById('notes'), bar = document.getElementById('bar'), i = 0;
+  function fit() {
+    var s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+    stage.style.transform = 'scale(' + s + ') translate(-50%, -50%)';
+  }
+  function show(n) {
+    i = Math.max(0, Math.min(list.length - 1, n));
+    list.forEach(function (el, k) { el.classList.toggle('on', k === i); });
+    var a = list[i].querySelector('aside.notes');
+    notes.textContent = a ? a.textContent : '';
+    bar.textContent = (i + 1) + ' / ' + list.length;
+    try { history.replaceState(null, '', '#' + (i + 1)); } catch (e) {}
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); show(i + 1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(i - 1); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(list.length - 1);
+    else if (e.key === 'n' || e.key === 'N') notes.classList.toggle('on');
+    else if (e.key === 'f' || e.key === 'F') { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen(); }
+  });
+  document.addEventListener('click', function (e) { if (e.target.closest('#notes')) return; show(i + (e.clientX < window.innerWidth / 3 ? -1 : 1)); });
+  window.addEventListener('resize', fit);
+  fit(); show((parseInt(location.hash.slice(1), 10) || 1) - 1);
+})();
+</script>
+</body>
+</html>
