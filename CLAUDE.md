@@ -45,7 +45,7 @@ sbom-triage/
 │     ├─ decide.py       # 수정안 목록, 담당자 결정 기록, 승인분 내보내기 (원본 레포는 건드리지 않음)
 │     ├─ jobs.py         # 화면에서 시작하는 느린 작업의 큐. 작업은 저장 계층의 기록이고 작업자(`triage worker`)가 가져가 실행한다. 종류: `export_together`, `service_check`, `verify`, `agent`
 │     ├─ services.py     # 서비스 등록과 자동 재분류: 다시 스캔해 현재 실행과 비교하고, 달라졌을 때만 새 실행을 만든다 (모델 호출 없음)
-│     ├─ notify.py       # Slack 호환 웹훅 알림 (코드 없이 요약만)
+│     ├─ notify.py       # Slack 호환 웹훅 알림 (코드 없이 요약만): 실행 요약, 재확인의 변경, 끝난 작업의 결과
 │     ├─ auth.py         # 로그인(OIDC)과 역할(열람, 승인, 관리), 서명된 세션 쿠키. `TRIAGE_AUTH=off`가 기본
 │     ├─ doctor.py       # 환경 점검
 │     └─ api.py          # FastAPI
