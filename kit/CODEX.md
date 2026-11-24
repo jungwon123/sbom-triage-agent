@@ -136,7 +136,7 @@ docs/GUIDE.md를 읽고, CSV로 된 패키지 목록을 받았을 때 어떤 명
 
 - 이 저장소에서 Codex로 실제 수정 작업을 해 본 적이 없습니다. 4장이 그 확인입니다.
 - OpenAI 어댑터(`LLM_PROVIDER=openai`)는 실제 호출로 확인하지 않았습니다. 현장에서 OpenAI 모델을 쓰게 되면 `uv run python -m triage doctor --llm`부터 돌립니다.
-- 샌드박스 검증은 npm 저장소만 됩니다.
+- 샌드박스 검증은 npm CLI와 `package-lock.json`을 쓰는 저장소만 됩니다. yarn과 pnpm 저장소는 분류까지 되고, 검증을 추가하는 계획은 `docs/plans/verify-yarn-pnpm.md`에 있습니다.
 - Codex의 샌드박스 안에서 Docker와 네트워크를 쓰는 명령(`triage verify`, 실조회 `triage scan`)이 승인 없이 되는지는 확인하지 않았습니다. 막히면 그 명령만 터미널에서 직접 실행합니다.
 
 ## 6. 본선 당일

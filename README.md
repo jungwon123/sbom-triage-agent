@@ -110,6 +110,7 @@ out/              실행 결과 (git 제외)
 | [deploy/k8s/README.md](deploy/k8s/README.md) | 쿠버네티스 구성, 운영에 올릴 때 바꿀 것, 확인한 것과 한계 | 현행 |
 | [docs/keywords.md](docs/keywords.md) | 키워드 사전. 개념의 뜻과 이 저장소에서 쓰이는 곳, 스스로 확인하는 질문 | 현행. 공부용 |
 | [docs/reading-list.md](docs/reading-list.md) | 주제별로 읽을 공식 문서와 자료, 읽는 시간 | 현행. 운영 주제는 2026-11-24, 나머지는 2026-11-01에 주소 확인 |
+| [docs/plans/verify-yarn-pnpm.md](docs/plans/verify-yarn-pnpm.md) | yarn과 pnpm 저장소의 샌드박스 검증을 추가하는 계획 | 계획. 구현하지 않음 |
 | [docs/onprem-llm.md](docs/onprem-llm.md) | 사내 LLM과 2단계 모드의 배경 | 참고 |
 | [docs/reviews/](docs/reviews/) | 설계 비판 검토 3회와 지적 사항 | 이력. 수정 내용은 HANDOFF D50, D52 |
 | [docs/poc-results.md](docs/poc-results.md) | 초기 실험 결과 | 이력 |
@@ -125,7 +126,7 @@ out/              실행 결과 (git 제외)
 - 쿠버네티스 구성은 k3s 3노드 시험 클러스터에서 확인했습니다. 실제 NFS, 관리형 DB 제품, 공인 인증서, 노드 장애는 확인하지 않았습니다.
 - 2단계 모드는 Ollama의 `qwen2.5:7b`로 한 번 돌렸습니다. 외부 모델로 나간 요청에 코드와 파일 이름이 없는 것은 확인했고, 7B 모델의 판독 정확도는 낮았으며 정답 라벨로 측정하지 않았습니다.
 - OpenAI 어댑터는 실제 호출로 확인하지 않았습니다.
-- 지원하는 생태계는 OSV가 다루는 범위이고, 샌드박스 검증은 npm 저장소만 됩니다.
+- 분류(① ~ ⑤)는 lock 파일이나 SBOM이 있는 생태계 전반에서 됩니다. 샌드박스 검증(⑥)은 npm CLI와 `package-lock.json`을 쓰는 저장소만 됩니다. yarn과 pnpm 저장소는 분류까지 되고 검증은 계획 단계입니다([docs/plans/verify-yarn-pnpm.md](docs/plans/verify-yarn-pnpm.md)).
 
 ## 8. 기여와 보안 규칙
 

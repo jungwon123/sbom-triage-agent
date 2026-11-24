@@ -109,7 +109,7 @@ uv run python -m triage verify out/<run> --setup "npx prisma generate"
 이상할 때:
 - 전부 `inconclusive`이면 기준선부터 봅니다(`out/<run>/verify/baseline.json`). 조치 전에 이미 테스트가 실패하는 저장소는 회귀를 판정할 수 없습니다.
 - 빌드 전에 코드 생성이 필요한 저장소는 `--setup`을 줍니다.
-- 지금은 npm 저장소만 검증합니다.
+- 검증은 npm CLI와 `package-lock.json`을 쓰는 저장소만 됩니다. yarn(`yarn.lock`)과 pnpm(`pnpm-lock.yaml`) 저장소는 분류와 조치안까지 나오고 검증은 되지 않습니다. 추가 계획은 `docs/plans/verify-yarn-pnpm.md`에 있습니다.
 
 ## 5. 담당자 결정과 내보내기 (`triage decide`, `triage export`)
 
@@ -220,4 +220,4 @@ uv run python -m triage eval out/<run>     # 정답 라벨과의 일치율, NOW 
 2. AI가 쓴 명령을 실행하지 않습니다.
 3. 대상 저장소에 쓰기, 커밋, 푸시를 하지 않습니다.
 4. 컨테이너 이미지, OS 패키지, 라이선스 검사는 범위 밖입니다.
-5. 샌드박스 검증은 npm이 아닌 생태계를 지원하지 않습니다.
+5. 샌드박스 검증은 npm CLI와 `package-lock.json`을 쓰는 저장소만 지원합니다. yarn, pnpm, 그리고 npm이 아닌 생태계(Maven, PyPI 등)는 분류까지만 됩니다.
